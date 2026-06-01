@@ -454,7 +454,7 @@
     window.dataSheetUtama = []; // Data untuk dropdown/tampilan atas
     window.dataReqBD = [];      // Data untuk tabel bawah (Req_BD)
     window.dataSource = [];     // Data untuk mengisi dropdown di form input task
-    
+
     // 1. Fungsi Load Data Utama (untuk Dropdown)
     async function loadMainData() {
       const URL_UTAMA = 'https://script.google.com/macros/s/AKfycbze58WL_LPRuAI9jXenMXrnlUqUdTj6sg0WavRVJszi_hCORiut3dB3wKXb2wQQFdOI5w/exec';
@@ -534,6 +534,18 @@
         container.style.display = 'none';
       }
     }
+    // 3. Fungsi Load Data Source (untuk mengisi dropdown Divisi & PIC)
+    async function loadSourceData() {
+      // GANTI URL DI BAWAH INI dengan URL Web App sheet "Source" Anda
+      const URL_SOURCE = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
+      try {
+        const res = await fetch(URL_SOURCE);
+        window.dataSource = await res.json();
+        console.log("Data Source berhasil dimuat:", window.dataSource);
+      } catch (err) {
+        console.error("Gagal load Source:", err);
+      }
+    }
     // 1. Fungsi mengisi dropdown dari sheet Source
     async function populateDropdowns() {
       // Asumsi data Source sudah dimuat di window.dataSource (sesuai langkah sebelumnya)
@@ -542,8 +554,8 @@
 
       // Ambil data unik dari kolom D (Divisi) dan E (PIC)
       // Sesuaikan indeks [3] dan [4] dengan posisi kolom di data Source Anda
-      const divOptions = [...new Set(window.dataSource.map(r => r[2]).filter(v => v))];
-      const picOptions = [...new Set(window.dataSource.map(r => r[2]).filter(v => v))];
+      const divOptions = [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))];
+      const picOptions = [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))];
 
       divisiSelect.innerHTML = divOptions.map(o => `<option value="${o}">${o}</option>`).join('');
       picSelect.innerHTML = picOptions.map(o => `<option value="${o}">${o}</option>`).join('');
@@ -570,11 +582,16 @@
     }
 
     // 4. Inisialisasi semua
-    window.addEventListener("load", () => {
-      loadMainData();
-      loadReqBDData();
-      loadSourceData();
+    window.addEventListener("load", async () => {
+      // Gunakan await agar fungsi menunggu sampai data benar-benar diterima
+      await Promise.all([
+        loadMainData(),
+        loadReqBDData(),
+        loadSourceData()
+      ]);
 
+      // Sekarang, setelah semua data selesai di-load, baru jalankan ini:
+      populateDropdowns();
     });
   </script>
 </body>
