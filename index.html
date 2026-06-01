@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <title>JumpStart – Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Bebas+Neue&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --sidebar-w: 260px;
+      --accent: #E63A2E;
+      --yellow: #F5A623;
+      --ink: #1a1a1a;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --hover-bg: #f9fafb;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #ffffff;
+      color: var(--ink);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    /* Sidebar: Tetap di tempat, tidak terpengaruh scroll horizontal */
+    aside {
+      width: var(--sidebar-w);
+      height: 100vh;
+      position: fixed;
+      /* Kunci agar sidebar tidak ikut bergeser */
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      background-color: #ffffff;
+      /* Warna solid agar tidak transparan */
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      /* Scroll hanya untuk isi sidebar yang panjang */
+      padding: 28px 20px;
+    }
+
+    /* Main Content: Memberi ruang untuk sidebar */
+    main {
+      margin-left: var(--sidebar-w);
+      /* Memberi ruang agar konten tidak tertutup */
+      padding: 40px 48px;
+      min-height: 100vh;
+      /* JANGAN beri overflow-x: hidden di sini jika ingin tabel bisa di-scroll */
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      /* Dibuat sangat kecil agar rapat */
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      /* Padding dikurangi agar lebih compact */
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 13.5px;
+      /* Sedikit lebih kecil untuk kesan profesional */
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item:hover {
+      background: var(--hover-bg);
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-chevron {
+      transition: transform 0.3s;
+    }
+
+    .submenu-container {
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+
+    .page-content {
+      display: none;
+    }
+
+    .active-page {
+      display: block;
+    }
+
+    .table-container {
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid #e5e7eb;
+    }
+
+    table {
+      width: 100%;
+      table-layout: fixed;
+      /* Kunci: memaksa kolom punya lebar proporsional */
+      font-size: 12px;
+      /* Perkecil font tabel */
+    }
+
+    th,
+    td {
+      padding: 6px 8px;
+      /* Perkecil padding */
+      white-space: nowrap;
+      /* Mencegah teks turun ke bawah jika tidak perlu */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      /* Menambahkan titik-titik jika teks terlalu panjang */
+      border: 1px solid #e5e7eb;
+    }
+
+    /* Beri lebar khusus untuk kolom yang isinya panjang agar tidak memakan tempat */
+    td:nth-child(6) {
+      max-width: 150px;
+    }
+
+    /* Kolom BD */
+    td:nth-child(18) {
+      max-width: 150px;
+    }
+
+    /* Kolom Address */
+
+    /* Container tabel agar tidak merusak layout sidebar */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      /* Membiarkan sel menyesuaikan konten */
+      font-size: 10px;
+      /* Perkecil font agar muat banyak kolom */
+    }
+
+    th,
+    td {
+      padding: 6px 4px;
+      border: 1px solid #e5e7eb;
+      word-wrap: break-word;
+      /* Memaksa teks bungkus ke bawah jika terlalu panjang */
+      white-space: normal;
+      /* Membolehkan teks berpindah baris */
+      vertical-align: middle;
+    }
+
+    th {
+      background-color: #f9fafb;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    /* Memastikan teks yang sangat panjang tidak merusak tabel */
+    .cell-content {
+      display: block;
+      line-height: 1.2;
+    }
+
+    .form-input {
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background-color: #f8fafc;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .input-form-container {
+      max-width: 900px;
+      /* Lebar dibatasi agar tidak terlalu panjang */
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+
+<body>
+
+  <aside>
+    <nav>
+      <div class="mb-6">
+        <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo" class="h-20 w-auto">
+        <p class="text-gray-700 font-medium">Warehouse Pulogadung</p>
+      </div>
+
+      <nav class="space-y-6">
+        <div class="border-b border-gray-500 px-1"></div>
+        <button onclick="location.reload()"
+          class="flex items-center gap-3 text-gray-700 hover:text-amber-500 font-bold">Dashboard</button>
+
+        <div class="space-y-1">
+          <button onclick="toggleSubMenu('inventory-sub', 'arrow-inventory')"
+            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
+            <span>Inventory Machine</span>
+            <span id="arrow-inventory" class="text-xs">▼</span>
+          </button>
+          <div id="inventory-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Report Inventory JS')"
+              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine JS
+            </button>
+            <button onclick="showInventory('Report Inventory CIMB')"
+              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine
+              CIMB</button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <button onclick="toggleSubMenu('plan-task-sub', 'arrow-plan')"
+            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
+            <span>Plan Task</span>
+            <span id="arrow-plan" class="text-xs">▼</span>
+          </button>
+          <div id="plan-task-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Input Task')"
+              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Input Task</button>
+            <button onclick="showInventory('Status Task')"
+              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Status Task</button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <button onclick="toggleSubMenu('maintenance-sub', 'arrow-maintenance')"
+            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
+            <span>Team Dispatch</span>
+            <span id="arrow-maintenance" class="text-xs">▼</span>
+          </button>
+          <div id="maintenance-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Team Dispatch')"
+              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Report
+              Team Dispatch</button>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <button onclick="toggleSubMenu('po-sub', 'arrow-po')"
+            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
+            <span>Team Prepare</span>
+            <span id="arrow-po" class="text-xs">▼</span>
+          </button>
+          <div id="po-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Team Prepare')"
+              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Report
+              Team Prepare
+            </button>
+          </div>
+        </div>
+        </div>
+
+      </nav>
+  </aside>
+
+  <main>
+    <div id="content-Dashboard" class="page-content active-page">
+      <h1>Dashboard</h1>
+    </div>
+    <div id="content-Task" class="page-content">
+      <h1>View Task</h1>
+    </div>
+
+    <div id="content-InputTask" class="page-content">
+      <h1>Input Task</h1>
+      <label>Pilih ID Ticket:</label>
+      <select id="ticketSelect" onchange="displayTicketDetails()" class="border p-2 rounded w-full max-w-sm">
+        <option value="">-- Pilih Tiket --</option>
+      </select>
+
+      <div id="ticket-result-container" style="display:none; margin-top: 20px; padding: 15px; border: 1px solid #ddd;">
+        <h3 class="font-bold">Detail Tiket: <span id="res-ticket-id"></span></h3>
+        <div id="res-details">
+        </div>
+
+        <div id="full-data-container" style="display:none; margin-top: 20px;">
+          <div class="overflow-x-auto">
+            <table class="min-w-full">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="border p-2">TICKET</th>
+                  <th class="border p-2">BD</th>
+                  <th class="border p-2">TICKET NUMBER / LOCATION ID</th>
+                  <th class="border p-2">ACTION PLAN</th>
+                  <th class="border p-2">PROPOSED VM TYPE</th>
+                  <th class="border p-2">LOCATION NAME</th>
+                  <th class="border p-2">NEW VM POSITION</th>
+                  <th class="border p-2">LOCATION TYPE</th>
+                  <th class="border p-2">VM TYPE ON SITE</th>
+                  <th class="border p-2">REMARKS/SPECIAL REQUIREMENTS</th>
+                  <th class="border p-2">MACHINE SET UP</th>
+                  <th class="border p-2">COMMERCIAL TERM</th>
+                  <th class="border p-2">PIC Site</th>
+                  <th class="border p-2">Phone</th>
+                  <th class="border p-2">Address</th>
+                  <th class="border p-2">Type</th>
+                </tr>
+              </thead>
+              <tbody id="full-data-body">
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="input-form-container mt-8 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
+          <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Form Rencana Penugasan (Plan Task)</h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col">
+              <label class="text-sm font-semibold text-slate-600 mb-1">Divisi</label>
+              <select id="inputDivisi" class="form-input">
+                <option value="">-- Pilih Divisi --</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col">
+              <label class="text-sm font-semibold text-slate-600 mb-1">Plan Date</label>
+              <input type="date" id="inputPlanDate" class="form-input">
+            </div>
+
+            <div class="flex flex-col">
+              <label class="text-sm font-semibold text-slate-600 mb-1">PIC</label>
+              <select id="inputPIC" class="form-input">
+                <option value="">-- Pilih PIC --</option>
+              </select>
+            </div>
+
+            <div class="flex flex-col">
+              <label class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label>
+              <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-end">
+            <button onclick="submitTask()"
+              class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-200">
+              Submit Rencana Tugas
+            </button>
+          </div>
+        </div>
+      </div>
+
+  </main>
+
+  <script>
+    // FUNGSI UTAMA UNTUK MENAMPILKAN HALAMAN / PESAN
+    function showPage(pageName) {
+      // 1. Sembunyikan semua konten
+      document.querySelectorAll('.page-content').forEach(el => {
+        el.style.display = 'none';
+        el.classList.remove('active-page');
+      });
+
+      // 2. Cek apakah konten halaman ada
+      const targetId = 'content-' + pageName.replace(/\s+/g, '');
+      let target = document.getElementById(targetId);
+
+      if (target) {
+        target.style.display = 'block';
+        target.classList.add('active-page');
+      } else {
+        // 3. Jika belum ada, buat elemen pesan "Dalam Pengembangan"
+        let devPage = document.getElementById('content-Development');
+        if (!devPage) {
+          devPage = document.createElement('div');
+          devPage.id = 'content-Development';
+          devPage.className = 'page-content';
+          devPage.style.display = 'block';
+          devPage.style.padding = '40px';
+          devPage.style.textAlign = 'center';
+          devPage.innerHTML = '<h1 class="text-2xl font-bold">Fitur Belum Tersedia</h1><p id="dev-message"></p>';
+          document.querySelector('main').appendChild(devPage);
+        }
+        document.getElementById('dev-message').textContent = 'Menu "' + pageName + '" sedang dalam pengembangan.';
+        devPage.style.display = 'block';
+      }
+    }
+
+    // FUNGSI UNTUK TOGGLE MENU
+    function toggleSubMenu(submenuId, arrowId) {
+      const submenu = document.getElementById(submenuId);
+      const arrow = document.getElementById(arrowId);
+
+      // Jika menu ID tidak ditemukan di HTML
+      if (!submenu) {
+        showPage(submenuId); // Memanggil fungsi pesan pengembangan
+        return;
+      }
+
+      // Toggle visibilitas
+      submenu.classList.toggle('hidden');
+
+      // Animasi panah & jarak
+      if (!submenu.classList.contains('hidden')) {
+        submenu.style.paddingBottom = "10px";
+        arrow.style.transform = "rotate(180deg)";
+      } else {
+        submenu.style.paddingBottom = "0px";
+        arrow.style.transform = "rotate(0deg)";
+      }
+    }
+
+    // Fungsi untuk menu-menu di dalam sub-menu
+    function showInventory(menuName) {
+      showPage(menuName);
+    }
+
+    window.dataSheetUtama = []; // Data untuk dropdown/tampilan atas
+    window.dataReqBD = [];      // Data untuk tabel bawah (Req_BD)
+    window.dataSource = [];     // Data untuk mengisi dropdown di form input task
+    
+    // 1. Fungsi Load Data Utama (untuk Dropdown)
+    async function loadMainData() {
+      const URL_UTAMA = 'https://script.google.com/macros/s/AKfycbze58WL_LPRuAI9jXenMXrnlUqUdTj6sg0WavRVJszi_hCORiut3dB3wKXb2wQQFdOI5w/exec';
+      try {
+        const res = await fetch(URL_UTAMA);
+        window.dataSheetUtama = await res.json();
+
+        const select = document.getElementById('ticketSelect');
+        select.innerHTML = '<option value="">-- Pilih Tiket --</option>';
+        window.dataSheetUtama.forEach((row, i) => {
+          if (i > 0 && row[0]) {
+            let opt = document.createElement('option');
+            opt.value = row[0]; opt.textContent = row[0];
+            select.appendChild(opt);
+          }
+        });
+      } catch (err) { console.error("Gagal load Utama:", err); }
+    }
+
+    // 2. Fungsi Load Data Req_BD (untuk Tabel Bawah)
+    async function loadReqBDData() {
+      const URL_REQ_BD = 'https://script.google.com/macros/s/AKfycbxGWpV_8VeKO-AxUJwBzSJRPMWaO4ulBVhlagVLmdRLtoMhBjQVT46jonTQKr-Unozx4w/exec';
+      try {
+        const res = await fetch(URL_REQ_BD);
+        window.dataReqBD = await res.json();
+      } catch (err) { console.error("Gagal load Req_BD:", err); }
+    }
+
+    // 3. Fungsi Display Gabungan
+    function displayTicketDetails() {
+      const selectedId = document.getElementById('ticketSelect').value;
+
+      // Tampilkan data ke elemen yang sudah ada (res-details)
+      const foundUtama = window.dataSheetUtama.find(row => row[0] == selectedId);
+      if (foundUtama) {
+        document.getElementById('ticket-result-container').style.display = 'block';
+        // ... (kode res-details Anda)
+      }
+
+      // Tampilkan tabel dari Req_BD
+      const tbody = document.getElementById('full-data-body');
+      const container = document.getElementById('full-data-container');
+
+      // Cari data di window.dataReqBD (yang diambil dari sheet Req_BD)
+      const headerRow = window.dataReqBD[0];
+      const ticketColIndex = headerRow.indexOf('TICKET');
+      const foundReqBD = window.dataReqBD.find(row => row[ticketColIndex] == selectedId);
+
+      if (foundReqBD) {
+        container.style.display = 'block';
+        const getValue = (name) => {
+          const idx = headerRow.indexOf(name);
+          return (idx !== -1 && foundReqBD[idx] !== "") ? foundReqBD[idx] : '-';
+        };
+
+        tbody.innerHTML = `
+            <tr class="text-xs">
+                <td class="border p-1">${getValue('TICKET')}</td>
+                <td class="border p-1">${getValue('BD PIC')}</td>
+                <td class="border p-1">${getValue('TICKET NUMBER / LOCATION ID')}</td>
+                <td class="border p-1">${getValue('ACTION PLAN')}</td>
+                <td class="border p-1">${getValue('PROPOSED VM TYPE')}</td>
+                <td class="border p-1">${getValue('LOCATION NAME')}</td>
+                <td class="border p-1">${getValue('NEW VM POSITION')}</td>
+                <td class="border p-1">${getValue('LOCATION TYPE')}</td>
+                <td class="border p-1">${getValue('VM TYPE ON SITE')}</td>
+                <td class="border p-1">${getValue('REMARKS/SPECIAL REQUIREMENTS')}</td>
+                <td class="border p-1">${getValue('MACHINE SET UP')}</td>
+                <td class="border p-1">${getValue('COMMERCIAL TERM')}</td>
+                <td class="border p-1">${getValue('SITE PIC')}</td>
+                <td class="border p-1">${getValue('SITE PIC PHONE NO.')}</td>
+                <td class="border p-1">${getValue('DELIVERY / PICK UP ADDRESS')}</td>
+                <td class="border p-1">${getValue('CATEGORY')}</td>
+            </tr>
+        `;
+      } else {
+        container.style.display = 'none';
+      }
+    }
+    // 1. Fungsi mengisi dropdown dari sheet Source
+    async function populateDropdowns() {
+      // Asumsi data Source sudah dimuat di window.dataSource (sesuai langkah sebelumnya)
+      const divisiSelect = document.getElementById('inputDivisi');
+      const picSelect = document.getElementById('inputPIC');
+
+      // Ambil data unik dari kolom D (Divisi) dan E (PIC)
+      // Sesuaikan indeks [3] dan [4] dengan posisi kolom di data Source Anda
+      const divOptions = [...new Set(window.dataSource.map(r => r[2]).filter(v => v))];
+      const picOptions = [...new Set(window.dataSource.map(r => r[2]).filter(v => v))];
+
+      divisiSelect.innerHTML = divOptions.map(o => `<option value="${o}">${o}</option>`).join('');
+      picSelect.innerHTML = picOptions.map(o => `<option value="${o}">${o}</option>`).join('');
+    }
+
+    // 2. Fungsi Submit ke Sheet "Plan Task"
+    async function submitTask() {
+      const ticketId = document.getElementById('ticketSelect').value;
+      const payload = {
+        TICKET: ticketId,
+        Divisi: document.getElementById('inputDivisi').value,
+        PlanDate: document.getElementById('inputPlanDate').value,
+        PIC: document.getElementById('inputPIC').value,
+        NoVMC: document.getElementById('inputVMC').value
+      };
+
+      // Kirim ke Google Apps Script via fetch (POST)
+      const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx6WP3aqRXkX4lGAwE4m2c_Cpnu3YpezBgA_q_R4oKsA706BjsXQcq5mjaA7KKYcHJRjA/exec';
+      await fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      alert("Data berhasil disimpan!");
+    }
+
+    // 4. Inisialisasi semua
+    window.addEventListener("load", () => {
+      loadMainData();
+      loadReqBDData();
+      loadSourceData();
+
+    });
+  </script>
+</body>
+
+</html>
