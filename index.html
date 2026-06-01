@@ -353,26 +353,26 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="flex flex-col">
-              <label class="text-sm font-semibold text-slate-600 mb-1">Divisi</label>
+              <label for="inputDivisi" class="text-sm font-semibold text-slate-600 mb-1">Divisi</label>
               <select id="inputDivisi" class="form-input">
                 <option value="">-- Pilih Divisi --</option>
               </select>
             </div>
 
             <div class="flex flex-col">
-              <label class="text-sm font-semibold text-slate-600 mb-1">Plan Date</label>
+              <label for="inputPlanDate" class="text-sm font-semibold text-slate-600 mb-1">Plan Date</label>
               <input type="date" id="inputPlanDate" class="form-input">
             </div>
 
             <div class="flex flex-col">
-              <label class="text-sm font-semibold text-slate-600 mb-1">PIC</label>
+              <label for="inputPIC" class="text-sm font-semibold text-slate-600 mb-1">PIC</label>
               <select id="inputPIC" class="form-input">
                 <option value="">-- Pilih PIC --</option>
               </select>
             </div>
 
             <div class="flex flex-col">
-              <label class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label>
+              <label for="inputVMC" class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label>
               <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
             </div>
           </div>
@@ -380,8 +380,7 @@
           <div class="mt-6 flex justify-end">
             <button onclick="submitTask()"
               class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-200">
-              Submit Rencana Tugas
-            </button>
+              Submit Rencana Tugas</button>
           </div>
         </div>
       </div>
@@ -528,6 +527,7 @@
                 <td class="border p-1">${getValue('SITE PIC PHONE NO.')}</td>
                 <td class="border p-1">${getValue('DELIVERY / PICK UP ADDRESS')}</td>
                 <td class="border p-1">${getValue('CATEGORY')}</td>
+                <td class="border p-1">${getValue('STATUS')}</td>
             </tr>
         `;
       } else {
@@ -563,22 +563,68 @@
 
     // 2. Fungsi Submit ke Sheet "Plan Task"
     async function submitTask() {
-      const ticketId = document.getElementById('ticketSelect').value;
-      const payload = {
-        TICKET: ticketId,
-        Divisi: document.getElementById('inputDivisi').value,
-        PlanDate: document.getElementById('inputPlanDate').value,
-        PIC: document.getElementById('inputPIC').value,
-        NoVMC: document.getElementById('inputVMC').value
-      };
+      try {
+        const tbody = document.getElementById('full-data-body');
+        const row = tbody ? tbody.querySelector('tr') : null;
 
-      // Kirim ke Google Apps Script via fetch (POST)
-      const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx6WP3aqRXkX4lGAwE4m2c_Cpnu3YpezBgA_q_R4oKsA706BjsXQcq5mjaA7KKYcHJRjA/exec';
-      await fetch(WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      alert("Data berhasil disimpan!");
+        // Cek apakah tabel/baris ada
+        if (!row) {
+          alert("Data tiket belum dimuat atau belum dipilih!");
+          return;
+        }
+
+        const cells = row.querySelectorAll('td');
+
+        // Tambahkan pengecekan jumlah sel
+        if (cells.length < 16) {
+          console.error("Jumlah sel tabel hanya: " + cells.length);
+          alert("Error: Data tabel tidak lengkap!");
+          // Tambahkan baris ini di dalam fungsi submitTask
+          console.log("Debugging Data:");
+          console.log("Alamat (cells[13]):", cells[13] ? cells[13].innerText : "SEL TIDAK DITEMUKAN");
+          console.log("Payload Lengkap:", JSON.stringify(payload));
+          return;
+        }
+
+        const payload = {
+          Divisi: document.getElementById('inputDivisi').value,
+          PlanDate: document.getElementById('inputPlanDate').value,
+          PIC: document.getElementById('inputPIC').value,
+          NoVMC: document.getElementById('inputVMC').value,
+          TICKET: cells[0].innerText,
+          BD: cells[1].innerText,
+          TICKET_LOCATION_ID: cells[2].innerText,
+          ACTION_PLAN: cells[3].innerText,
+          PROPOSED_VM_TYPE: cells[4].innerText,
+          LOCATION_NAME: cells[5].innerText,
+          NEW_VM_POSITION: cells[6].innerText,
+          LOCATION_TYPE: cells[7].innerText,
+          VM_TYPE_ON_SITE: cells[8].innerText,
+          MACHINE_SETUP: cells[9].innerText,
+          COMMERCIAL_TERM: cells[10].innerText,
+          SITE_PIC: cells[11].innerText,
+          PHONE_NO: cells[12].innerText,
+          ADDRESS: cells[13].innerText,
+          CATEGORY: cells[14].innerText,
+          STATUS: cells[15].innerText || 'Open' // Tambahkan status default jika tidak ada
+        };
+
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwt0_zshECZjdtBaCqnp6Zuji8eakc2iG_4D_dU9JJahTq-4GBQoEetr1y5R_qAzayNXQ/exec';
+
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          alert("Data berhasil disimpan!");
+        } else {
+          alert("Gagal menyimpan ke server.");
+        }
+      } catch (err) {
+        console.error("Error Detail:", err); // Lihat ini di Console F12
+        alert("Terjadi kesalahan: " + err.message);
+      }
     }
 
     // 4. Inisialisasi semua
