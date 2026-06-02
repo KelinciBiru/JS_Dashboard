@@ -15,24 +15,12 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-    }
 
-    /* Sidebar Mobile */
-    /* Sidebar Mobile */
-    @media (max-width: 768px) {
-      #sidebar.active {
-        transform: translateX(0);
+      /* Membuat tabel bisa di-scroll horizontal agar tidak merusak layout */
+      .table-wrapper {
+        overflow-x: auto;
+        display: block;
       }
-
-      main {
-        margin-left: 0 !important;
-      }
-    }
-
-    /* Tabel Rounded */
-    .table-wrapper {
-      border-radius: 16px;
-      overflow: hidden;
     }
 
     :root {
@@ -53,24 +41,31 @@
       min-height: 100vh;
     }
 
-    /* Sidebar */
-    /* Sidebar: Tetap di tempat, tidak terpengaruh scroll horizontal */
+    /* Sidebar Default (Desktop) */
     aside {
       width: var(--sidebar-w);
       height: 100vh;
       position: fixed;
-      /* Kunci agar sidebar tidak ikut bergeser */
       top: 0;
-      left: 0;
+      left: 20px;
       z-index: 1000;
       background-color: #ffffff;
-      /* Warna solid agar tidak transparan */
       border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      /* Scroll hanya untuk isi sidebar yang panjang */
-      padding: 28px 20px;
+      transition: transform 0.3s ease-in-out;
+      /* Tambahkan transisi halus */
+    }
+
+    /* Sidebar saat disembunyikan (Mobile) */
+    @media (max-width: 768px) {
+      aside {
+        transform: translateX(-100%);
+        /* Geser ke kiri sampai hilang */
+      }
+
+      /* Class untuk memunculkan sidebar */
+      aside.active {
+        transform: translateX(0);
+      }
     }
 
     /* Main Content: Memberi ruang untuk sidebar */
@@ -242,13 +237,13 @@
       line-height: 1.2;
     }
 
-    /* Form Styling */
     .form-input {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      background-color: #f9fafb;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background-color: #f8fafc;
     }
 
     .form-input:focus {
@@ -265,7 +260,6 @@
       margin-right: auto;
     }
 
-    /* Memastikan Select2 mengikuti lebar form mobile */
     .select2-container {
       width: 100% !important;
     }
@@ -747,22 +741,13 @@
       multiple: true,
       dropdownParent: parentContainer // Ini kunci agar dropdown muncul dengan benar
     });
-  </script>
-  <script>
     const btn = document.getElementById('menu-btn');
     const sidebar = document.getElementById('sidebar');
 
     btn.addEventListener('click', () => {
       sidebar.classList.toggle('active');
     });
-    // Menutup sidebar jika salah satu menu diklik (untuk mobile)
-    document.querySelectorAll('nav button').forEach(item => {
-      item.addEventListener('click', () => {
-        if (window.innerWidth < 768) sidebar.classList.remove('active');
-      });
-    });
   </script>
-
 </body>
 
 </html>
