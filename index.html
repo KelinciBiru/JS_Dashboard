@@ -5,10 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <title>JumpStart – Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Bebas+Neue&display=swap"
-    rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <style>
     *,
     *::before,
@@ -222,6 +221,23 @@
       margin-left: auto;
       margin-right: auto;
     }
+
+    .select2-container {
+      width: 100% !important;
+    }
+
+    .select2-selection {
+      height: 42px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
   </style>
 </head>
 
@@ -351,12 +367,10 @@
         <div class="input-form-container mt-8 p-6 bg-white rounded-xl shadow-sm border border-slate-200">
           <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Form Rencana Penugasan (Plan Task)</h3>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-white rounded-xl border">
             <div class="flex flex-col">
-              <label for="inputDivisi" class="text-sm font-semibold text-slate-600 mb-1">Divisi</label>
-              <select id="inputDivisi" class="form-input">
-                <option value="">-- Pilih Divisi --</option>
-              </select>
+              <label class="text-sm font-semibold mb-1">Divisi</label>
+              <select id="inputDivisi" class="form-input"></select>
             </div>
 
             <div class="flex flex-col">
@@ -365,29 +379,29 @@
             </div>
 
             <div class="flex flex-col">
-              <label for="inputPIC" class="text-sm font-semibold text-slate-600 mb-1">PIC</label>
-              <select id="inputPIC" class="form-input">
-                <option value="">-- Pilih PIC --</option>
-              </select>
-            </div>
-
-            <div class="flex flex-col">
-              <label for="inputVMC" class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label>
-              <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
+              <label class="text-sm font-semibold mb-1">PIC</label>
+              <select id="inputPIC" multiple="multiple"></select>
             </div>
           </div>
 
-          <div class="mt-6 flex justify-end">
-            <button onclick="submitTask()"
-              class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-200">
-              Submit Rencana Tugas</button>
+          <div class="flex flex-col">
+            <label for="inputVMC" class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label>
+            <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
           </div>
         </div>
+
+        <div class="mt-6 flex justify-end">
+          <button onclick="submitTask()"
+            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-200">
+            Submit Rencana Tugas</button>
+        </div>
       </div>
+    </div>
 
   </main>
 
   <script>
+
     // FUNGSI UTAMA UNTUK MENAMPILKAN HALAMAN / PESAN
     function showPage(pageName) {
       // 1. Sembunyikan semua konten
@@ -534,6 +548,12 @@
         container.style.display = 'none';
       }
     }
+    // Inisialisasi Select2 setelah DOM siap
+    $(document).ready(function () {
+      $('#inputDivisi').select2({ placeholder: "Pilih Divisi" });
+      $('#inputPIC').select2({ placeholder: "Pilih PIC", multiple: true });
+      loadDataAndPopulate();
+    });
     // 3. Fungsi Load Data Source (untuk mengisi dropdown Divisi & PIC)
     async function loadSourceData() {
       // GANTI URL DI BAWAH INI dengan URL Web App sheet "Source" Anda
@@ -547,23 +567,36 @@
       }
     }
     // 1. Fungsi mengisi dropdown dari sheet Source
-    async function populateDropdowns() {
-      // Asumsi data Source sudah dimuat di window.dataSource (sesuai langkah sebelumnya)
-      const divisiSelect = document.getElementById('inputDivisi');
-      const picSelect = document.getElementById('inputPIC');
+    async function loadDataAndPopulate() {
+      const URL_SOURCE = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
+      try {
+        const res = await fetch(URL_SOURCE);
+        window.dataSource = await res.json();
 
-      // Ambil data unik dari kolom D (Divisi) dan E (PIC)
-      // Sesuaikan indeks [3] dan [4] dengan posisi kolom di data Source Anda
-      const divOptions = [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))];
-      const picOptions = [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))];
+        const divSelect = $('#inputDivisi');
+        const picSelect = $('#inputPIC');
 
-      divisiSelect.innerHTML = divOptions.map(o => `<option value="${o}">${o}</option>`).join('');
-      picSelect.innerHTML = picOptions.map(o => `<option value="${o}">${o}</option>`).join('');
+        const divOptions = [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))];
+        const picOptions = [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))];
+
+        divOptions.forEach(val => divSelect.append(new Option(val, val)));
+        picOptions.forEach(val => picSelect.append(new Option(val, val)));
+
+        // Trigger change untuk me-refresh tampilan Select2
+        divSelect.trigger('change');
+        picSelect.trigger('change');
+      } catch (err) { console.error(err); }
     }
 
     // 2. Fungsi Submit ke Sheet "Plan Task"
     async function submitTask() {
       try {
+        let picValues = $('#inputPIC').val(); 
+        if (!picValues) {
+            picValues = []; // Jika kosong, set jadi array kosong
+        } else if (typeof picValues === 'string') {
+            picValues = [picValues]; // Jika cuma 1, jadikan array
+        }
         const tbody = document.getElementById('full-data-body');
         const row = tbody ? tbody.querySelector('tr') : null;
 
@@ -586,10 +619,12 @@
           return;
         }
 
+        const picString = picValues.join(', ')
+
         const payload = {
           Divisi: document.getElementById('inputDivisi').value,
           PlanDate: document.getElementById('inputPlanDate').value,
-          PIC: document.getElementById('inputPIC').value,
+          PIC: picString, // Menggabungkan array menjadi teks: "Muhidin, Rizal"
           NoVMC: document.getElementById('inputVMC').value,
           TICKET: cells[0].innerText,
           BD: cells[1].innerText,
@@ -618,8 +653,13 @@
 
         if (response.ok) {
           alert("Data berhasil disimpan!");
-        } else {
-          alert("Gagal menyimpan ke server.");
+
+          // --- LOGIKA MENGOSONGKAN KOTAK ---
+          document.getElementById('inputDivisi').value = null;
+          document.getElementById('inputPIC').value = null;
+          document.getElementById('inputPlanDate').value = ""; // Reset Date
+          document.getElementById('inputVMC').value = "";      // Reset No VMC
+          // ---------------------------------
         }
       } catch (err) {
         console.error("Error Detail:", err); // Lihat ini di Console F12
@@ -638,6 +678,21 @@
 
       // Sekarang, setelah semua data selesai di-load, baru jalankan ini:
       populateDropdowns();
+    });
+
+    const parentContainer = document.getElementById('content-InputTask');
+
+    document.getElementById('inputDivisi').select2({
+      width: '100%',
+      placeholder: "Pilih Divisi",
+      dropdownParent: parentContainer // Ini kunci agar dropdown muncul dengan benar
+    });
+
+    document.getElementById('inputPIC').select2({
+      width: '100%',
+      placeholder: "Pilih PIC",
+      multiple: true,
+      dropdownParent: parentContainer // Ini kunci agar dropdown muncul dengan benar
     });
   </script>
 </body>
