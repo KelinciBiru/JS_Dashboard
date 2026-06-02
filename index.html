@@ -34,28 +34,6 @@
       cursor: pointer;
     }
 
-    /* 2. Responsive Sidebar */
-    @media (max-width: 768px) {
-      #menu-btn {
-        display: block;
-      }
-
-      #sidebar {
-        transform: translateX(-100%);
-        position: fixed;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        z-index: 9999;
-        background: white;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-      }
-
-      #sidebar.active {
-        transform: translateX(0);
-      }
-    }
-
     :root {
       --sidebar-w: 260px;
       --accent: #E63A2E;
@@ -83,7 +61,7 @@
       /* Kunci agar sidebar tidak ikut bergeser */
       top: 0;
       left: 0;
-      z-index: 1000;
+      z-index: 9999;
       background-color: #ffffff;
       /* Warna solid agar tidak transparan */
       border-right: 1px solid var(--border);
@@ -92,6 +70,26 @@
       overflow-y: auto;
       /* Scroll hanya untuk isi sidebar yang panjang */
       padding: 28px 20px;
+    }
+
+    aside {
+      /* ... posisi fixed ... */
+      transition: transform 0.3s ease-in-out;
+      /* INI KUNCI BUKA-TUTUP */
+      transform: translateX(0);
+      /* Posisi Tampil */
+    }
+
+    /* Jika layar kecil, geser ke kiri (-100%) agar tersembunyi */
+    @media (max-width: 768px) {
+      aside {
+        transform: translateX(-100%);
+      }
+
+      /* Saat class .active ditambahkan oleh JS, geser kembali ke 0 */
+      aside.active {
+        transform: translateX(0);
+      }
     }
 
     /* Main Content: Memberi ruang untuk sidebar */
@@ -307,10 +305,7 @@
 
 <body>
 
-  <header class="md:hidden bg-white p-4 flex items-center justify-between border-b border-gray-200 z-50">
-    <span class="font-bold text-gray-700">Dashboard</span>
-    <button id="menu-btn" class="p-2 bg-amber-500 text-white rounded">☰ Menu</button>
-  </header>
+  <button id="menu-btn" class="p-2 bg-amber-500 text-white rounded">☰ Menu</button>
 
   <!-- Update class sidebar Anda -->
   <aside id="sidebar"
