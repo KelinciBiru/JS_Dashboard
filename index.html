@@ -17,6 +17,20 @@
       padding: 0;
     }
 
+    /* Sembunyikan sidebar di mobile secara default */
+    @media (max-width: 768px) {
+      #sidebar.active {
+        transform: translateX(0);
+        /* Menampilkan sidebar saat aktif */
+      }
+
+      /* Membuat tabel bisa di-scroll horizontal agar tidak merusak layout */
+      .table-wrapper {
+        overflow-x: auto;
+        display: block;
+      }
+    }
+
     :root {
       --sidebar-w: 260px;
       --accent: #E63A2E;
@@ -267,6 +281,15 @@
 </head>
 
 <body>
+
+  <!-- Tambahkan tombol menu ini di bagian atas untuk mobile -->
+  <button id="menu-btn" class="md:hidden p-4 text-2xl">☰</button>
+
+  <!-- Update class sidebar Anda -->
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out md:relative md:w-64 bg-white shadow-lg z-50">
+    <!-- Konten Sidebar... -->
+  </aside>
 
   <aside>
     <nav>
@@ -718,6 +741,14 @@
       placeholder: "Pilih PIC",
       multiple: true,
       dropdownParent: parentContainer // Ini kunci agar dropdown muncul dengan benar
+    });
+  </script>
+  <script>
+    const btn = document.getElementById('menu-btn');
+    const sidebar = document.getElementById('sidebar');
+
+    btn.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
     });
   </script>
 </body>
