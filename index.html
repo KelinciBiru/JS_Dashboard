@@ -39,24 +39,30 @@
       cursor: pointer;
     }
 
+    /* Sidebar */
+    /* Sidebar: Tetap di tempat, tidak terpengaruh scroll horizontal */
+    aside {
+      width: var(--sidebar-w);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      background-color: #ffffff;
+      border-right: 1px solid var(--border);
+      padding: 28px 20px;
+      overflow-y: auto;
+      transition: transform 0.3s ease-in-out;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+
+      /* KUNCI: Pindahkan sidebar ke luar layar di mobile */
+      transform: translateX(-100%);
+    }
+
     /* Sidebar Mobile */
     @media (max-width: 768px) {
       #menu-btn {
         display: block;
-      }
-
-      aside {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: var(--sidebar-w);
-        height: 100vh;
-        background: white;
-        z-index: 9999;
-        transform: translateX(-100%);
-        /* Sembunyi */
-        transition: transform 0.3s ease-in-out;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
       }
 
       aside.active {
@@ -89,26 +95,6 @@
       color: var(--ink);
       display: flex;
       min-height: 100vh;
-    }
-
-    /* Sidebar */
-    /* Sidebar: Tetap di tempat, tidak terpengaruh scroll horizontal */
-    aside {
-      width: var(--sidebar-w);
-      height: 100vh;
-      position: fixed;
-      /* Kunci agar sidebar tidak ikut bergeser */
-      top: 0;
-      left: 0;
-      z-index: 9999;
-      background-color: #ffffff;
-      /* Warna solid agar tidak transparan */
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      /* Scroll hanya untuk isi sidebar yang panjang */
-      padding: 28px 20px;
     }
 
     /* Main Content: Memberi ruang untuk sidebar */
@@ -215,9 +201,6 @@
     }
 
     /* Kolom Address */
-
-
-
     table {
       width: 100%;
       border-collapse: collapse;
@@ -324,83 +307,77 @@
 
 <body>
 
-  <button id="menu-btn" class="p-2 bg-amber-500 text-white rounded">☰ Menu</button>
+  <button id="menu-btn" class="p-2 bg-amber-500 text-white rounded fixed top-4 right-4 z-[60]">☰ Menu</button>
 
-  <!-- Update class sidebar Anda -->
-  <aside id="sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out md:relative md:w-64 bg-white shadow-lg z-50">
-    <!-- Konten Sidebar... -->
-  </aside>
-
-  <aside>
-    <nav>
-      <div class="mb-6">
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0">
+    <nav class="p-6">
+      <div class="flex flex-col items-center pt-8 pb-6 border-b border-gray-200">
         <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo" class="h-20 w-auto">
-        <p class="text-gray-700 font-medium">Warehouse Pulogadung</p>
+        <h2 class="text-gray-800 font-bold text-lg">Warehouse</h2>
+        <span class="text-amber-600 font-semibold text-sm">Pulogadung</span>
+      </div>
+      <button onclick="location.reload()"
+        class="flex items-center gap-3 text-gray-700 hover:text-amber-500 font-bold mt-0">Dashboard</button>
+
+      <div class="space-y-1">
+        <button onclick="toggleSubMenu('inventory-sub', 'arrow-inventory')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+          <span>Inventory Machine</span>
+          <span id="arrow-inventory" class="text-xs">▼</span>
+        </button>
+        <div id="inventory-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+          <button onclick="showInventory('Report Inventory JS')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine JS
+          </button>
+          <button onclick="showInventory('Report Inventory CIMB')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine
+            CIMB</button>
+        </div>
       </div>
 
-      <nav class="space-y-6">
-        <div class="border-b border-gray-500 px-1"></div>
-        <button onclick="location.reload()"
-          class="flex items-center gap-3 text-gray-700 hover:text-amber-500 font-bold">Dashboard</button>
+      <div class="space-y-1">
+        <button onclick="toggleSubMenu('plan-task-sub', 'arrow-plan')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+          <span>Plan Task</span>
+          <span id="arrow-plan" class="text-xs">▼</span>
+        </button>
+        <div id="plan-task-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+          <button onclick="showInventory('Input Task')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Input Task</button>
+          <button onclick="showInventory('Status Task')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task on Going</button>
+        </div>
+      </div>
 
-        <div class="space-y-1">
-          <button onclick="toggleSubMenu('inventory-sub', 'arrow-inventory')"
-            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
-            <span>Inventory Machine</span>
-            <span id="arrow-inventory" class="text-xs">▼</span>
+      <div class="space-y-1">
+        <button onclick="toggleSubMenu('maintenance-sub', 'arrow-maintenance')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+          <span>Team Dispatch</span>
+          <span id="arrow-maintenance" class="text-xs">▼</span>
+        </button>
+        <div id="maintenance-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+          <button onclick="showInventory('Team Dispatch')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task
+            Team Dispatch</button>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <button onclick="toggleSubMenu('po-sub', 'arrow-po')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+          <span>Team Prepare</span>
+          <span id="arrow-po" class="text-xs">▼</span>
+        </button>
+        <div id="po-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
+          <button onclick="showInventory('Team Prepare')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task Team Prepare
           </button>
-          <div id="inventory-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Report Inventory JS')"
-              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine JS
-            </button>
-            <button onclick="showInventory('Report Inventory CIMB')"
-              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine
-              CIMB</button>
-          </div>
         </div>
+      </div>
+      </div>
 
-        <div class="space-y-1">
-          <button onclick="toggleSubMenu('plan-task-sub', 'arrow-plan')"
-            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
-            <span>Plan Task</span>
-            <span id="arrow-plan" class="text-xs">▼</span>
-          </button>
-          <div id="plan-task-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Input Task')"
-              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Input Task</button>
-            <button onclick="showInventory('Status Task')"
-              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task on Going</button>
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <button onclick="toggleSubMenu('maintenance-sub', 'arrow-maintenance')"
-            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
-            <span>Team Dispatch</span>
-            <span id="arrow-maintenance" class="text-xs">▼</span>
-          </button>
-          <div id="maintenance-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Team Dispatch')"
-              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task
-              Team Dispatch</button>
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <button onclick="toggleSubMenu('po-sub', 'arrow-po')"
-            class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded font-semibold">
-            <span>Team Prepare</span>
-            <span id="arrow-po" class="text-xs">▼</span>
-          </button>
-          <div id="po-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Team Prepare')"
-              class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task Team Prepare
-            </button>
-          </div>
-        </div>
-        </div>
-
-      </nav>
+    </nav>
   </aside>
 
   <main>
@@ -489,19 +466,23 @@
   </main>
 
   <script>
-    const btn = document.getElementById('menu-btn');
-    const sidebar = document.getElementById('sidebar');
+    // Pastikan DOM sudah siap
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('menu-btn');
+      const sidebar = document.getElementById('sidebar');
 
-    // Toggle Sidebar
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      sidebar.classList.toggle('active');
-    });
+      if (btn && sidebar) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Mencegah klik tombol langsung tertutup
+          sidebar.classList.toggle('active');
+        });
 
-    // Tutup sidebar jika klik di luar area sidebar
-    document.addEventListener('click', (e) => {
-      if (!sidebar.contains(e.target) && e.target !== btn) {
-        sidebar.classList.remove('active');
+        // Menutup sidebar jika klik di area konten
+        document.addEventListener('click', (e) => {
+          if (!sidebar.contains(e.target) && e.target !== btn) {
+            sidebar.classList.remove('active');
+          }
+        });
       }
     });
     // FUNGSI UTAMA UNTUK MENAMPILKAN HALAMAN / PESAN
