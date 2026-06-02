@@ -4,6 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -20,6 +23,21 @@
     :root {
       --sidebar-w: 260px;
       --yellow: #F5A623;
+    }
+
+    body {
+      /* Century Gothic adalah pilihan utama, diikuti oleh sans-serif sebagai cadangan */
+      font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
+    }
+
+    /* Agar semua tombol dan judul juga mengikuti font tersebut */
+    h1,
+    h2,
+    h3,
+    h4,
+    button,
+    span {
+      font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
     }
 
     /* Tombol Hamburger di Kanan Atas */
@@ -318,7 +336,7 @@
         <span class="text-amber-600 font-semibold text-sm">Pulogadung</span>
       </div>
       <button onclick="location.reload()"
-        class="flex items-center gap-3 text-gray-700 hover:text-amber-500 font-bold mt-0">Dashboard</button>
+        class="w-full flex items-center gap-3 px-6 py-4 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium tracking-wide">Dashboard</button>
 
       <div class="space-y-1">
         <button onclick="toggleSubMenu('inventory-sub', 'arrow-inventory')"
@@ -382,7 +400,7 @@
 
   <main>
     <div id="content-Dashboard" class="page-content active-page">
-      <h1>Dashboard</h1>
+      <h1 class="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Dashboard</h1>
     </div>
     <div id="content-Task" class="page-content">
       <h1>View Task</h1>
