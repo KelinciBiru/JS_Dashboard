@@ -17,15 +17,20 @@
       padding: 0;
     }
 
-    /* 1. Tombol Hamburger (Kanan Atas) */
+    :root {
+      --sidebar-w: 260px;
+      --yellow: #F5A623;
+    }
+
+    /* Tombol Hamburger di Kanan Atas */
     #menu-btn {
       display: none;
       /* Desktop hidden */
       position: fixed;
-      top: 20px;
-      right: 20px;
+      top: 15px;
+      right: 15px;
       z-index: 10000;
-      background: #F5A623;
+      background: var(--yellow);
       color: white;
       padding: 10px 15px;
       border-radius: 8px;
@@ -34,14 +39,48 @@
       cursor: pointer;
     }
 
-    :root {
-      --sidebar-w: 260px;
-      --accent: #E63A2E;
-      --yellow: #F5A623;
-      --ink: #1a1a1a;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --hover-bg: #f9fafb;
+    /* Sidebar Mobile */
+    @media (max-width: 768px) {
+      #menu-btn {
+        display: block;
+      }
+
+      aside {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: var(--sidebar-w);
+        height: 100vh;
+        background: white;
+        z-index: 9999;
+        transform: translateX(-100%);
+        /* Sembunyi */
+        transition: transform 0.3s ease-in-out;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      aside.active {
+        transform: translateX(0);
+        /* Muncul */
+      }
+
+      main {
+        margin-left: 0 !important;
+        /* Hilangkan space di kiri */
+        padding: 20px !important;
+        width: 100%;
+      }
+    }
+
+    /* Desktop View */
+    @media (min-width: 769px) {
+      aside {
+        transform: translateX(0) !important;
+      }
+
+      main {
+        margin-left: var(--sidebar-w);
+      }
     }
 
     body {
@@ -70,26 +109,6 @@
       overflow-y: auto;
       /* Scroll hanya untuk isi sidebar yang panjang */
       padding: 28px 20px;
-    }
-
-    aside {
-      /* ... posisi fixed ... */
-      transition: transform 0.3s ease-in-out;
-      /* INI KUNCI BUKA-TUTUP */
-      transform: translateX(0);
-      /* Posisi Tampil */
-    }
-
-    /* Jika layar kecil, geser ke kiri (-100%) agar tersembunyi */
-    @media (max-width: 768px) {
-      aside {
-        transform: translateX(-100%);
-      }
-
-      /* Saat class .active ditambahkan oleh JS, geser kembali ke 0 */
-      aside.active {
-        transform: translateX(0);
-      }
     }
 
     /* Main Content: Memberi ruang untuk sidebar */
@@ -308,8 +327,7 @@
   <button id="menu-btn" class="p-2 bg-amber-500 text-white rounded">☰ Menu</button>
 
   <!-- Update class sidebar Anda -->
-  <aside id="sidebar"
-    class="fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out md:relative md:w-64 bg-white shadow-lg z-50">
+  <aside id="sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition duration-200 ease-in-out md:relative md:w-64 bg-white shadow-lg z-50">
     <!-- Konten Sidebar... -->
   </aside>
 
