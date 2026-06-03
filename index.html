@@ -13,80 +13,257 @@
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --sidebar-w: 260px; --yellow: #F5A623; }
-    body { font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important; background: #ffffff; color: var(--ink); display: flex; min-height: 100vh; }
-    h1, h2, h3, h4, button, span { font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important; }
-    #menu-btn { display: none; position: fixed; top: 15px; right: 15px; z-index: 10000; background: var(--yellow); color: white; padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-    aside { width: var(--sidebar-w); height: 100vh; position: fixed; top: 0; left: 0; z-index: 9999; background-color: #ffffff; padding: 28px 20px; overflow-y: auto; transition: transform 0.3s ease-in-out; box-shadow: 2px 0 10px rgba(0,0,0,0.1); transform: translateX(-100%); }
-    @media (max-width: 768px) { #menu-btn { display: block; } aside.active { transform: translateX(0); } main { margin-left: 0 !important; padding: 20px !important; width: 100%; } }
-    @media (min-width: 769px) { aside { transform: translateX(0) !important; } main { margin-left: var(--sidebar-w); } }
-    main { margin-left: var(--sidebar-w); padding: 40px 48px; min-height: 100vh; }
-    nav { display: flex; flex-direction: column; gap: 2px; }
-    .page-content { display: none; }
-    .active-page { display: block; }
-    .table-wrapper { border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb; }
-    .table-wrapper table { border-collapse: separate; border-spacing: 0; width: 100%; }
-    .table-wrapper thead tr th:first-child { border-top-left-radius: 16px; }
-    .table-wrapper thead tr th:last-child { border-top-right-radius: 16px; }
-    table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10px; }
-    th, td { padding: 6px 4px; border: 1px solid #e5e7eb; word-wrap: break-word; white-space: normal; vertical-align: middle; }
-    th { background-color: #f5a623; font-weight: bold; text-align: center; }
-    .form-input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; background-color: #f8fafc; }
-    .form-input:focus { outline: none; border-color: #3b82f6; background-color: #ffffff; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-    .input-form-container { max-width: 900px; margin-left: auto; margin-right: auto; }
-    .select2-container { width: 100% !important; }
-    .select2-selection { height: 42px !important; display: flex !important; align-items: center !important; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --sidebar-w: 260px;
+      --yellow: #F5A623;
+    }
+
+    /* Animasi lembut saat tombol disentuh */
+    #menu-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+      font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
+      background: #ffffff;
+      color: var(--ink);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    button,
+    span {
+      font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
+    }
+
+    #menu-btn {
+      display: none;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 10000;
+      background: var(--yellow);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    aside {
+      width: var(--sidebar-w);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      background-color: #ffffff;
+      padding: 28px 20px;
+      overflow-y: auto;
+      transition: transform 0.3s ease-in-out;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      transform: translateX(-100%);
+    }
+
+    @media (max-width: 768px) {
+      #menu-btn {
+        display: block;
+      }
+
+      aside.active {
+        transform: translateX(0);
+      }
+
+      main {
+        margin-left: 0 !important;
+        padding: 20px !important;
+        width: 100%;
+      }
+    }
+
+    @media (min-width: 769px) {
+      aside {
+        transform: translateX(0) !important;
+      }
+
+      main {
+        margin-left: var(--sidebar-w);
+      }
+    }
+
+    main {
+      margin-left: var(--sidebar-w);
+      padding: 40px 48px;
+      min-height: 100vh;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .page-content {
+      display: none;
+    }
+
+    .active-page {
+      display: block;
+    }
+
+    .table-wrapper {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+
+    .table-wrapper table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+    }
+
+    .table-wrapper thead tr th:first-child {
+      border-top-left-radius: 16px;
+    }
+
+    .table-wrapper thead tr th:last-child {
+      border-top-right-radius: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      font-size: 10px;
+    }
+
+    th,
+    td {
+      padding: 6px 4px;
+      border: 1px solid #e5e7eb;
+      word-wrap: break-word;
+      white-space: normal;
+      vertical-align: middle;
+    }
+
+    th {
+      background-color: #f5a623;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background-color: #f8fafc;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .input-form-container {
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .select2-container {
+      width: 100% !important;
+    }
+
+    .select2-selection {
+      height: 42px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
   </style>
 </head>
 
 <body>
-  <button id="menu-btn" class="p-2 bg-amber-500 text-white rounded fixed top-4 right-4 z-[60]">☰ Menu</button>
+  <button id="menu-btn" class="fixed top-2 right-2 z-[60] bg-amber-500 text-white 
+               px-3 py-1 rounded-md text-xs font-bold shadow-md 
+               active:scale-95 hover:bg-amber-600 transition-all duration-200">☰ Menu</button>
 
-  <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0">
+  <aside id="sidebar"
+    class="fixed inset-y-0 left-0 w-64 bg-white shadow-lg z-50 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0">
     <nav class="p-6">
       <div class="flex flex-col items-center pt-8 pb-6 border-b border-gray-200">
         <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo" class="h-20 w-auto">
         <h2 class="text-gray-800 font-bold text-lg">Warehouse</h2>
         <span class="text-amber-600 font-semibold text-sm">Pulogadung</span>
       </div>
-      <button onclick="location.reload()" class="w-full flex items-center gap-3 px-6 py-4 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium tracking-wide">Menu</button>
+      <button onclick="location.reload()"
+        class="w-full flex items-center gap-3 px-6 py-4 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium tracking-wide">Menu</button>
 
       <div class="space-y-1">
-        <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')" class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+        <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
           <span>Inventory Machine</span><span id="arrow-inventory" class="text-xs">▼</span>
         </button>
         <div id="inventory-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Report Inventory JS')" class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine JS</button>
-          <button onclick="showInventory('Report Inventory CIMB')" class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine CIMB</button>
+          <button onclick="showInventory('Report Inventory JS')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine JS</button>
+          <button onclick="showInventory('Report Inventory CIMB')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Inventory Machine
+            CIMB</button>
         </div>
       </div>
 
       <div class="space-y-1">
-        <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')" class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+        <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
           <span>Plan Task</span><span id="arrow-plan" class="text-xs">▼</span>
         </button>
         <div id="plan-task-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Input Task')" class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Input Task</button>
-          <button onclick="showInventory('Status Task')" class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task on Going</button>
+          <button onclick="showInventory('Input Task')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Input Task</button>
+          <button onclick="showInventory('Status Task')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task on Going</button>
         </div>
       </div>
 
       <div class="space-y-1">
-        <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')" class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+        <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
           <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
         </button>
         <div id="maintenance-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Dispatch'); loadDataDispatch();" class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
+          <button onclick="showInventory('Team Dispatch'); loadDataDispatch();"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
         </div>
       </div>
 
       <div class="space-y-1">
-        <button onclick="toggleSubMenu('po-sub','arrow-po')" class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
+        <button onclick="toggleSubMenu('po-sub','arrow-po')"
+          class="flex w-full items-center justify-between p-2 text-gray-700 hover:bg-amber-50 hover:text-amber-600">
           <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
         </button>
         <div id="po-sub" class="hidden pl-6 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Prepare')" class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task Team Prepare</button>
+          <button onclick="showInventory('Team Prepare')"
+            class="block w-full text-left p-1 text-sm text-gray-600 hover:text-amber-600">Task Team Prepare</button>
         </div>
       </div>
     </nav>
@@ -103,65 +280,97 @@
 
     <div id="content-InputTask" class="page-content">
       <h1 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Input Task</h1>
-      <label>Pilih ID Ticket:</label>
-      <select id="ticketSelect" onchange="displayTicketDetails()" class="border p-2 rounded w-full max-w-sm">
-        <option value="">-- Pilih Tiket --</option>
-      </select>
-      <div id="ticket-result-container" style="display:none; margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:16px; background-color:#f9f9f9;">
-        <h3 class="font-bold">Detail Tiket: <span id="res-ticket-id"></span></h3>
-        <div id="res-details"></div>
-        <div id="full-data-container" style="display:none; margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:16px; background-color:#f9f9f9;">
-          <div class="overflow-x-auto">
-            <table class="min-w-full">
-              <thead>
-                <tr class="bg-gray-100">
-                  <th class="border p-2">TICKET</th><th class="border p-2">BD</th><th class="border p-2">TICKET NUMBER / LOCATION ID</th>
-                  <th class="border p-2">ACTION PLAN</th><th class="border p-2">PROPOSED VM TYPE</th><th class="border p-2">LOCATION NAME</th>
-                  <th class="border p-2">NEW VM POSITION</th><th class="border p-2">LOCATION TYPE</th><th class="border p-2">VM TYPE ON SITE</th>
-                  <th class="border p-2">REMARKS/SPECIAL REQUIREMENTS</th><th class="border p-2">MACHINE SET UP</th><th class="border p-2">COMMERCIAL TERM</th>
-                  <th class="border p-2">PIC Site</th><th class="border p-2">Phone</th><th class="border p-2">Address</th>
-                  <th class="border p-2">Category</th><th class="border p-2">Status</th>
-                </tr>
-              </thead>
-              <tbody id="full-data-body"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="input-form-container mt-8 p-6 bg-white rounded-2xl shadow-lg border border-slate-100">
-          <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Form Plan Task</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">Divisi</label><select id="inputDivisi" class="form-input"></select></div>
-            <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">Plan Date</label><input type="date" id="inputPlanDate" class="form-input"></div>
-            <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">PIC</label><select id="inputPIC" multiple="multiple" class="form-input"></select></div>
-            <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label><input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input"></div>
-          </div>
-          <div class="mt-6 flex justify-end">
-            <button onclick="submitTask()" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-lg">Submit</button>
-          </div>
+
+      <label for="ticketInput" class="block mb-2 font-medium">ID Ticket:</label>
+
+      <div class="flex gap-2">
+        <input type="text" id="ticketInput" placeholder="Ketik ID Tiket di sini..."
+          class="border border-black p-2 rounded w-full max-w-sm text-sm font-light">
+
+        <button onclick="displayTicketDetails()" class="bg-blue-600 text-white px-4 py-2 rounded">
+          Cari
+        </button>
+      </div>
+    </div>
+    <div id="ticket-result-container"
+      style="display:none; margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:16px; background-color:#f9f9f9;">
+      <h3 class="font-bold">Detail Tiket: <span id="res-ticket-id"></span></h3>
+      <div id="res-details"></div>
+      <div id="full-data-container"
+        style="display:none; margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:16px; background-color:#f9f9f9;">
+        <div class="overflow-x-auto border border-black rounded-lg">
+          <table class="min-w-full">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="border p-2">TICKET</th>
+                <th class="border p-2">BD</th>
+                <th class="border p-2">TICKET NUMBER / LOCATION ID</th>
+                <th class="border p-2">ACTION PLAN</th>
+                <th class="border p-2">PROPOSED VM TYPE</th>
+                <th class="border p-2">LOCATION NAME</th>
+                <th class="border p-2">NEW VM POSITION</th>
+                <th class="border p-2">LOCATION TYPE</th>
+                <th class="border p-2">VM TYPE ON SITE</th>
+                <th class="border p-2">REMARKS/SPECIAL REQUIREMENTS</th>
+                <th class="border p-2">MACHINE SET UP</th>
+                <th class="border p-2">COMMERCIAL TERM</th>
+                <th class="border p-2">PIC Site</th>
+                <th class="border p-2">Phone</th>
+                <th class="border p-2">Address</th>
+                <th class="border p-2">Category</th>
+                <th class="border p-2">Status</th>
+              </tr>
+            </thead>
+            <tbody id="full-data-body"></tbody>
+          </table>
         </div>
       </div>
+      <div class="input-form-container mt-8 p-6 bg-white rounded-2xl shadow-lg border border-slate-100">
+        <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Form Plan Task</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">Divisi</label><select
+              id="inputDivisi" class="form-input"></select></div>
+          <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">Plan Date</label><input
+              type="date" id="inputPlanDate" class="form-input"></div>
+          <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">PIC</label><select
+              id="inputPIC" multiple="multiple" class="form-input"></select></div>
+          <div class="flex flex-col"><label class="text-sm font-semibold text-slate-600 mb-1">No. VMC</label><input
+              type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input"></div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button onclick="submitTask()"
+            class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg shadow-lg">Submit</button>
+        </div>
+      </div>
+    </div>
     </div>
 
     <div id="content-TeamDispatch" class="page-content">
       <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Dispatch</h1>
-      <div class="overflow-x-auto">
-        <div class="table-wrapper bg-white shadow-md rounded-lg overflow-hidden">
-          <table class="w-full border-collapse">
-            <thead>
-              <tr class="bg-amber-500 text-white">
-                <th class="p-3 text-sm">Divisi</th><th class="p-3 text-sm">Plan Date</th><th class="p-3 text-sm">PIC</th>
-                <th class="p-3 text-sm">No. VMC</th><th class="p-3 text-sm">TICKET</th><th class="p-3 text-sm">BD</th>
-                <th class="p-3 text-sm">LOC ID</th><th class="p-3 text-sm">ACTION PLAN</th><th class="p-3 text-sm">PROPOSED VM TYPE</th>
-                <th class="p-3 text-sm">LOCATION NAME</th><th class="p-3 text-sm">NEW VM POSITION</th><th class="p-3 text-sm">LOCATION TYPE</th>
-                <th class="p-3 text-sm">VM TYPE ON SITE</th><th class="p-3 text-sm">REMARKS/SPECIAL REQUIREMENTS</th><th class="p-3 text-sm">MACHINE SET UP</th>
-                <th class="p-3 text-sm">COMMERCIAL TERM</th><th class="p-3 text-sm">PIC Site</th><th class="p-3 text-sm">Phone</th>
-                <th class="p-3 text-sm">Address</th><th class="p-3 text-sm">Type</th><th class="p-3 text-sm">Status</th>
-                <th class="p-3 text-sm">Reason</th><th class="p-3 text-sm">Action</th>
-              </tr>
-            </thead>
-            <tbody id="dispatch-table-body"></tbody>
-          </table>
-        </div>
+      <div class="overflow-x-auto max-h-[400px] border border-black shadow-md rounded-lg">
+        <table class="w-full border-collapse min-w-[800px]">
+          <thead class="bg-amber-500 text-white sticky top-0">
+            <div class="table-wrapper bg-white shadow-md rounded-lg overflow-hidden">
+              <table class="w-full border-collapse">
+                <thead>
+                  <tr class="bg-amber-500 text-black">
+                    <th class="p-2 text-sm">Divisi</th>
+                    <th class="p-2 text-sm">Plan Date</th>
+                    <th class="p-2 text-sm">PIC</th>
+                    <th class="p-2 text-sm">No. VMC</th>
+                    <th class="p-2 text-sm">TICKET</th>
+                    <th class="p-2 text-sm">BD</th>
+                    <th class="p-2 text-sm">ACTION PLAN</th>
+                    <th class="p-2 text-sm">PROPOSED VM TYPE</th>
+                    <th class="p-2 text-sm">LOCATION NAME</th>
+                    <th class="p-2 text-sm">Status</th>
+                    <th class="p-2 text-sm">Reason</th>
+                    <th class="p-2 text-sm">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="dispatch-table-body"></tbody>
+              </table>
+            </div>
       </div>
     </div>
   </main>
@@ -247,29 +456,67 @@
     // TAMPILKAN DETAIL TIKET
     // =============================================
     function displayTicketDetails() {
-      const selectedId = document.getElementById('ticketSelect').value;
+      // 1. Ambil nilai dari input teks (bukan dari select lagi)
+      const selectedId = document.getElementById('ticketInput').value.trim();
+
+      if (!selectedId) {
+        alert("Harap masukkan ID TICKET terlebih dahulu.");
+        return;
+      }
+
+      // 2. Pencarian di dataSheetUtama
       const foundUtama = window.dataSheetUtama.find(row => row[0] == selectedId);
-      if (foundUtama) document.getElementById('ticket-result-container').style.display = 'block';
+
+      // Tampilkan container jika ditemukan, atau sembunyikan jika tidak
+      const resultContainer = document.getElementById('ticket-result-container');
+      if (foundUtama) {
+        resultContainer.style.display = 'block';
+      } else {
+        // Opsional: berikan notifikasi jika ID tidak ditemukan di sheet utama
+        console.warn("ID tidak ditemukan di Data Utama");
+      }
+
+      // 3. Pencarian di dataReqBD
       const tbody = document.getElementById('full-data-body');
       const container = document.getElementById('full-data-container');
       const headerRow = window.dataReqBD[0];
+
       if (!headerRow) return;
+
       const ticketColIndex = headerRow.indexOf('TICKET');
       const foundReqBD = window.dataReqBD.find(row => row[ticketColIndex] == selectedId);
+
       if (foundReqBD) {
         container.style.display = 'block';
-        const getValue = (name) => { const idx = headerRow.indexOf(name); return (idx !== -1 && foundReqBD[idx] !== "") ? foundReqBD[idx] : '-'; };
+        const getValue = (name) => {
+          const idx = headerRow.indexOf(name);
+          return (idx !== -1 && foundReqBD[idx] !== "") ? foundReqBD[idx] : '-';
+        };
+
+        // Menggunakan template literal Anda, pastikan class border-black sudah ada di CSS/Tailwind Anda
         tbody.innerHTML = `<tr class="text-xs">
-          <td class="border p-1">${getValue('TICKET')}</td><td class="border p-1">${getValue('BD PIC')}</td>
-          <td class="border p-1">${getValue('TICKET NUMBER / LOCATION ID')}</td><td class="border p-1">${getValue('ACTION PLAN')}</td>
-          <td class="border p-1">${getValue('PROPOSED VM TYPE')}</td><td class="border p-1">${getValue('LOCATION NAME')}</td>
-          <td class="border p-1">${getValue('NEW VM POSITION')}</td><td class="border p-1">${getValue('LOCATION TYPE')}</td>
-          <td class="border p-1">${getValue('VM TYPE ON SITE')}</td><td class="border p-1">${getValue('REMARKS/SPECIAL REQUIREMENTS')}</td>
-          <td class="border p-1">${getValue('MACHINE SET UP')}</td><td class="border p-1">${getValue('COMMERCIAL TERM')}</td>
-          <td class="border p-1">${getValue('SITE PIC')}</td><td class="border p-1">${getValue('SITE PIC PHONE NO.')}</td>
-          <td class="border p-1">${getValue('DELIVERY / PICK UP ADDRESS')}</td><td class="border p-1">${getValue('CATEGORY')}</td>
-          <td class="border p-1">${getValue('STATUS')}</td></tr>`;
-      } else { container.style.display = 'none'; }
+            <td class="border p-2 break-words text-center">${getValue('TICKET')}</td>
+            <td class="border p-2 break-words text-center">${getValue('BD PIC')}</td>
+            <td class="border p-2 break-words text-center">${getValue('TICKET NUMBER / LOCATION ID')}</td>
+            <td class="border p-2 break-words text-center">${getValue('ACTION PLAN')}</td>
+            <td class="border p-2 break-words text-center">${getValue('PROPOSED VM TYPE')}</td>
+            <td class="border p-2 break-words text-center">${getValue('LOCATION NAME')}</td>
+            <td class="border p-2 break-words text-center">${getValue('NEW VM POSITION')}</td>
+            <td class="border p-2 break-words text-center">${getValue('LOCATION TYPE')}</td>
+            <td class="border p-2 break-words text-center">${getValue('VM TYPE ON SITE')}</td>
+            <td class="border p-2 break-words text-center">${getValue('REMARKS/SPECIAL REQUIREMENTS')}</td>
+            <td class="border p-2 break-words text-center">${getValue('MACHINE SET UP')}</td>
+            <td class="border p-2 break-words text-center">${getValue('COMMERCIAL TERM')}</td>
+            <td class="border p-2 break-words text-center">${getValue('SITE PIC')}</td>
+            <td class="border p-2 break-words text-center">${getValue('SITE PIC PHONE NO.')}</td>
+            <td class="border p-2 break-words text-center">${getValue('DELIVERY / PICK UP ADDRESS')}</td>
+            <td class="border p-2 break-words text-center">${getValue('CATEGORY')}</td>
+            <td class="border p-2 break-words text-center">${getValue('STATUS')}</td>
+        </tr>`;
+      } else {
+        container.style.display = 'none';
+        alert("ID TICKET '" + selectedId + "' tidak ditemukan dalam data.");
+      }
     }
 
     // =============================================
@@ -431,13 +678,13 @@
     // =============================================
     function formatDate(value) {
       if (!value) return '';
-      const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+      const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
       try {
         const dateStr = value.toString().split('T')[0];
         const parts = dateStr.split('-');
         if (parts.length !== 3) return value;
-        return `${parts[2].padStart(2,'0')}/${bulan[parseInt(parts[1],10)-1] || parts[1]}/${parts[0]}`;
-      } catch(e) { return value; }
+        return `${parts[2].padStart(2, '0')}/${bulan[parseInt(parts[1], 10) - 1] || parts[1]}/${parts[0]}`;
+      } catch (e) { return value; }
     }
 
     // =============================================
@@ -470,29 +717,18 @@
         const tr = document.createElement('tr');
         tr.className = i % 2 === 0 ? 'bg-gray-50' : 'bg-white';
         tr.innerHTML = `
-          <td class="p-2 border">${row[0] ?? ''}</td>
-          <td class="p-2 border">${formatDate(row[1])}</td>
-          <td class="p-2 border">${row[2] ?? ''}</td>
-          <td class="p-2 border">${row[3] ?? ''}</td>
-          <td class="p-2 border">${row[4] ?? ''}</td>
-          <td class="p-2 border">${row[5] ?? ''}</td>
-          <td class="p-2 border">${row[6] ?? ''}</td>
-          <td class="p-2 border">${row[7] ?? ''}</td>
-          <td class="p-2 border">${row[8] ?? ''}</td>
-          <td class="p-2 border">${row[9] ?? ''}</td>
-          <td class="p-2 border">${row[10] ?? ''}</td>
-          <td class="p-2 border">${row[11] ?? ''}</td>
-          <td class="p-2 border">${row[12] ?? ''}</td>
-          <td class="p-2 border">${row[13] ?? ''}</td>
-          <td class="p-2 border">${row[14] ?? ''}</td>
-          <td class="p-2 border">${row[15] ?? ''}</td>
-          <td class="p-2 border">${row[16] ?? ''}</td>
-          <td class="p-2 border">${row[17] ?? ''}</td>
-          <td class="p-2 border">${row[18] ?? ''}</td>
-          <td class="p-2 border">${row[19] ?? ''}</td>
-          <td class="p-2 border">${(row[20] ?? '').toString().trim() === '' ? '<span style="color:green;font-weight:600;">Open</span>' : row[20]}</td>
-          <td class="p-2 border">${row[21] ?? ''}</td>
-          <td class="p-2 border whitespace-nowrap">
+          <td class="border p-2 break-words text-center">${row[0] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${formatDate(row[1])}</td>
+          <td class="border p-2 break-words text-center">${row[2] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${row[3] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${row[4] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${row[5] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${row[7] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${row[8] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${row[9] ?? ''}</td>
+          <td class="border p-2 break-words text-center">${(row[20] ?? '').toString().trim() === '' ? '<span style="color:green;font-weight:600;">Open</span>' : row[20]}</td>
+          <td class="border p-2 break-words text-center">${row[21] ?? ''}</td>
+          <td class="border p-2 break-words text-center whitespace-nowrap">
             <button onclick="handleAction('${ticketId}', 'Done')" class="bg-green-600 text-white px-3 py-1 rounded text-xs mr-1">Done</button>
             <button onclick="handleAction('${ticketId}', 'Cancel')" class="bg-red-600 text-white px-3 py-1 rounded text-xs">Cancel</button>
           </td>`;
@@ -508,4 +744,5 @@
     });
   </script>
 </body>
+
 </html>
