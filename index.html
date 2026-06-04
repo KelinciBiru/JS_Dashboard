@@ -1,70 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- html2canvas + jsPDF untuk export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --sidebar-w: 260px; --yellow: #F5A623; }
-    body { font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important; background: #ffffff; color: #333; display: flex; min-height: 100vh; }
-    h1, h2, h3, h4, button, span { font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --sidebar-w: 260px;
+      --yellow: #F5A623;
+    }
+
+    body {
+      font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
+      background: #ffffff;
+      color: #333;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    button,
+    span {
+      font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
+    }
 
     /* ---- TOMBOL ANIMASI TEKAN ---- */
     .btn-press {
       transition: transform 0.1s ease, box-shadow 0.1s ease;
       cursor: pointer;
     }
-    .btn-press:active { transform: scale(0.94); box-shadow: 0 1px 3px rgba(0,0,0,0.2) inset; }
-    .btn-press:hover { filter: brightness(1.08); }
 
-    #menu-btn { display: none; position: fixed; top: 15px; right: 15px; z-index: 10000; background: var(--yellow); color: white; padding: 8px 14px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
-    #menu-btn:active { transform: scale(0.93); }
-    aside { width: var(--sidebar-w); height: 100vh; position: fixed; top: 0; left: 0; z-index: 9999; background-color: #fff; padding: 28px 20px; overflow-y: auto; transition: transform 0.3s ease-in-out; box-shadow: 2px 0 10px rgba(0,0,0,0.1); transform: translateX(-100%); }
-    @media (max-width: 768px) { #menu-btn { display: block; } aside.active { transform: translateX(0); } main { margin-left: 0 !important; padding: 20px !important; width: 100%; } }
-    @media (min-width: 769px) { aside { transform: translateX(0) !important; } main { margin-left: var(--sidebar-w); } }
-    main { margin-left: var(--sidebar-w); padding: 40px 48px; min-height: 100vh; }
-    nav { display: flex; flex-direction: column; gap: 2px; }
-    .page-content { display: none; }
-    .active-page { display: block; }
+    .btn-press:active {
+      transform: scale(0.94);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) inset;
+    }
+
+    .btn-press:hover {
+      filter: brightness(1.08);
+    }
+
+    #menu-btn {
+      display: none;
+      position: fixed;
+      top: 15px;
+      right: 15px;
+      z-index: 10000;
+      background: var(--yellow);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    #menu-btn:active {
+      transform: scale(0.93);
+    }
+
+    aside {
+      width: var(--sidebar-w);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      background-color: #fff;
+      padding: 28px 20px;
+      overflow-y: auto;
+      transition: transform 0.3s ease-in-out;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      transform: translateX(-100%);
+    }
+
+    @media (max-width: 768px) {
+      #menu-btn {
+        display: block;
+      }
+
+      aside.active {
+        transform: translateX(0);
+      }
+
+      main {
+        margin-left: 0 !important;
+        padding: 20px !important;
+        width: 100%;
+      }
+    }
+
+    @media (min-width: 769px) {
+      aside {
+        transform: translateX(0) !important;
+      }
+
+      main {
+        margin-left: var(--sidebar-w);
+      }
+    }
+
+    main {
+      margin-left: var(--sidebar-w);
+      padding: 40px 48px;
+      min-height: 100vh;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .page-content {
+      display: none;
+    }
+
+    .active-page {
+      display: block;
+    }
 
     /* ---- TABEL ---- */
-    .table-wrapper { border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; }
-    .table-wrapper table { border-collapse: separate; border-spacing: 0; width: 100%; }
-    table { width: 100%; border-collapse: collapse; table-layout: auto; font-size: 10px; }
-    th, td { padding: 6px 5px; border: 1px solid #e5e7eb; word-wrap: break-word; white-space: normal; vertical-align: middle; text-align: center; }
-    th { background-color: #f5a623; font-weight: bold; text-align: center; color: #fff; }
+    .table-wrapper {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+    }
+
+    .table-wrapper table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      font-size: 10px;
+    }
+
+    th,
+    td {
+      padding: 6px 5px;
+      border: 1px solid #e5e7eb;
+      word-wrap: break-word;
+      white-space: normal;
+      vertical-align: middle;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f5a623;
+      font-weight: bold;
+      text-align: center;
+      color: #fff;
+    }
 
     /* ---- FORM ---- */
-    .form-input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; background-color: #f8fafc; }
-    .form-input:focus { outline: none; border-color: #3b82f6; background-color: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
-    .input-form-container { max-width: 900px; margin-left: auto; margin-right: auto; }
-    .select2-container { width: 100% !important; }
-    .select2-selection { height: 42px !important; display: flex !important; align-items: center !important; }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background-color: #f8fafc;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .input-form-container {
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .select2-container {
+      width: 100% !important;
+    }
+
+    .select2-selection {
+      height: 42px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
 
     /* ---- SECTION TASK ON GOING ---- */
-    .ongoing-section { margin-bottom: 32px; }
-    .ongoing-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-    .empty-msg { color: #64748b; font-size: 13px; padding: 20px; text-align: center; border: 1px dashed #cbd5e1; border-radius: 10px; }
+    .ongoing-section {
+      margin-bottom: 32px;
+    }
+
+    .ongoing-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .empty-msg {
+      color: #64748b;
+      font-size: 13px;
+      padding: 20px;
+      text-align: center;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+    }
 
     /* ---- SHARE BUTTONS ---- */
-    .share-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; border: none; cursor: pointer; transition: transform 0.1s, filter 0.1s; }
-    .share-btn:active { transform: scale(0.93); }
-    .share-btn-wa { background: #25D366; color: #fff; }
-    .share-btn-pdf { background: #ef4444; color: #fff; }
-    .share-btn-jpg { background: #6366f1; color: #fff; }
+    .share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, filter 0.1s;
+    }
+
+    .share-btn:active {
+      transform: scale(0.93);
+    }
+
+    .share-btn-wa {
+      background: #25D366;
+      color: #fff;
+    }
+
+    .share-btn-pdf {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .share-btn-jpg {
+      background: #6366f1;
+      color: #fff;
+    }
   </style>
 </head>
+
 <body>
   <button id="menu-btn">☰ Menu</button>
 
@@ -75,43 +284,56 @@
         <h2 class="text-gray-800 font-bold text-base mt-1">Warehouse</h2>
         <span class="text-amber-600 font-semibold text-xs">Pulogadung</span>
       </div>
-      <button onclick="location.reload()" class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm"></button>Menu Utama</button>
+      <button onclick="location.reload()"
+        class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm"></button>Menu
+      Utama</button>
 
       <div class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')" class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+        <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')"
+          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Inventory</span><span id="arrow-inventory" class="text-xs">▼</span>
         </button>
         <div id="inventory-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Report Inventory JS')" class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine JS</button>
-          <button onclick="showInventory('Report Inventory CIMB')" class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine CIMB</button>
+          <button onclick="showInventory('Report Inventory JS')"
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine JS</button>
+          <button onclick="showInventory('Report Inventory CIMB')"
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
+            CIMB</button>
         </div>
       </div>
 
       <div class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')" class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+        <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
+          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Plan Task</span><span id="arrow-plan" class="text-xs">▼</span>
         </button>
         <div id="plan-task-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Input Task')" class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
-          <button onclick="showInventory('Status Task'); loadTaskOnGoing();" class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
+          <button onclick="showInventory('Input Task')"
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
+          <button onclick="showInventory('Status Task'); loadTaskOnGoing();"
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
         </div>
       </div>
 
       <div class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')" class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+        <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')"
+          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
         </button>
         <div id="maintenance-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Dispatch'); loadDataDispatch();" class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
+          <button onclick="showInventory('Team Dispatch'); loadDataDispatch();"
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
         </div>
       </div>
 
       <div class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('po-sub','arrow-po')" class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+        <button onclick="toggleSubMenu('po-sub','arrow-po')"
+          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
         </button>
         <div id="po-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Prepare')" class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
+          <button onclick="showInventory('Team Prepare')"
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
         </div>
       </div>
     </nav>
@@ -136,19 +358,33 @@
         </button>
       </div>
 
-      <div id="ticket-result-container" style="display:none; margin-top:16px; padding:16px; border:1px solid #ddd; border-radius:12px; background:#f9f9f9;">
+      <div id="ticket-result-container"
+        style="display:none; margin-top:16px; padding:16px; border:1px solid #ddd; border-radius:12px; background:#f9f9f9;">
         <h3 class="font-bold text-sm mb-2">Detail Tiket: <span id="res-ticket-id" class="text-amber-600"></span></h3>
         <div id="res-details"></div>
-        <div id="full-data-container" style="display:none; margin-top:12px; padding:12px; border:1px solid #ddd; border-radius:12px; background:#fff;">
+        <div id="full-data-container"
+          style="display:none; margin-top:12px; padding:12px; border:1px solid #ddd; border-radius:12px; background:#fff;">
           <div class="overflow-x-auto border border-gray-300 rounded-lg">
             <table class="min-w-full">
               <thead>
                 <tr>
-                  <th>TICKET</th><th>BD</th><th>LOC ID</th><th>ACTION PLAN</th>
-                  <th>PROPOSED VM TYPE</th><th>LOCATION NAME</th><th>NEW VM POSITION</th>
-                  <th>LOCATION TYPE</th><th>VM TYPE ON SITE</th><th>REMARKS</th>
-                  <th>MACHINE SET UP</th><th>COMMERCIAL TERM</th><th>PIC Site</th>
-                  <th>Phone</th><th>Address</th><th>Category</th><th>Status</th>
+                  <th>TICKET</th>
+                  <th>BD</th>
+                  <th>LOC ID</th>
+                  <th>ACTION PLAN</th>
+                  <th>PROPOSED VM TYPE</th>
+                  <th>LOCATION NAME</th>
+                  <th>NEW VM POSITION</th>
+                  <th>LOCATION TYPE</th>
+                  <th>VM TYPE ON SITE</th>
+                  <th>REMARKS</th>
+                  <th>MACHINE SET UP</th>
+                  <th>COMMERCIAL TERM</th>
+                  <th>PIC Site</th>
+                  <th>Phone</th>
+                  <th>Address</th>
+                  <th>Category</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody id="full-data-body"></tbody>
@@ -199,9 +435,12 @@
         <div class="ongoing-title">
           <span id="dispatch-title-label">Task On Going — Dispatch</span>
           <div class="flex gap-2">
-            <button class="share-btn share-btn-pdf btn-press" onclick="exportSection('dispatch-section','pdf')">PDF</button>
-            <button class="share-btn share-btn-jpg btn-press" onclick="exportSection('dispatch-section','jpg')">JPG</button>
-            <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('dispatch-section')">Share to WhatsApp</button>
+            <button class="share-btn share-btn-pdf btn-press"
+              onclick="exportSection('dispatch-section','pdf')">PDF</button>
+            <button class="share-btn share-btn-jpg btn-press"
+              onclick="exportSection('dispatch-section','jpg')">JPG</button>
+            <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('dispatch-section')">Share to
+              WhatsApp</button>
           </div>
         </div>
         <div id="dispatch-section">
@@ -210,19 +449,35 @@
             <table id="ongoing-dispatch-table">
               <thead>
                 <tr>
-                  <th>Divisi</th><th>Plan Date</th><th>PIC</th><th>No.VMC</th>
-                  <th>TICKET</th><th>BD</th><th>LOC ID</th><th>ACTION PLAN</th>
-                  <th>PROPOSED VM TYPE</th><th>LOCATION NAME</th><th>NEW VM POSITION</th>
-                  <th>LOCATION TYPE</th><th>VM TYPE ON SITE</th>
-                  <th>REMARKS/SPECIAL REQUIREMENTS</th><th>MACHINE SET UP</th>
-                  <th>COMMERCIAL TERM</th><th>PIC Site</th><th>Phone</th>
-                  <th>Address</th><th>Type</th><th>Status</th><th>Reason</th>
+                  <th>Divisi</th>
+                  <th>Plan Date</th>
+                  <th>PIC</th>
+                  <th>No.VMC</th>
+                  <th>TICKET</th>
+                  <th>BD</th>
+                  <th>LOC ID</th>
+                  <th>ACTION PLAN</th>
+                  <th>PROPOSED VM TYPE</th>
+                  <th>LOCATION NAME</th>
+                  <th>NEW VM POSITION</th>
+                  <th>LOCATION TYPE</th>
+                  <th>VM TYPE ON SITE</th>
+                  <th>REMARKS/SPECIAL REQUIREMENTS</th>
+                  <th>MACHINE SET UP</th>
+                  <th>COMMERCIAL TERM</th>
+                  <th>PIC Site</th>
+                  <th>Phone</th>
+                  <th>Address</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody id="ongoing-dispatch-body"></tbody>
             </table>
           </div>
-          <div id="ongoing-dispatch-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.</div>
+          <div id="ongoing-dispatch-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.
+          </div>
         </div>
       </div>
 
@@ -231,9 +486,12 @@
         <div class="ongoing-title">
           <span>Task On Going — Prepare</span>
           <div class="flex gap-2">
-            <button class="share-btn share-btn-pdf btn-press" onclick="exportSection('prepare-section','pdf')">PDF</button>
-            <button class="share-btn share-btn-jpg btn-press" onclick="exportSection('prepare-section','jpg')">JPG</button>
-            <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('prepare-section')">Share to WhatsApp</button>
+            <button class="share-btn share-btn-pdf btn-press"
+              onclick="exportSection('prepare-section','pdf')">PDF</button>
+            <button class="share-btn share-btn-jpg btn-press"
+              onclick="exportSection('prepare-section','jpg')">JPG</button>
+            <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('prepare-section')">Share to
+              WhatsApp</button>
           </div>
         </div>
         <div id="prepare-section">
@@ -242,9 +500,17 @@
             <table id="ongoing-prepare-table">
               <thead>
                 <tr>
-                  <th>Divisi</th><th>Plan Date</th><th>PIC</th><th>No.VMC</th>
-                  <th>ACTION PLAN</th><th>Type Machine</th><th>Ex Location</th>
-                  <th>Plan to Deploy</th><th>Type</th><th>Status</th><th>Reason</th>
+                  <th>Divisi</th>
+                  <th>Plan Date</th>
+                  <th>PIC</th>
+                  <th>No.VMC</th>
+                  <th>ACTION PLAN</th>
+                  <th>Type Machine</th>
+                  <th>Ex Location</th>
+                  <th>Plan to Deploy</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Reason</th>
                 </tr>
               </thead>
               <tbody id="ongoing-prepare-body"></tbody>
@@ -262,10 +528,17 @@
         <table class="w-full">
           <thead>
             <tr>
-              <th>Divisi</th><th>Plan Date</th><th>PIC</th><th>No.VMC</th>
-              <th>TICKET</th><th>BD</th><th>ACTION PLAN</th>
-              <th>PROPOSED VM TYPE</th><th>LOCATION NAME</th>
-              <th>Status</th><th>Reason</th><th>Action</th>
+              <th>Divisi</th>
+              <th>Plan Date</th>
+              <th>PIC</th>
+              <th>No.VMC</th>
+              <th>TICKET</th>
+              <th>BD</th>
+              <th>ACTION PLAN</th>
+              <th>PROPOSED VM TYPE</th>
+              <th>LOCATION NAME</th>
+              <th>Status</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="dispatch-table-body"></tbody>
@@ -339,7 +612,7 @@
     async function loadMainData() {
       const URL = 'https://script.google.com/macros/s/AKfycbze58WL_LPRuAI9jXenMXrnlUqUdTj6sg0WavRVJszi_hCORiut3dB3wKXb2wQQFdOI5w/exec';
       try { const r = await fetch(URL); window.dataSheetUtama = await r.json(); }
-      catch(e) { console.error("loadMainData:", e); }
+      catch (e) { console.error("loadMainData:", e); }
     }
 
     // =============================================
@@ -348,7 +621,7 @@
     async function loadReqBDData() {
       const URL = 'https://script.google.com/macros/s/AKfycbxGWpV_8VeKO-AxUJwBzSJRPMWaO4ulBVhlagVLmdRLtoMhBjQVT46jonTQKr-Unozx4w/exec';
       try { const r = await fetch(URL); window.dataReqBD = await r.json(); }
-      catch(e) { console.error("loadReqBDData:", e); }
+      catch (e) { console.error("loadReqBDData:", e); }
     }
 
     // =============================================
@@ -357,17 +630,17 @@
     async function loadSourceData() {
       const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
       try { const r = await fetch(URL); window.dataSource = await r.json(); }
-      catch(e) { console.error("loadSourceData:", e); }
+      catch (e) { console.error("loadSourceData:", e); }
     }
     async function loadDataAndPopulate() {
       const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
       try {
         const r = await fetch(URL); window.dataSource = await r.json();
         const divSel = $('#inputDivisi'), picSel = $('#inputPIC');
-        [...new Set(window.dataSource.slice(1).map(r=>r[3]).filter(v=>v))].forEach(v=>divSel.append(new Option(v,v)));
-        [...new Set(window.dataSource.slice(1).map(r=>r[4]).filter(v=>v))].forEach(v=>picSel.append(new Option(v,v)));
+        [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))].forEach(v => divSel.append(new Option(v, v)));
+        [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))].forEach(v => picSel.append(new Option(v, v)));
         divSel.trigger('change'); picSel.trigger('change');
-      } catch(e) { console.error(e); }
+      } catch (e) { console.error(e); }
     }
 
     // =============================================
@@ -375,7 +648,7 @@
     // =============================================
     function displayTicketDetails() {
       const selectedId = document.getElementById('ticketInput').value.trim();
-      if (!selectedId) { Swal.fire({ icon:'warning', title:'Perhatian', text:'Harap masukkan ID Ticket.', timer:1500, showConfirmButton:false }); return; }
+      if (!selectedId) { Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Harap masukkan ID Ticket.', timer: 1500, showConfirmButton: false }); return; }
       const resultContainer = document.getElementById('ticket-result-container');
       const foundUtama = window.dataSheetUtama.find(r => String(r[0]).trim() == selectedId);
       resultContainer.style.display = foundUtama ? 'block' : 'none';
@@ -387,7 +660,7 @@
       if (foundReqBD) {
         container.style.display = 'block';
         resultContainer.style.display = 'block';
-        const g = name => { const i = headerRow.indexOf(name); return (i!==-1 && foundReqBD[i]!=="") ? foundReqBD[i] : '-'; };
+        const g = name => { const i = headerRow.indexOf(name); return (i !== -1 && foundReqBD[i] !== "") ? foundReqBD[i] : '-'; };
         tbody.innerHTML = `<tr class="text-xs">
           <td>${g('TICKET')}</td><td>${g('BD PIC')}</td><td>${g('TICKET NUMBER / LOCATION ID')}</td>
           <td>${g('ACTION PLAN')}</td><td>${g('PROPOSED VM TYPE')}</td><td>${g('LOCATION NAME')}</td>
@@ -398,7 +671,7 @@
         </tr>`;
       } else {
         container.style.display = 'none';
-        if (!foundUtama) Swal.fire({ icon:'error', title:'Tidak Ditemukan', text:`ID Ticket "${selectedId}" tidak ada dalam data.` });
+        if (!foundUtama) Swal.fire({ icon: 'error', title: 'Tidak Ditemukan', text: `ID Ticket "${selectedId}" tidak ada dalam data.` });
       }
     }
 
@@ -411,9 +684,9 @@
         if (typeof pic === 'string') pic = [pic];
         const tbody = document.getElementById('full-data-body');
         const row = tbody?.querySelector('tr');
-        if (!row) { Swal.fire({ icon:'warning', title:'Data belum dimuat', text:'Cari dan muat tiket terlebih dahulu.' }); return; }
+        if (!row) { Swal.fire({ icon: 'warning', title: 'Data belum dimuat', text: 'Cari dan muat tiket terlebih dahulu.' }); return; }
         const cells = row.querySelectorAll('td');
-        if (cells.length < 16) { Swal.fire({ icon:'error', title:'Data tidak lengkap' }); return; }
+        if (cells.length < 16) { Swal.fire({ icon: 'error', title: 'Data tidak lengkap' }); return; }
         const payload = {
           Divisi: document.getElementById('inputDivisi').value,
           PlanDate: document.getElementById('inputPlanDate').value,
@@ -429,10 +702,10 @@
           PHONE_NO: "'" + cells[12].innerText, ADDRESS: cells[13].innerText,
           CATEGORY: cells[14].innerText, STATUS: cells[15].innerText || 'Open'
         };
-        const URL = 'https://script.google.com/macros/s/AKfycbyX92qGgD-Q6nhj773TtEGY82CQpn5JK1xqdwh88y586zC49q4OZ_scwc5PwwMnIx3U/exec';
-        const res = await fetch(URL, { method:'POST', body:JSON.stringify(payload) });
+        const URL = 'https://script.google.com/macros/s/AKfycbw74L_QgnVCeaYAekUi-buUCCqzZi1PqD4yKNhk-XRozGG6Zn9mNcdYW9_xCRguLvi2IQ/exec';
+        const res = await fetch(URL, { method: 'POST', body: JSON.stringify(payload) });
         if (res.ok) {
-          Swal.fire({ title:'On Task!', text:'Data berhasil disimpan.', icon:'success', showConfirmButton:false, timer:1500 });
+          Swal.fire({ title: 'On Task!', text: 'Data berhasil disimpan.', icon: 'success', showConfirmButton: false, timer: 1500 });
           document.getElementById('inputDivisi').value = null;
           document.getElementById('inputPIC').value = null;
           $('#inputDivisi').trigger('change'); $('#inputPIC').trigger('change');
@@ -440,44 +713,46 @@
           document.getElementById('inputVMC').value = '';
           document.getElementById('inputKendaraan').value = '';
         }
-      } catch(e) {
+      } catch (e) {
         console.error(e);
-        Swal.fire({ title:'Gagal!', text:'Data tidak tersimpan.', icon:'error' });
+        Swal.fire({ title: 'Gagal!', text: 'Data tidak tersimpan.', icon: 'error' });
       }
     }
 
     // =============================================
     // FORMAT TANGGAL
     // =============================================
-    const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     function formatDate(v) {
       if (!v) return '';
       if (typeof v === 'number' || (!isNaN(v) && String(v).length > 4)) {
         const d = new Date((Number(v) - 25569) * 86400 * 1000);
-        return `${String(d.getUTCDate()).padStart(2,'0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+        return `${String(d.getUTCDate()).padStart(2, '0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
       }
       try {
         const p = String(v).split('T')[0].split('-');
-        if (p.length===3) return `${p[2].padStart(2,'0')} ${BULAN[parseInt(p[1])-1]} ${p[0]}`;
-      } catch(e) {}
+        if (p.length === 3) return `${p[2].padStart(2, '0')} ${BULAN[parseInt(p[1]) - 1]} ${p[0]}`;
+      } catch (e) { }
       return v;
     }
 
     // =============================================
     // DISPATCH URL
     // =============================================
-    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbyX92qGgD-Q6nhj773TtEGY82CQpn5JK1xqdwh88y586zC49q4OZ_scwc5PwwMnIx3U/exec";
+    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbxveSBpIxvEFPeU_Bd5ImZaSWN3BkLd_iY92czbEdx_9qgbGNFJ9MUNcKpsZ7xmM_c93w/exec";
 
     // =============================================
     // TASK TEAM DISPATCH
     // =============================================
     async function loadDataDispatch() {
       try {
-        const r = await fetch(DISPATCH_URL);
+        // Tambahkan timestamp agar browser selalu mengambil data segar, bukan cache
+        const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
+        const r = await fetch(urlWithCacheBuster);
         renderDispatchTable(await r.json());
-      } catch(e) {
+      } catch (e) {
         console.error(e);
-        Swal.fire({ icon:'error', title:'Gagal memuat data.' });
+        Swal.fire({ icon: 'error', title: 'Gagal memuat data.' });
       }
     }
     function renderDispatchTable(data) {
@@ -486,18 +761,17 @@
       let count = 0;
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
-        if ((row[0]??'').toString().trim().toLowerCase() !== 'dispatch') continue;
-        if ((row[20]??'').toString().trim().toLowerCase() === 'closed') continue;
-        const ticketId = (row[4]??'').toString().trim();
-        const statusVal = (row[20]??'').toString().trim();
+        if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
+        if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
+        const ticketId = (row[4] ?? '').toString().trim();
+        const statusVal = (row[20] ?? '').toString().trim();
         const tr = document.createElement('tr');
         tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
         tr.innerHTML = `
-          <td>${row[0]??''}</td><td>${formatDate(row[1])}</td><td>${row[2]??''}</td><td>${row[3]??''}</td>
-          <td>${row[4]??''}</td><td>${row[5]??''}</td><td>${row[7]??''}</td><td>${row[8]??''}</td>
-          <td>${row[9]??''}</td>
-          <td>${statusVal==='' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
-          <td>${row[21]??''}</td>
+          <td>${row[0] ?? ''}</td><td>${formatDate(row[1])}</td><td>${row[2] ?? ''}</td><td>${row[3] ?? ''}</td>
+          <td>${row[4] ?? ''}</td><td>${row[5] ?? ''}</td><td>${row[7] ?? ''}</td><td>${row[8] ?? ''}</td>
+          <td>${row[9] ?? ''}</td>
+          <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
           <td class="whitespace-nowrap">
             <button onclick="handleAction('${ticketId}','Done')" class="btn-press bg-green-600 text-white px-2 py-1 rounded text-xs mr-1">Done</button>
             <button onclick="handleAction('${ticketId}','Cancel')" class="btn-press bg-red-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
@@ -508,34 +782,34 @@
     }
 
     async function handleAction(ticketId, action) {
-      if (!ticketId) { Swal.fire({ icon:'error', title:'Ticket ID tidak ditemukan!' }); return; }
-      const title = action==="Done" ? "Alasan Take Out / Withdrawal / Switch Unit" : "Alasan Pembatalan";
+      if (!ticketId) { Swal.fire({ icon: 'error', title: 'Ticket ID tidak ditemukan!' }); return; }
+      const title = action === "Done" ? "Alasan Take Out / Withdrawal / Switch Unit" : "Alasan Pembatalan";
       const { value: reason } = await Swal.fire({
-        title, input:'textarea',
-        inputPlaceholder: action==="Done" ? "Contoh: Mesin di-withdraw karena kontrak selesai..." : "Masukkan alasan pembatalan...",
-        inputAttributes:{ rows:3 }, showCancelButton:true,
-        confirmButtonText:'Lanjutkan', cancelButtonText:'Batal',
-        inputValidator: v => (!v||!v.trim()) ? 'Alasan tidak boleh kosong!' : null
+        title, input: 'textarea',
+        inputPlaceholder: action === "Done" ? "Contoh: Mesin di-withdraw karena kontrak selesai..." : "Masukkan alasan pembatalan...",
+        inputAttributes: { rows: 3 }, showCancelButton: true,
+        confirmButtonText: 'Lanjutkan', cancelButtonText: 'Batal',
+        inputValidator: v => (!v || !v.trim()) ? 'Alasan tidak boleh kosong!' : null
       });
       if (!reason) return;
-      const ok = await Swal.fire({ title:`Konfirmasi ${action}`, text:`Tandai ticket "${ticketId}" sebagai ${action}?`, icon:'warning', showCancelButton:true, confirmButtonText:'Ya, lanjutkan', cancelButtonText:'Batal' });
+      const ok = await Swal.fire({ title: `Konfirmasi ${action}`, text: `Tandai ticket "${ticketId}" sebagai ${action}?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, lanjutkan', cancelButtonText: 'Batal' });
       if (!ok.isConfirmed) return;
       try {
-        const payload = { ticketId:ticketId.trim(), action, reason:reason.trim(), sheetName:"Team Dispatch" };
-        const res = await fetch(DISPATCH_URL, { method:'POST', body:JSON.stringify(payload) });
+        const payload = { ticketId: ticketId.trim(), action, reason: reason.trim(), sheetName: "Plan Task" };
+        const res = await fetch(DISPATCH_URL, { method: 'POST', body: JSON.stringify(payload) });
         const text = await res.text();
         let result;
-        try { result = JSON.parse(text); } catch { Swal.fire({ icon:'error', title:'Response tidak valid.' }); return; }
-        if (result.status==='success') {
+        try { result = JSON.parse(text); } catch { Swal.fire({ icon: 'error', title: 'Response tidak valid.' }); return; }
+        if (result.status === 'success') {
           document.querySelectorAll('#dispatch-table-body tr').forEach(tr => {
-            if (tr.cells[4]?.innerText.trim()===ticketId) tr.remove();
+            if (tr.cells[4]?.innerText.trim() === ticketId) tr.remove();
           });
-          Swal.fire({ icon:'success', title:'Berhasil!', timer:1500, showConfirmButton:false });
+          Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false });
           loadDataDispatch();
         } else {
-          Swal.fire({ icon:'error', title:'Gagal', text:result.message||'Terjadi kesalahan.' });
+          Swal.fire({ icon: 'error', title: 'Gagal', text: result.message || 'Terjadi kesalahan.' });
         }
-      } catch(e) { Swal.fire({ icon:'error', title:'Gagal mengirim data.' }); }
+      } catch (e) { Swal.fire({ icon: 'error', title: 'Gagal mengirim data.' }); }
     }
 
     // =============================================
@@ -555,12 +829,12 @@
         try {
           const s = String(val).split('T')[0];
           const p = s.split('-');
-          if (p.length===3) d = new Date(Date.UTC(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2])));
-        } catch(e) { return false; }
+          if (p.length === 3) d = new Date(Date.UTC(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2])));
+        } catch (e) { return false; }
       }
       if (!d || isNaN(d)) return false;
       const now = new Date();
-      const tomorrow = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()+1));
+      const tomorrow = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 1));
       return d.getTime() === tomorrow.getTime();
     }
 
@@ -577,38 +851,38 @@
 
         const header = data[0] || [];
         // Cari index kolom kunci
-        const colDivisi    = 0;  // A
-        const colPlanDate  = 1;  // B
-        const colPIC       = 2;  // C
-        const colVMC       = 3;  // D
-        const colTicket    = 4;  // E
-        const colBD        = 5;  // F
-        const colLocId     = 6;  // G
-        const colAction    = 7;  // H
-        const colVMType    = 8;  // I
-        const colLocName   = 9;  // J
-        const colNewPos    = 10; // K
-        const colLocType   = 11; // L
-        const colVMOnSite  = 12; // M
-        const colRemarks   = 13; // N
+        const colDivisi = 0;  // A
+        const colPlanDate = 1;  // B
+        const colPIC = 2;  // C
+        const colVMC = 3;  // D
+        const colTicket = 4;  // E
+        const colBD = 5;  // F
+        const colLocId = 6;  // G
+        const colAction = 7;  // H
+        const colVMType = 8;  // I
+        const colLocName = 9;  // J
+        const colNewPos = 10; // K
+        const colLocType = 11; // L
+        const colVMOnSite = 12; // M
+        const colRemarks = 13; // N
         const colMachSetup = 14; // O
-        const colComTerm   = 15; // P
-        const colPicSite   = 16; // Q
-        const colPhone     = 17; // R
-        const colAddress   = 18; // S
-        const colType      = 19; // T
-        const colStatus    = 20; // U
-        const colReason    = 21; // V
+        const colComTerm = 15; // P
+        const colPicSite = 16; // Q
+        const colPhone = 17; // R
+        const colAddress = 18; // S
+        const colType = 19; // T
+        const colStatus = 20; // U
+        const colReason = 21; // V
         // Prepare-specific
-        const colTypeMachine  = 8;  // I (sesuaikan jika beda)
-        const colExLocation   = 9;  // J
-        const colPlanDeploy   = 10; // K
+        const colTypeMachine = 8;  // I (sesuaikan jika beda)
+        const colExLocation = 9;  // J
+        const colPlanDeploy = 10; // K
 
         let dispatchRows = [], prepareRows = [];
 
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
-          const divisi = (row[colDivisi]??'').toString().trim().toLowerCase();
+          const divisi = (row[colDivisi] ?? '').toString().trim().toLowerCase();
           const planDate = row[colPlanDate];
           if (!isTomorrow(planDate)) continue;
           if (divisi === 'dispatch') dispatchRows.push(row);
@@ -624,22 +898,22 @@
         } else {
           dispEmpty.style.display = 'none';
           dispatchRows.forEach((row, idx) => {
-            const statusVal = (row[colStatus]??'').toString().trim();
+            const statusVal = (row[colStatus] ?? '').toString().trim();
             const tr = document.createElement('tr');
-            tr.className = idx%2===0?'bg-white':'bg-gray-50';
+            tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
             tr.innerHTML = `
-              <td>${row[colDivisi]??''}</td><td>${formatDate(row[colPlanDate])}</td>
-              <td>${row[colPIC]??''}</td><td>${row[colVMC]??''}</td>
-              <td>${row[colTicket]??''}</td><td>${row[colBD]??''}</td>
-              <td>${row[colLocId]??''}</td><td>${row[colAction]??''}</td>
-              <td>${row[colVMType]??''}</td><td>${row[colLocName]??''}</td>
-              <td>${row[colNewPos]??''}</td><td>${row[colLocType]??''}</td>
-              <td>${row[colVMOnSite]??''}</td><td>${row[colRemarks]??''}</td>
-              <td>${row[colMachSetup]??''}</td><td>${row[colComTerm]??''}</td>
-              <td>${row[colPicSite]??''}</td><td>${row[colPhone]??''}</td>
-              <td>${row[colAddress]??''}</td><td>${row[colType]??''}</td>
-              <td>${statusVal===''?'<span style="color:green;font-weight:600;">Open</span>':statusVal}</td>
-              <td>${row[colReason]??''}</td>`;
+              <td>${row[colDivisi] ?? ''}</td><td>${formatDate(row[colPlanDate])}</td>
+              <td>${row[colPIC] ?? ''}</td><td>${row[colVMC] ?? ''}</td>
+              <td>${row[colTicket] ?? ''}</td><td>${row[colBD] ?? ''}</td>
+              <td>${row[colLocId] ?? ''}</td><td>${row[colAction] ?? ''}</td>
+              <td>${row[colVMType] ?? ''}</td><td>${row[colLocName] ?? ''}</td>
+              <td>${row[colNewPos] ?? ''}</td><td>${row[colLocType] ?? ''}</td>
+              <td>${row[colVMOnSite] ?? ''}</td><td>${row[colRemarks] ?? ''}</td>
+              <td>${row[colMachSetup] ?? ''}</td><td>${row[colComTerm] ?? ''}</td>
+              <td>${row[colPicSite] ?? ''}</td><td>${row[colPhone] ?? ''}</td>
+              <td>${row[colAddress] ?? ''}</td><td>${row[colType] ?? ''}</td>
+              <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
+              <td>${row[colReason] ?? ''}</td>`;
             dispBody.appendChild(tr);
           });
         }
@@ -653,21 +927,21 @@
         } else {
           prepEmpty.style.display = 'none';
           prepareRows.forEach((row, idx) => {
-            const statusVal = (row[colStatus]??'').toString().trim();
+            const statusVal = (row[colStatus] ?? '').toString().trim();
             const tr = document.createElement('tr');
-            tr.className = idx%2===0?'bg-white':'bg-gray-50';
+            tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
             tr.innerHTML = `
-              <td>${row[colDivisi]??''}</td><td>${formatDate(row[colPlanDate])}</td>
-              <td>${row[colPIC]??''}</td><td>${row[colVMC]??''}</td>
-              <td>${row[colAction]??''}</td><td>${row[colTypeMachine]??''}</td>
-              <td>${row[colExLocation]??''}</td><td>${row[colPlanDeploy]??''}</td>
-              <td>${row[colType]??''}</td>
-              <td>${statusVal===''?'<span style="color:green;font-weight:600;">Open</span>':statusVal}</td>
-              <td>${row[colReason]??''}</td>`;
+              <td>${row[colDivisi] ?? ''}</td><td>${formatDate(row[colPlanDate])}</td>
+              <td>${row[colPIC] ?? ''}</td><td>${row[colVMC] ?? ''}</td>
+              <td>${row[colAction] ?? ''}</td><td>${row[colTypeMachine] ?? ''}</td>
+              <td>${row[colExLocation] ?? ''}</td><td>${row[colPlanDeploy] ?? ''}</td>
+              <td>${row[colType] ?? ''}</td>
+              <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
+              <td>${row[colReason] ?? ''}</td>`;
             prepBody.appendChild(tr);
           });
         }
-      } catch(e) {
+      } catch (e) {
         console.error("loadTaskOnGoing:", e);
         document.getElementById('ongoing-dispatch-body').innerHTML = '';
         document.getElementById('ongoing-dispatch-empty').style.display = 'block';
@@ -687,13 +961,13 @@
       const { value: fmt } = format
         ? { value: format }
         : await Swal.fire({
-            title: 'Pilih Format Export',
-            input: 'radio',
-            inputOptions: { pdf: 'PDF', jpg: 'JPG' },
-            inputValue: 'pdf',
-            confirmButtonText: 'Export',
-            showCancelButton: true
-          });
+          title: 'Pilih Format Export',
+          input: 'radio',
+          inputOptions: { pdf: 'PDF', jpg: 'JPG' },
+          inputValue: 'pdf',
+          confirmButtonText: 'Export',
+          showCancelButton: true
+        });
       if (!fmt) return;
 
       Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -750,4 +1024,5 @@
     });
   </script>
 </body>
+
 </html>
