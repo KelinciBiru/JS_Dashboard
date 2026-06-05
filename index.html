@@ -173,10 +173,66 @@
     }
 
     th {
-      background-color: #f5a623;
+      background-color: #0d0923;
       font-weight: bold;
       text-align: center;
       color: #fff;
+    }
+
+    /* CSS Khusus untuk tabel hasil Capture */
+    .table-export {
+      width: 98%;
+      margin: 10px auto;
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      /* Efek rounded pada tabel */
+      overflow: hidden;
+      /* Penting agar border radius terlihat */
+      font-family: 'Arial', sans-serif;
+      font-size: 9px !important;
+      background: white;
+    }
+
+    .table-export th {
+      background-color: #191d26 !important;
+      color: white !important;
+      padding: 8px 4px;
+      /* Padding lebih lega */
+      border-bottom: 2px solid #ccc;
+      text-transform: uppercase;
+      text-align: center;
+      /* Rata tengah */
+      vertical-align: middle;
+    }
+
+    .table-export td {
+      padding: 6px 4px;
+      border-bottom: 1px solid #eee;
+      border-right: 1px solid #eee;
+      vertical-align: middle;
+      /* Rata tengah secara vertikal */
+      text-align: center;
+      /* Rata tengah secara horizontal */
+      color: #333;
+      line-height: 1.2;
+    }
+
+    #export-container {
+      display: none;
+      background: white;
+      padding: 0 !important;
+      /* Hilangkan padding luar */
+      margin: 0 !important;
+      width: max-content !important;
+      /* Membuat container mengikuti lebar tabel */
+    }
+
+    .table-export {
+      margin: 0 !important;
+      /* Pastikan tidak ada margin di tabel */
+      width: 100%;
     }
 
     /* ---- FORM ---- */
@@ -239,37 +295,34 @@
       border-radius: 10px;
     }
 
-    /* ---- SHARE BUTTONS ---- */
+    /* ---- SHARE BUTTONS (Update) ---- */
     .share-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
       border-radius: 8px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 600;
       border: none;
       cursor: pointer;
-      transition: transform 0.1s, filter 0.1s;
+      transition: all 0.2s;
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     .share-btn:active {
-      transform: scale(0.93);
+      transform: scale(0.95);
     }
 
+    /* Tombol WhatsApp (Biru Gelap Elegan) */
     .share-btn-wa {
-      background: #25D366;
-      color: #fff;
+      background-color: #1e2947;
     }
 
-    .share-btn-pdf {
-      background: #ef4444;
-      color: #fff;
-    }
-
-    .share-btn-jpg {
-      background: #6366f1;
-      color: #fff;
+    .share-btn-wa:hover {
+      background-color: #5a5b5a;
     }
   </style>
 </head>
@@ -384,7 +437,6 @@
                   <th>Phone</th>
                   <th>Address</th>
                   <th>Category</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody id="full-data-body"></tbody>
@@ -435,10 +487,6 @@
         <div class="ongoing-title">
           <span id="dispatch-title-label">Task On Going — Dispatch</span>
           <div class="flex gap-2">
-            <button class="share-btn share-btn-pdf btn-press"
-              onclick="exportSection('dispatch-section','pdf')">PDF</button>
-            <button class="share-btn share-btn-jpg btn-press"
-              onclick="exportSection('dispatch-section','jpg')">JPG</button>
             <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('dispatch-section')">Share to
               WhatsApp</button>
           </div>
@@ -457,18 +505,18 @@
                   <th>BD</th>
                   <th>LOC ID</th>
                   <th>ACTION PLAN</th>
-                  <th>PROPOSED VM TYPE</th>
+                  <th>PROPOSED<br>VM TYPE</th>
                   <th>LOCATION NAME</th>
                   <th>NEW VM POSITION</th>
                   <th>LOCATION TYPE</th>
-                  <th>VM TYPE ON SITE</th>
-                  <th>REMARKS/SPECIAL REQUIREMENTS</th>
+                  <th>VM<br>TYPE ON SITE</th>
+                  <th>REMARKS/<br>SPECIAL REQUIREMENTS</th>
                   <th>MACHINE SET UP</th>
-                  <th>COMMERCIAL TERM</th>
+                  <th>COMMERCIAL<br>TERM</th>
+                  <th>Term Detail</th>
                   <th>PIC Site</th>
                   <th>Phone</th>
                   <th>Address</th>
-                  <th>Type</th>
                   <th>Status</th>
                   <th>Reason</th>
                 </tr>
@@ -486,10 +534,6 @@
         <div class="ongoing-title">
           <span>Task On Going — Prepare</span>
           <div class="flex gap-2">
-            <button class="share-btn share-btn-pdf btn-press"
-              onclick="exportSection('prepare-section','pdf')">PDF</button>
-            <button class="share-btn share-btn-jpg btn-press"
-              onclick="exportSection('prepare-section','jpg')">JPG</button>
             <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('prepare-section')">Share to
               WhatsApp</button>
           </div>
@@ -667,7 +711,7 @@
           <td>${g('NEW VM POSITION')}</td><td>${g('LOCATION TYPE')}</td><td>${g('VM TYPE ON SITE')}</td>
           <td>${g('REMARKS/SPECIAL REQUIREMENTS')}</td><td>${g('MACHINE SET UP')}</td>
           <td>${g('COMMERCIAL TERM')}</td><td>${g('SITE PIC')}</td><td>${g('SITE PIC PHONE NO.')}</td>
-          <td>${g('DELIVERY / PICK UP ADDRESS')}</td><td>${g('CATEGORY')}</td><td>${g('STATUS')}</td>
+          <td>${g('DELIVERY / PICK UP ADDRESS')}</td><td>${g('CATEGORY')}</td>
         </tr>`;
       } else {
         container.style.display = 'none';
@@ -702,7 +746,7 @@
           PHONE_NO: "'" + cells[12].innerText, ADDRESS: cells[13].innerText,
           CATEGORY: cells[14].innerText, STATUS: cells[15].innerText || 'Open'
         };
-        const URL = 'https://script.google.com/macros/s/AKfycbw74L_QgnVCeaYAekUi-buUCCqzZi1PqD4yKNhk-XRozGG6Zn9mNcdYW9_xCRguLvi2IQ/exec';
+        const URL = 'https://script.google.com/macros/s/AKfycbzgslvschOPciAErBb0AaFfmx5yOgUjR9qekLMePsmdnYw6DcaR5FFg3ljqmk9lYTaW3g/exec';
         const res = await fetch(URL, { method: 'POST', body: JSON.stringify(payload) });
         if (res.ok) {
           Swal.fire({ title: 'On Task!', text: 'Data berhasil disimpan.', icon: 'success', showConfirmButton: false, timer: 1500 });
@@ -739,7 +783,7 @@
     // =============================================
     // DISPATCH URL
     // =============================================
-    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbxveSBpIxvEFPeU_Bd5ImZaSWN3BkLd_iY92czbEdx_9qgbGNFJ9MUNcKpsZ7xmM_c93w/exec";
+    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbxHGgcC3-CCLoFr0DFF0W-iSPrWBzswaaFPZCES_EHhOWDeKR0ZR6V_bbz9s9egyTZqpw/exec";
 
     // =============================================
     // TASK TEAM DISPATCH
@@ -816,26 +860,70 @@
     // TASK ON GOING — BucketTask
     // Kriteria: Plan Date = BESOK (H+1)
     // =============================================
-    const BUCKET_URL = "https://script.google.com/macros/s/AKfycbxLPI3BbDuIdtl16SaiEDb0eb8wUdHw4iCDHEzC6dOj9y--nr4WGXyxrtWqOGFQPmymRQ/exec";
+    const BUCKET_URL = "https://script.google.com/macros/s/AKfycbwC0X7E-XL3HazaB8xlyCWYrl-G4sHk6gR4Z8AhusPE8HusBCG-KuTPln6Ft1NqhvTN5w/exec";
 
-    function isTomorrow(val) {
-      if (!val) return false;
-      let d;
-      if (typeof val === 'number' || (!isNaN(val) && String(val).length > 4)) {
-        d = new Date((Number(val) - 25569) * 86400 * 1000);
-        // normalize ke date only
-        d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      } else {
-        try {
-          const s = String(val).split('T')[0];
-          const p = s.split('-');
-          if (p.length === 3) d = new Date(Date.UTC(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2])));
-        } catch (e) { return false; }
+    // Ekstrak tanggal dari berbagai format → { year, month, day } atau null
+    function parseDateOnly(val) {
+      if (!val && val !== 0) return null;
+
+      // 1. Angka serial Excel/Sheets (misal: 46977)
+      if (typeof val === 'number' || (typeof val === 'string' && !isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
+        const n = Number(val);
+        if (n > 1000) {
+          const ms = (n - 25569) * 86400 * 1000;
+          const d = new Date(ms);
+          return { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate() };
+        }
+        return null;
       }
-      if (!d || isNaN(d)) return false;
+
+      const s = String(val).trim();
+
+      // 2. ISO format: "2026-06-06" atau "2026-06-06T00:00:00.000Z"
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const p = s.split('T')[0].split('-');
+        return { year: parseInt(p[0]), month: parseInt(p[1]) - 1, day: parseInt(p[2]) };
+      }
+
+      // 3. Format DD/MM/YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+        const p = s.split('/');
+        return { year: parseInt(p[2]), month: parseInt(p[1]) - 1, day: parseInt(p[0]) };
+      }
+
+      return null;
+    }
+
+    // Cek apakah tanggal adalah hari ini ATAU besok
+    function isTodayOrTomorrow(val) {
+      const parsed = parseDateOnly(val);
+      if (!parsed) return false;
+
       const now = new Date();
-      const tomorrow = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate() + 1));
-      return d.getTime() === tomorrow.getTime();
+
+      // Tanggal Hari Ini
+      const todayY = now.getFullYear();
+      const todayM = now.getMonth();
+      const todayD = now.getDate();
+
+      // Tanggal Besok
+      const tomorrow = new Date(todayY, todayM, todayD + 1);
+
+      // Cek Hari Ini
+      const isToday = (
+        parsed.year === todayY &&
+        parsed.month === todayM &&
+        parsed.day === todayD
+      );
+
+      // Cek Besok
+      const isTomorrow = (
+        parsed.year === tomorrow.getFullYear() &&
+        parsed.month === tomorrow.getMonth() &&
+        parsed.day === tomorrow.getDate()
+      );
+
+      return isToday || isTomorrow;
     }
 
     async function loadTaskOnGoing() {
@@ -880,14 +968,24 @@
 
         let dispatchRows = [], prepareRows = [];
 
+        console.log("=== DEBUG BucketTask: total baris =", data.length - 1);
+        // ... di dalam loop for (let i = 1; i < data.length; i++)
         for (let i = 1; i < data.length; i++) {
           const row = data[i];
           const divisi = (row[colDivisi] ?? '').toString().trim().toLowerCase();
           const planDate = row[colPlanDate];
-          if (!isTomorrow(planDate)) continue;
+
+          // GANTI DI SINI: menggunakan fungsi baru yang mencakup Hari Ini & Besok
+          const isTargetDate = isTodayOrTomorrow(planDate);
+
+          console.log(`Baris ${i} | divisi="${divisi}" | planDate="${planDate}" | isTargetDate=${isTargetDate}`);
+
+          if (!isTargetDate) continue; // Jika bukan hari ini atau besok, lewati
+
           if (divisi === 'dispatch') dispatchRows.push(row);
           else if (divisi === 'prepare') prepareRows.push(row);
         }
+        console.log("dispatchRows:", dispatchRows.length, "| prepareRows:", prepareRows.length);
 
         // Render Dispatch
         const dispBody = document.getElementById('ongoing-dispatch-body');
@@ -953,67 +1051,124 @@
     }
 
     // =============================================
-    // EXPORT SECTION (PDF / JPG)
+    // EXPORT SECTION (PDF / JPG / Share Blob)
     // =============================================
-    async function exportSection(sectionId, format) {
-      const el = document.getElementById(sectionId);
-      if (!el) return;
-      const { value: fmt } = format
-        ? { value: format }
-        : await Swal.fire({
-          title: 'Pilih Format Export',
-          input: 'radio',
-          inputOptions: { pdf: 'PDF', jpg: 'JPG' },
-          inputValue: 'pdf',
-          confirmButtonText: 'Export',
-          showCancelButton: true
-        });
-      if (!fmt) return;
+    async function exportSection(sectionId, fmt) {
+      const originalTable = document.getElementById('ongoing-dispatch-table');
+      const targetDiv = document.getElementById('export-target');
+      const container = document.getElementById('export-container');
 
+      const clone = originalTable.cloneNode(true);
+      clone.className = 'table-export';
+
+      // 1. HAPUS KOLOM TICKET
+      const headerCells = Array.from(clone.querySelectorAll('th'));
+      let ticketIdx = headerCells.findIndex(th => th.innerText.trim().toUpperCase() === 'TICKET');
+      if (ticketIdx > -1) {
+        const rows = clone.querySelectorAll('tr');
+        rows.forEach(tr => {
+          const cells = tr.querySelectorAll('th, td');
+          if (cells[ticketIdx]) cells[ticketIdx].remove();
+        });
+      }
+
+      // 2. FILTER BARIS (Hanya H+1 & Hapus Baris Kosong)
+      const tbody = clone.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const now = new Date();
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+      rows.forEach(tr => {
+        // Cek baris benar-benar kosong (abaikan spasi/karakter tidak terlihat)
+        const isBlank = tr.innerText.replace(/[\s\u200b]/g, "").length === 0;
+
+        // Cek tanggal (sesuaikan index kolom setelah kolom Ticket dihapus)
+        const dateText = tr.cells[1]?.innerText.trim();
+        const parsed = parseDateOnly(dateText);
+
+        let isTomorrow = false;
+        if (parsed) {
+          isTomorrow = (parsed.year === tomorrow.getFullYear() &&
+            parsed.month === tomorrow.getMonth() &&
+            parsed.day === tomorrow.getDate());
+        }
+
+        if (!isTomorrow || isBlank) {
+          tr.remove();
+        }
+      });
+
+      targetDiv.innerHTML = '';
+      targetDiv.appendChild(clone);
+      container.style.display = 'block';
+
+      // 3. CAPTURE PRESISI
       Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+      // CAPTURE 'clone' (tabelnya langsung), BUKAN 'container'-nya
+      const canvas = await html2canvas(clone, {
+        scale: 4,
+        backgroundColor: '#ffffff',
+        logging: false,
+        // Pastikan ukuran canvas pas dengan elemen tabel
+        width: clone.offsetWidth,
+        height: clone.offsetHeight
+      });
 
-      if (fmt === 'jpg') {
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
-        link.download = sectionId + '_task_on_going.jpg';
-        link.click();
-      } else {
-        const { jsPDF } = window.jspdf;
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-        pdf.save(sectionId + '_task_on_going.pdf');
-      }
+      container.style.display = 'none';
       Swal.close();
+
+      // Kembalikan Blob untuk digunakan atau disimpan
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          if (fmt === 'jpg') {
+            const link = document.createElement('a');
+            link.download = sectionId + '_task_besok.jpg';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+          } else if (fmt === 'pdf') {
+            const { jsPDF } = window.jspdf;
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF('l', 'px', [canvas.width, canvas.height]);
+            pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+            pdf.save(sectionId + '_task_besok.pdf');
+          }
+          resolve(blob);
+        }, 'image/jpeg', 0.95);
+      });
     }
 
     // =============================================
-    // SHARE TO WHATSAPP
-    // Capture → upload → kirim link (fallback: download dulu)
+    // SHARE TO WHATSAPP (Web Share API)
     // =============================================
     async function shareToWA(sectionId) {
-      const { value: fmt } = await Swal.fire({
-        title: 'Pilih Format untuk WhatsApp',
-        input: 'radio',
-        inputOptions: { pdf: 'PDF', jpg: 'JPG' },
-        inputValue: 'jpg',
-        confirmButtonText: 'Lanjutkan',
-        showCancelButton: true,
-        footer: '<small>File akan didownload, lalu kirim manual ke WhatsApp.</small>'
-      });
-      if (!fmt) return;
-      // Download file dulu, lalu buka WA
-      await exportSection(sectionId, fmt);
-      await Swal.fire({
-        icon: 'info',
-        title: 'File Terdownload!',
-        html: 'File sudah didownload.<br>Silakan kirim file tersebut ke WhatsApp secara manual.',
-        confirmButtonText: 'Buka WhatsApp Web',
-        showCancelButton: true,
-        cancelButtonText: 'Tutup'
-      }).then(r => { if (r.isConfirmed) window.open('https://web.whatsapp.com', '_blank'); });
+      Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      try {
+        // Jalankan ekspor dan ambil blob-nya langsung
+        const blob = await exportSection(sectionId, 'share');
+        const file = new File([blob], 'Dispatch_Besok.jpg', { type: 'image/jpeg' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Dispatch Task',
+            text: 'Berikut Plan Dispatch besok ya gaes yak...'
+          });
+          Swal.close();
+        } else {
+          // Fallback jika tidak mendukung: Download saja
+          Swal.close();
+          alert("Browser Anda tidak mendukung share langsung. File akan didownload.");
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'Dispatch_Besok.jpg';
+          link.click();
+        }
+      } catch (err) {
+        Swal.close();
+        console.error("Gagal berbagi:", err);
+      }
     }
 
     // =============================================
@@ -1023,6 +1178,9 @@
       await Promise.all([loadMainData(), loadReqBDData(), loadSourceData()]);
     });
   </script>
+  <div id="export-container" style="display:none; padding: 20px; background: white;">
+    <div id="export-target"></div>
+  </div>
 </body>
 
 </html>
