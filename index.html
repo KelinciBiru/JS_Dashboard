@@ -783,7 +783,7 @@
     // =============================================
     // DISPATCH URL
     // =============================================
-    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbxHGgcC3-CCLoFr0DFF0W-iSPrWBzswaaFPZCES_EHhOWDeKR0ZR6V_bbz9s9egyTZqpw/exec";
+    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbyugKikyz8qyQg4SFfhzBVyhKIHyJDt1tKuZC0tzeDa7gQcCNAMzb8T8mGyyOd96HCmtA/exec";
 
     // =============================================
     // TASK TEAM DISPATCH
@@ -1060,17 +1060,6 @@
 
       const clone = originalTable.cloneNode(true);
       clone.className = 'table-export';
-
-      // 1. HAPUS KOLOM TICKET
-      const headerCells = Array.from(clone.querySelectorAll('th'));
-      let ticketIdx = headerCells.findIndex(th => th.innerText.trim().toUpperCase() === 'TICKET');
-      if (ticketIdx > -1) {
-        const rows = clone.querySelectorAll('tr');
-        rows.forEach(tr => {
-          const cells = tr.querySelectorAll('th, td');
-          if (cells[ticketIdx]) cells[ticketIdx].remove();
-        });
-      }
 
       // 2. FILTER BARIS (Hanya H+1 & Hapus Baris Kosong)
       const tbody = clone.querySelector('tbody');
