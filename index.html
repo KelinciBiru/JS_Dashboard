@@ -324,10 +324,106 @@
     .share-btn-wa:hover {
       background-color: #5a5b5a;
     }
+
+    /* ---- LOADING SPINNER ---- */
+    .spinner-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 32px 16px;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #f5a623;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 
 <body>
+
+  <!-- ============================================================
+       HALAMAN LOGIN
+  ============================================================ -->
+  <div id="login-page" style="
+    position:fixed; inset:0; z-index:99999;
+    background:linear-gradient(135deg,#0d0923 0%,#1e2947 100%);
+    display:flex; align-items:center; justify-content:center; padding:16px;">
+    <div style="
+      background:#fff; border-radius:20px; padding:40px 36px;
+      width:100%; max-width:380px; text-align:center;
+      box-shadow:0 25px 60px rgba(0,0,0,0.4);">
+
+      <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2"
+           alt="Logo" style="height:100px;width:auto;margin:0 auto 8px;">
+      <h2 style="font-size:12px;font-weight:700;color:#1e293b;margin-bottom:2px;">Warehouse Pulogadung</h2>
+
+      <!-- Role label -->
+      <div style="margin-bottom:14px;">
+        <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
+          Role / Divisi
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+          <button onclick="selectRole('ADMIN')" id="role-ADMIN"
+            style="flex:1;min-width:90px;padding:8px 12px;border-radius:10px;border:2px solid #e2e8f0;
+                   font-size:12px;font-weight:600;background:#f8fafc;color:#64748b;cursor:pointer;transition:all .2s;">Admin
+          </button>
+          <button onclick="selectRole('Dispatch')" id="role-Dispatch"
+            style="flex:1;min-width:90px;padding:8px 12px;border-radius:10px;border:2px solid #e2e8f0;
+                   font-size:12px;font-weight:600;background:#f8fafc;color:#64748b;cursor:pointer;transition:all .2s;">Dispatch
+          </button>
+          <button onclick="selectRole('Prepare')" id="role-Prepare"
+            style="flex:1;min-width:90px;padding:8px 12px;border-radius:10px;border:2px solid #e2e8f0;
+                   font-size:12px;font-weight:600;background:#f8fafc;color:#64748b;cursor:pointer;transition:all .2s;">Prepare
+          </button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
+          Password
+        </label>
+        <input type="password" id="loginPassword"
+          onkeydown="if(event.key==='Enter') doLogin()"
+          placeholder="Masukkan password..."
+          style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
+                 font-size:14px;outline:none;transition:border .2s;box-sizing:border-box;">
+      </div>
+
+      <p id="login-error" style="color:#ef4444;font-size:12px;margin-bottom:12px;display:none;">
+        ❌ Password salah atau role belum dipilih.
+      </p>
+
+      <button onclick="doLogin()" style="
+        width:100%;padding:13px;border-radius:10px;border:none;
+        background:linear-gradient(135deg,#f5a623,#e8910d);
+        color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+        transition:transform .1s,box-shadow .1s;
+        box-shadow:0 4px 14px rgba(245,166,35,.45);">
+        Masuk →
+      </button>
+
+      <p style="font-size:10px;color:#eda408;margin-top:20px;">
+        © Warehouse Pulogadung — Internal System
+      </p>
+      <p style="font-size:10px;color:#cbd5e1;margin-top:20px;">
+        Developed by kelincibulubiru. © 2026
+      </p>
+    </div>
+  </div>
+
+  <!-- APP (tersembunyi sebelum login) -->
+  <div id="app-wrapper" style="display:none;width:100%;">
   <button id="menu-btn">☰ Menu</button>
 
   <aside id="sidebar">
@@ -341,7 +437,8 @@
         class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm"></button>Menu
       Utama</button>
 
-      <div class="space-y-1 mt-1">
+      <!-- Inventory (ADMIN only) -->
+      <div id="menu-inventory-wrap" class="space-y-1 mt-1">
         <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')"
           class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Inventory</span><span id="arrow-inventory" class="text-xs">▼</span>
@@ -350,12 +447,12 @@
           <button onclick="showInventory('Report Inventory JS')"
             class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine JS</button>
           <button onclick="showInventory('Report Inventory CIMB')"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
-            CIMB</button>
+            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine CIMB</button>
         </div>
       </div>
 
-      <div class="space-y-1 mt-1">
+      <!-- Plan Task (ADMIN only) -->
+      <div id="menu-plantask-wrap" class="space-y-1 mt-1">
         <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
           class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Plan Task</span><span id="arrow-plan" class="text-xs">▼</span>
@@ -368,7 +465,8 @@
         </div>
       </div>
 
-      <div class="space-y-1 mt-1">
+      <!-- Team Dispatch (ADMIN + Dispatch) -->
+      <div id="menu-dispatch-wrap" class="space-y-1 mt-1">
         <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')"
           class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
@@ -379,15 +477,36 @@
         </div>
       </div>
 
-      <div class="space-y-1 mt-1">
+      <!-- Team Prepare (ADMIN + Prepare) -->
+      <div id="menu-prepare-wrap" class="space-y-1 mt-1">
         <button onclick="toggleSubMenu('po-sub','arrow-po')"
           class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
           <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
         </button>
         <div id="po-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Prepare')"
+          <button onclick="showInventory('Team Prepare'); if(currentRole==='Prepare') loadDataPrepareUser();"
             class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
         </div>
+      </div>
+
+      <!-- Logout -->
+      <div style="margin-top:auto;padding-top:20px;border-top:1px solid #f1f5f9;margin-top:24px;">
+        <div id="sidebar-role-badge" style="
+          font-size:11px;font-weight:600;color:#64748b;
+          background:#f8fafc;border-radius:8px;padding:6px 10px;
+          margin-bottom:10px;text-align:center;">
+        </div>
+        <button onclick="doLogout()" style="
+          width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+          padding:9px;border-radius:8px;border:none;
+          background:#fff1f2;color:#ef4444;font-size:12px;font-weight:700;
+          cursor:pointer;transition:background .2s;">
+          <svg xmlns="http://www.w3.org/2000/svg" style="height:14px;width:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/>
+          </svg>
+          Logout
+        </button>
       </div>
     </nav>
   </aside>
@@ -565,10 +684,12 @@
       </div>
     </div>
 
-    <!-- TEAM DISPATCH -->
+    <!-- TEAM DISPATCH (ADMIN view — semua kolom) -->
     <div id="content-TeamDispatch" class="page-content">
       <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Dispatch</h1>
-      <div class="overflow-x-auto rounded-lg border border-gray-300 shadow">
+
+      <!-- Tabel ADMIN: semua kolom -->
+      <div id="dispatch-admin-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow">
         <table class="w-full">
           <thead>
             <tr>
@@ -588,16 +709,162 @@
           <tbody id="dispatch-table-body"></tbody>
         </table>
       </div>
+
+      <!-- Tabel DISPATCH USER: kolom terbatas sesuai permintaan -->
+      <div id="dispatch-user-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow" style="display:none;">
+        <table class="w-full">
+          <thead>
+            <tr>
+              <th>Plan Date</th>
+              <th>PIC</th>
+              <th>No. VMC</th>
+              <th>Location Name</th>
+              <th>Action Plan</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="dispatch-user-table-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- TEAM PREPARE -->
     <div id="content-TeamPrepare" class="page-content">
       <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Prepare</h1>
-      <p class="text-slate-500 text-sm">Dalam pengembangan.</p>
+      <div class="overflow-x-auto rounded-lg border border-gray-300 shadow">
+        <table class="w-full">
+          <thead>
+            <tr>
+              <th>Plan Date</th>
+              <th>PIC</th>
+              <th>No. VMC</th>
+              <th>Action Plan</th>
+              <th>Type Machine</th>
+              <th>Ex Location</th>
+              <th>Plan to Deploy</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="prepare-user-table-body"></tbody>
+        </table>
+      </div>
+      <div id="prepare-user-empty" class="empty-msg" style="display:none;">Tidak ada task Prepare saat ini.</div>
     </div>
   </main>
 
   <script>
+    // =============================================
+    // AUTH — LOGIN, ROLE, LOGOUT
+    // =============================================
+    const PASSWORDS = {
+      ADMIN:    'admin123',
+      Dispatch: 'dispatch123',
+      Prepare:  'prepare123',
+    };
+
+    let currentRole = '';
+    let selectedRole = '';
+
+    function selectRole(role) {
+      selectedRole = role;
+      ['ADMIN','Dispatch','Prepare'].forEach(r => {
+        const btn = document.getElementById('role-' + r);
+        if (r === role) {
+          btn.style.background    = '#f5a623';
+          btn.style.color         = '#fff';
+          btn.style.borderColor   = '#f5a623';
+          btn.style.boxShadow     = '0 4px 12px rgba(245,166,35,.4)';
+        } else {
+          btn.style.background    = '#f8fafc';
+          btn.style.color         = '#64748b';
+          btn.style.borderColor   = '#e2e8f0';
+          btn.style.boxShadow     = 'none';
+        }
+      });
+      // Focus ke input password
+      document.getElementById('loginPassword').focus();
+    }
+
+    function doLogin() {
+      const pass = document.getElementById('loginPassword').value;
+      const err  = document.getElementById('login-error');
+
+      if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
+        err.style.display = 'block';
+        document.getElementById('loginPassword').value = '';
+        return;
+      }
+      err.style.display = 'none';
+      currentRole = selectedRole;
+
+      // Sembunyikan login, tampilkan app
+      document.getElementById('login-page').style.display  = 'none';
+      document.getElementById('app-wrapper').style.display = 'block';
+
+      // Set badge role di sidebar
+      const badge = document.getElementById('sidebar-role-badge');
+      const roleIcon = { ADMIN:'', Dispatch:'', Prepare:'' };
+      badge.textContent = `${roleIcon[currentRole]} ${currentRole}`;
+
+      applyRoleAccess();
+    }
+
+    function doLogout() {
+      currentRole  = '';
+      selectedRole = '';
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('login-error').style.display = 'none';
+      // Reset role button
+      ['ADMIN','Dispatch','Prepare'].forEach(r => {
+        const btn = document.getElementById('role-' + r);
+        btn.style.background  = '#f8fafc';
+        btn.style.color       = '#64748b';
+        btn.style.borderColor = '#e2e8f0';
+        btn.style.boxShadow   = 'none';
+      });
+      document.getElementById('app-wrapper').style.display = 'none';
+      document.getElementById('login-page').style.display  = 'flex';
+    }
+
+    /**
+     * Terapkan akses sesuai role:
+     * - ADMIN     → semua menu tampil, langsung ke Dashboard
+     * - Dispatch  → hanya menu Team Dispatch, langsung ke Team Dispatch
+     * - Prepare   → hanya menu Team Prepare, langsung ke Team Prepare
+     */
+    function applyRoleAccess() {
+      const menuInventory = document.getElementById('menu-inventory-wrap');
+      const menuPlanTask  = document.getElementById('menu-plantask-wrap');
+      const menuDispatch  = document.getElementById('menu-dispatch-wrap');
+      const menuPrepare   = document.getElementById('menu-prepare-wrap');
+
+      if (currentRole === 'ADMIN') {
+        // Semua menu tampil
+        [menuInventory, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if(m) m.style.display = ''; });
+        showPage('Dashboard');
+      } else if (currentRole === 'Dispatch') {
+        // Hanya Team Dispatch
+        if (menuInventory) menuInventory.style.display = 'none';
+        if (menuPlanTask)  menuPlanTask.style.display  = 'none';
+        if (menuDispatch)  menuDispatch.style.display  = '';
+        if (menuPrepare)   menuPrepare.style.display   = 'none';
+        // Buka submenu otomatis
+        document.getElementById('maintenance-sub').classList.remove('hidden');
+        showPage('Team Dispatch');
+        loadDataDispatch();
+      } else if (currentRole === 'Prepare') {
+        // Hanya Team Prepare
+        if (menuInventory) menuInventory.style.display = 'none';
+        if (menuPlanTask)  menuPlanTask.style.display  = 'none';
+        if (menuDispatch)  menuDispatch.style.display  = 'none';
+        if (menuPrepare)   menuPrepare.style.display   = '';
+        // Buka submenu otomatis
+        document.getElementById('po-sub').classList.remove('hidden');
+        showPage('Team Prepare');
+        loadDataPrepareUser();
+      }
+    }
+
     // =============================================
     // SIDEBAR TOGGLE
     // =============================================
@@ -767,16 +1034,53 @@
     // FORMAT TANGGAL
     // =============================================
     const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    /**
+     * Format tanggal dari berbagai format Google Sheets ke "DD Bulan YYYY".
+     *
+     * ROOT CAUSE tanggal mundur sehari:
+     * Google Apps Script mengirim tanggal sebagai ISO string dalam UTC,
+     * contoh: "2026-06-07T17:00:00.000Z" yang sebenarnya = 8 Juni 2026 WIB (UTC+7).
+     * Jika kita ambil bagian "2026-06-07" dari string → SALAH (mundur sehari).
+     *
+     * Solusi: pakai new Date() lalu getDate/Month/FullYear (LOCAL time)
+     * sehingga timezone WIB otomatis diperhitungkan dengan benar.
+     */
     function formatDate(v) {
-      if (!v) return '';
-      if (typeof v === 'number' || (!isNaN(v) && String(v).length > 4)) {
-        const d = new Date((Number(v) - 25569) * 86400 * 1000);
-        return `${String(d.getUTCDate()).padStart(2, '0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+      if (!v && v !== 0) return '';
+
+      // 1. Serial number Excel/Google Sheets (misal: 46181 = 8 Juni 2026)
+      //    Gunakan getUTC* karena serial dihitung dari UTC epoch
+      if (typeof v === 'number' ||
+          (typeof v === 'string' && !isNaN(v) &&
+           !String(v).includes('-') && !String(v).includes('/') &&
+           String(v).trim().length > 4)) {
+        const n = Number(v);
+        if (n > 59) {
+          const ms = Math.round((n - 25569) * 86400) * 1000;
+          const d  = new Date(ms);
+          return `${String(d.getUTCDate()).padStart(2,'0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+        }
       }
-      try {
-        const p = String(v).split('T')[0].split('-');
-        if (p.length === 3) return `${p[2].padStart(2, '0')} ${BULAN[parseInt(p[1]) - 1]} ${p[0]}`;
-      } catch (e) { }
+
+      const s = String(v).trim();
+
+      // 2. ISO string dari GAS — gunakan new Date() + getDate() LOCAL TIME
+      //    karena GAS mengirim dalam UTC, misal "2026-06-07T17:00:00.000Z"
+      //    yang artinya 8 Juni 2026 di WIB. getDate() local = 8 ✓
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s);
+        if (!isNaN(d)) {
+          return `${String(d.getDate()).padStart(2,'0')} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
+        }
+      }
+
+      // 3. Format DD/MM/YYYY — parse langsung tanpa new Date()
+      const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (dmyMatch) {
+        return `${String(parseInt(dmyMatch[1])).padStart(2,'0')} ${BULAN[parseInt(dmyMatch[2])-1]} ${dmyMatch[3]}`;
+      }
+
       return v;
     }
 
@@ -789,17 +1093,42 @@
     // TASK TEAM DISPATCH
     // =============================================
     async function loadDataDispatch() {
+      // Tampilkan spinner di kedua tabel
+      const spinnerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+      const adminBody = document.getElementById('dispatch-table-body');
+      const userBody  = document.getElementById('dispatch-user-table-body');
+      if (adminBody) adminBody.innerHTML = spinnerHTML;
+      if (userBody)  userBody.innerHTML  = spinnerHTML;
+
       try {
-        // Tambahkan timestamp agar browser selalu mengambil data segar, bukan cache
         const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
         const r = await fetch(urlWithCacheBuster);
         renderDispatchTable(await r.json());
       } catch (e) {
         console.error(e);
-        Swal.fire({ icon: 'error', title: 'Gagal memuat data.' });
+        const errHTML = '<tr><td colspan="11" style="color:#ef4444;padding:20px;text-align:center;">Gagal memuat data. Coba lagi.</td></tr>';
+        if (adminBody) adminBody.innerHTML = errHTML;
+        if (userBody)  userBody.innerHTML  = errHTML;
       }
     }
     function renderDispatchTable(data) {
+      // Tampilkan view sesuai role
+      const adminView = document.getElementById('dispatch-admin-view');
+      const userView  = document.getElementById('dispatch-user-view');
+
+      if (currentRole === 'Dispatch') {
+        if (adminView) adminView.style.display = 'none';
+        if (userView)  userView.style.display  = '';
+        renderDispatchUserTable(data);
+      } else {
+        if (adminView) adminView.style.display = '';
+        if (userView)  userView.style.display  = 'none';
+        renderDispatchAdminTable(data);
+      }
+    }
+
+    /** Tabel ADMIN — semua kolom */
+    function renderDispatchAdminTable(data) {
       const tbody = document.getElementById('dispatch-table-body');
       tbody.innerHTML = '';
       let count = 0;
@@ -807,7 +1136,7 @@
         const row = data[i];
         if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
         if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-        const ticketId = (row[4] ?? '').toString().trim();
+        const ticketId  = (row[4] ?? '').toString().trim();
         const statusVal = (row[20] ?? '').toString().trim();
         const tr = document.createElement('tr');
         tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
@@ -822,6 +1151,81 @@
           </td>`;
         tbody.appendChild(tr);
         count++;
+      }
+    }
+
+    /**
+     * Tabel USER Dispatch — kolom terbatas:
+     * Plan Date | PIC | No. Kendaraan | Location Name | Action Plan | Action (Done/Cancel)
+     * Kolom mapping (0-based): 1=PlanDate, 2=PIC, 3=No.VMC/Kendaraan, 7=ActionPlan, 9=LocName, 4=Ticket
+     */
+    function renderDispatchUserTable(data) {
+      const tbody = document.getElementById('dispatch-user-table-body');
+      tbody.innerHTML = '';
+      let count = 0;
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
+        if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
+        const ticketId = (row[4] ?? '').toString().trim();
+        const tr = document.createElement('tr');
+        tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+        tr.innerHTML = `
+          <td>${formatDate(row[1])}</td>
+          <td>${row[2] ?? ''}</td>
+          <td>${row[3] ?? ''}</td>
+          <td>${row[9] ?? ''}</td>
+          <td>${row[7] ?? ''}</td>
+          <td class="whitespace-nowrap">
+            <button onclick="handleAction('${ticketId}','Done')"
+              class="btn-press bg-green-600 text-white px-2 py-1 rounded text-xs mr-1">Done</button>
+            <button onclick="handleAction('${ticketId}','Cancel')"
+              class="btn-press bg-red-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
+          </td>`;
+        tbody.appendChild(tr);
+        count++;
+      }
+      if (count === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;padding:20px;text-align:center;">Tidak ada task Dispatch saat ini.</td></tr>';
+      }
+    }
+
+    /** Load & render tabel Prepare untuk user Prepare */
+    async function loadDataPrepareUser() {
+      const tbody = document.getElementById('prepare-user-table-body');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+
+      try {
+        const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
+        const r = await fetch(urlWithCacheBuster);
+        const data = await r.json();
+        const tbody = document.getElementById('prepare-user-table-body');
+        const empty = document.getElementById('prepare-user-empty');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        let count = 0;
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if ((row[0] ?? '').toString().trim().toLowerCase() !== 'prepare') continue;
+          if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
+          const statusVal = (row[20] ?? '').toString().trim();
+          const tr = document.createElement('tr');
+          tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+          tr.innerHTML = `
+            <td>${formatDate(row[1])}</td>
+            <td>${row[2] ?? ''}</td>
+            <td>${row[3] ?? ''}</td>
+            <td>${row[7] ?? ''}</td>
+            <td>${row[8] ?? ''}</td>
+            <td>${row[9] ?? ''}</td>
+            <td>${row[10] ?? ''}</td>
+            <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>`;
+          tbody.appendChild(tr);
+          count++;
+        }
+        if (empty) empty.style.display = count === 0 ? 'block' : 'none';
+      } catch(e) {
+        console.error('loadDataPrepareUser:', e);
       }
     }
 
@@ -928,8 +1332,8 @@
 
     async function loadTaskOnGoing() {
       // Tampilkan loading
-      document.getElementById('ongoing-dispatch-body').innerHTML = '<tr><td colspan="22" class="text-center py-4 text-slate-400">Memuat data...</td></tr>';
-      document.getElementById('ongoing-prepare-body').innerHTML = '<tr><td colspan="11" class="text-center py-4 text-slate-400">Memuat data...</td></tr>';
+      document.getElementById('ongoing-dispatch-body').innerHTML = '<tr><td colspan="22"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+      document.getElementById('ongoing-prepare-body').innerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
       document.getElementById('ongoing-dispatch-empty').style.display = 'none';
       document.getElementById('ongoing-prepare-empty').style.display = 'none';
 
@@ -1170,6 +1574,7 @@
   <div id="export-container" style="display:none; padding: 20px; background: white;">
     <div id="export-target"></div>
   </div>
+  </div><!-- /app-wrapper -->
 </body>
 
 </html>
