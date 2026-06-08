@@ -181,58 +181,35 @@
 
     /* CSS Khusus untuk tabel hasil Capture */
     .table-export {
-      width: 98%;
-      margin: 10px auto;
-      border-collapse: separate;
-      border-spacing: 0;
+      width: 1000px !important;
+      /* Tentukan lebar statis yang pas, jangan % */
+      margin: 0 !important;
+      border-collapse: collapse;
+      /* Ganti separate ke collapse */
       border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      /* Efek rounded pada tabel */
-      overflow: hidden;
-      /* Penting agar border radius terlihat */
       font-family: 'Arial', sans-serif;
-      font-size: 9px !important;
+      font-size: 8px !important;
+      /* Perkecil font agar kolom tidak terlalu lebar */
       background: white;
+      table-layout: fixed;
+      /* KUNCI: Paksa lebar kolom agar tidak melebar */
     }
 
+    .table-export td,
     .table-export th {
-      background-color: #191d26 !important;
-      color: white !important;
-      padding: 8px 4px;
-      /* Padding lebih lega */
-      border-bottom: 2px solid #ccc;
-      text-transform: uppercase;
-      text-align: center;
-      /* Rata tengah */
-      vertical-align: middle;
-    }
-
-    .table-export td {
-      padding: 6px 4px;
-      border-bottom: 1px solid #eee;
-      border-right: 1px solid #eee;
-      vertical-align: middle;
-      /* Rata tengah secara vertikal */
-      text-align: center;
-      /* Rata tengah secara horizontal */
-      color: #333;
-      line-height: 1.2;
+      word-wrap: break-word;
+      /* KUNCI: Agar teks panjang pindah baris */
+      overflow-wrap: break-word;
+      white-space: normal;
+      /* Pastikan teks tidak memaksa satu baris */
     }
 
     #export-container {
       display: none;
       background: white;
-      padding: 0 !important;
-      /* Hilangkan padding luar */
-      margin: 0 !important;
-      width: max-content !important;
-      /* Membuat container mengikuti lebar tabel */
-    }
-
-    .table-export {
-      margin: 0 !important;
-      /* Pastikan tidak ada margin di tabel */
-      width: 100%;
+      padding: 20px !important;
+      width: 1020px !important;
+      /* Sesuaikan dengan lebar tabel */
     }
 
     /* ---- FORM ---- */
@@ -335,6 +312,7 @@
       color: #64748b;
       font-size: 13px;
     }
+
     .spinner {
       width: 22px;
       height: 22px;
@@ -344,8 +322,11 @@
       animation: spin 0.7s linear infinite;
       flex-shrink: 0;
     }
+
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
   </style>
 </head>
@@ -364,8 +345,8 @@
       width:100%; max-width:380px; text-align:center;
       box-shadow:0 25px 60px rgba(0,0,0,0.4);">
 
-      <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2"
-           alt="Logo" style="height:100px;width:auto;margin:0 auto 8px;">
+      <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo"
+        style="height:100px;width:auto;margin:0 auto 8px;">
       <h2 style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:12px;">Warehouse Pulogadung</h2>
 
       <!-- Role label -->
@@ -393,10 +374,8 @@
         <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
           Password
         </label>
-        <input type="password" id="loginPassword"
-          onkeydown="if(event.key==='Enter') doLogin()"
-          placeholder="Masukkan password..."
-          style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
+        <input type="password" id="loginPassword" onkeydown="if(event.key==='Enter') doLogin()"
+          placeholder="Masukkan password..." style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
                  font-size:14px;outline:none;transition:border .2s;box-sizing:border-box;">
       </div>
 
@@ -424,555 +403,561 @@
 
   <!-- APP (tersembunyi sebelum login) -->
   <div id="app-wrapper" style="display:none;width:100%;">
-  <button id="menu-btn">☰ Menu</button>
+    <button id="menu-btn">☰ Menu</button>
 
-  <aside id="sidebar">
-    <nav class="p-4">
-      <div class="flex flex-col items-center pt-6 pb-5 border-b border-gray-200 mb-3">
-        <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo" class="h-16 w-auto">
-        <h2 class="text-gray-800 font-bold text-base mt-1">Warehouse</h2>
-        <span class="text-amber-600 font-semibold text-xs">Pulogadung</span>
-      </div>
-      <button onclick="location.reload()"
-        class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm"></button>Menu
-      Utama</button>
-
-      <!-- Inventory (ADMIN only) -->
-      <div id="menu-inventory-wrap" class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')"
-          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-          <span>Inventory</span><span id="arrow-inventory" class="text-xs">▼</span>
-        </button>
-        <div id="inventory-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Report Inventory JS')"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine JS</button>
-          <button onclick="showInventory('Report Inventory CIMB')"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine CIMB</button>
+    <aside id="sidebar">
+      <nav class="p-4">
+        <div class="flex flex-col items-center pt-6 pb-5 border-b border-gray-200 mb-3">
+          <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo"
+            class="h-16 w-auto">
+          <h2 class="text-gray-800 font-bold text-base mt-1">Warehouse</h2>
+          <span class="text-amber-600 font-semibold text-xs">Pulogadung</span>
         </div>
-      </div>
+        <button onclick="location.reload()"
+          class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm"></button>Menu
+        Utama</button>
 
-      <!-- Plan Task (ADMIN only) -->
-      <div id="menu-plantask-wrap" class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
-          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-          <span>Plan Task</span><span id="arrow-plan" class="text-xs">▼</span>
-        </button>
-        <div id="plan-task-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Input Task')"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
-          <button onclick="showInventory('Status Task'); loadTaskOnGoing();"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
+        <!-- Inventory (ADMIN only) -->
+        <div id="menu-inventory-wrap" class="space-y-1 mt-1">
+          <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')"
+            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+            <span>Inventory</span><span id="arrow-inventory" class="text-xs">▼</span>
+          </button>
+          <div id="inventory-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Report Inventory JS')"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
+              JS</button>
+            <button onclick="showInventory('Report Inventory CIMB')"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
+              CIMB</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Team Dispatch (ADMIN + Dispatch) -->
-      <div id="menu-dispatch-wrap" class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')"
-          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-          <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
-        </button>
-        <div id="maintenance-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Dispatch'); loadDataDispatch();"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
+        <!-- Plan Task (ADMIN only) -->
+        <div id="menu-plantask-wrap" class="space-y-1 mt-1">
+          <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
+            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+            <span>Plan Task</span><span id="arrow-plan" class="text-xs">▼</span>
+          </button>
+          <div id="plan-task-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Input Task')"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
+            <button onclick="showInventory('Status Task'); loadTaskOnGoing();"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Team Prepare (ADMIN + Prepare) -->
-      <div id="menu-prepare-wrap" class="space-y-1 mt-1">
-        <button onclick="toggleSubMenu('po-sub','arrow-po')"
-          class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-          <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
-        </button>
-        <div id="po-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-          <button onclick="showInventory('Team Prepare'); if(currentRole==='Prepare') loadDataPrepareUser();"
-            class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
+        <!-- Team Dispatch (ADMIN + Dispatch) -->
+        <div id="menu-dispatch-wrap" class="space-y-1 mt-1">
+          <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')"
+            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+            <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
+          </button>
+          <div id="maintenance-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Team Dispatch'); loadDataDispatch();"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
+          </div>
         </div>
-      </div>
 
-      <!-- Logout -->
-      <div style="margin-top:auto;padding-top:20px;border-top:1px solid #f1f5f9;margin-top:24px;">
-        <div id="sidebar-role-badge" style="
+        <!-- Team Prepare (ADMIN + Prepare) -->
+        <div id="menu-prepare-wrap" class="space-y-1 mt-1">
+          <button onclick="toggleSubMenu('po-sub','arrow-po')"
+            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+            <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
+          </button>
+          <div id="po-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Team Prepare'); if(currentRole==='Prepare') loadDataPrepareUser();"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div style="margin-top:auto;padding-top:20px;border-top:1px solid #f1f5f9;margin-top:24px;">
+          <div id="sidebar-role-badge" style="
           font-size:11px;font-weight:600;color:#64748b;
           background:#f8fafc;border-radius:8px;padding:6px 10px;
           margin-bottom:10px;text-align:center;">
-        </div>
-        <button onclick="doLogout()" style="
+          </div>
+          <button onclick="doLogout()" style="
           width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
           padding:9px;border-radius:8px;border:none;
           background:#fff1f2;color:#ef4444;font-size:12px;font-weight:700;
           cursor:pointer;transition:background .2s;">
-          <svg xmlns="http://www.w3.org/2000/svg" style="height:14px;width:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"/>
-          </svg>
-          Logout
-        </button>
-      </div>
-    </nav>
-  </aside>
+            <svg xmlns="http://www.w3.org/2000/svg" style="height:14px;width:14px;" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+            </svg>
+            Logout
+          </button>
+        </div>
+      </nav>
+    </aside>
 
-  <main>
-    <!-- DASHBOARD -->
-    <div id="content-Dashboard" class="page-content active-page">
-      <h1 class="text-lg font-bold text-slate-800 mb-2">Dashboard</h1>
-    </div>
-
-    <!-- INPUT TASK -->
-    <div id="content-InputTask" class="page-content">
-      <h1 class="text-lg font-bold text-slate-700 mb-4">Input Task</h1>
-      <label for="ticketInput" class="block mb-2 font-medium text-sm">ID Ticket:</label>
-      <div class="flex gap-2 mb-4">
-        <input type="text" id="ticketInput" placeholder="Ketik ID Tiket di sini..."
-          class="border border-gray-300 p-2 rounded w-full max-w-sm text-sm"
-          onkeydown="if(event.key==='Enter') displayTicketDetails()">
-        <button onclick="displayTicketDetails()"
-          class="btn-press bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded text-sm font-semibold shadow">Cari
-        </button>
+    <main>
+      <!-- DASHBOARD -->
+      <div id="content-Dashboard" class="page-content active-page">
+        <h1 class="text-lg font-bold text-slate-800 mb-2">Dashboard</h1>
       </div>
 
-      <div id="ticket-result-container"
-        style="display:none; margin-top:16px; padding:16px; border:1px solid #ddd; border-radius:12px; background:#f9f9f9;">
-        <h3 class="font-bold text-sm mb-2">Detail Tiket: <span id="res-ticket-id" class="text-amber-600"></span></h3>
-        <div id="res-details"></div>
-        <div id="full-data-container"
-          style="display:none; margin-top:12px; padding:12px; border:1px solid #ddd; border-radius:12px; background:#fff;">
-          <div class="overflow-x-auto border border-gray-300 rounded-lg">
-            <table class="min-w-full">
-              <thead>
-                <tr>
-                  <th>TICKET</th>
-                  <th>BD</th>
-                  <th>LOC ID</th>
-                  <th>ACTION PLAN</th>
-                  <th>PROPOSED VM TYPE</th>
-                  <th>LOCATION NAME</th>
-                  <th>NEW VM POSITION</th>
-                  <th>LOCATION TYPE</th>
-                  <th>VM TYPE ON SITE</th>
-                  <th>REMARKS</th>
-                  <th>MACHINE SET UP</th>
-                  <th>COMMERCIAL TERM</th>
-                  <th>PIC Site</th>
-                  <th>Phone</th>
-                  <th>Address</th>
-                  <th>Category</th>
-                </tr>
-              </thead>
-              <tbody id="full-data-body"></tbody>
-            </table>
-          </div>
+      <!-- INPUT TASK -->
+      <div id="content-InputTask" class="page-content">
+        <h1 class="text-lg font-bold text-slate-700 mb-4">Input Task</h1>
+        <label for="ticketInput" class="block mb-2 font-medium text-sm">ID Ticket:</label>
+        <div class="flex gap-2 mb-4">
+          <input type="text" id="ticketInput" placeholder="Ketik ID Tiket di sini..."
+            class="border border-gray-300 p-2 rounded w-full max-w-sm text-sm"
+            onkeydown="if(event.key==='Enter') displayTicketDetails()">
+          <button onclick="displayTicketDetails()"
+            class="btn-press bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded text-sm font-semibold shadow">Cari
+          </button>
         </div>
 
-        <!-- FORM PLAN TASK -->
-        <div class="input-form-container mt-6 p-6 bg-white rounded-2xl shadow border border-slate-100">
-          <h3 class="text-base font-bold text-slate-700 mb-4 border-b pb-2">Form Plan Task</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div class="flex flex-col">
-              <label class="text-xs font-semibold text-slate-600 mb-1">Divisi</label>
-              <select id="inputDivisi" class="form-input"></select>
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-semibold text-slate-600 mb-1">Plan Date</label>
-              <input type="date" id="inputPlanDate" class="form-input">
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-semibold text-slate-600 mb-1">PIC</label>
-              <select id="inputPIC" multiple="multiple" class="form-input"></select>
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-semibold text-slate-600 mb-1">No. VMC</label>
-              <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-semibold text-slate-600 mb-1">No. Kendaraan</label>
-              <input type="text" id="inputKendaraan" placeholder="Contoh: B-1305-OPQ" class="form-input">
+        <div id="ticket-result-container"
+          style="display:none; margin-top:16px; padding:16px; border:1px solid #ddd; border-radius:12px; background:#f9f9f9;">
+          <h3 class="font-bold text-sm mb-2">Detail Tiket: <span id="res-ticket-id" class="text-amber-600"></span></h3>
+          <div id="res-details"></div>
+          <div id="full-data-container"
+            style="display:none; margin-top:12px; padding:12px; border:1px solid #ddd; border-radius:12px; background:#fff;">
+            <div class="overflow-x-auto border border-gray-300 rounded-lg">
+              <table class="min-w-full">
+                <thead>
+                  <tr>
+                    <th>TICKET</th>
+                    <th>BD</th>
+                    <th>LOC ID</th>
+                    <th>ACTION PLAN</th>
+                    <th>PROPOSED VM TYPE</th>
+                    <th>LOCATION NAME</th>
+                    <th>NEW VM POSITION</th>
+                    <th>LOCATION TYPE</th>
+                    <th>VM TYPE ON SITE</th>
+                    <th>REMARKS</th>
+                    <th>MACHINE SET UP</th>
+                    <th>COMMERCIAL TERM</th>
+                    <th>PIC Site</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Category</th>
+                  </tr>
+                </thead>
+                <tbody id="full-data-body"></tbody>
+              </table>
             </div>
           </div>
-          <div class="mt-5 flex justify-end">
-            <button onclick="submitTask()"
-              class="btn-press px-7 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow text-sm">Submit
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- TASK ON GOING -->
-    <div id="content-StatusTask" class="page-content">
-      <h1 class="text-lg font-bold text-slate-800 mb-6">Task On Going</h1>
-
-      <!-- DISPATCH TABLE -->
-      <div class="ongoing-section">
-        <div class="ongoing-title">
-          <span id="dispatch-title-label">Task On Going — Dispatch</span>
-          <div class="flex gap-2">
-            <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('dispatch-section')">Share to
-              WhatsApp</button>
-          </div>
-        </div>
-        <div id="dispatch-section">
-          <p class="font-bold text-sm mb-2" style="color:#f5a623;">Task On Going — Dispatch</p>
-          <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table id="ongoing-dispatch-table">
-              <thead>
-                <tr>
-                  <th>Divisi</th>
-                  <th>Plan Date</th>
-                  <th>PIC</th>
-                  <th>No.VMC</th>
-                  <th>TICKET</th>
-                  <th>BD</th>
-                  <th>LOC ID</th>
-                  <th>ACTION PLAN</th>
-                  <th>PROPOSED<br>VM TYPE</th>
-                  <th>LOCATION NAME</th>
-                  <th>NEW VM POSITION</th>
-                  <th>LOCATION TYPE</th>
-                  <th>VM<br>TYPE ON SITE</th>
-                  <th>REMARKS/<br>SPECIAL REQUIREMENTS</th>
-                  <th>MACHINE SET UP</th>
-                  <th>COMMERCIAL<br>TERM</th>
-                  <th>Term Detail</th>
-                  <th>PIC Site</th>
-                  <th>Phone</th>
-                  <th>Address</th>
-                  <th>Status</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody id="ongoing-dispatch-body"></tbody>
-            </table>
-          </div>
-          <div id="ongoing-dispatch-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.
+          <!-- FORM PLAN TASK -->
+          <div class="input-form-container mt-6 p-6 bg-white rounded-2xl shadow border border-slate-100">
+            <h3 class="text-base font-bold text-slate-700 mb-4 border-b pb-2">Form Plan Task</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-600 mb-1">Divisi</label>
+                <select id="inputDivisi" class="form-input"></select>
+              </div>
+              <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-600 mb-1">Plan Date</label>
+                <input type="date" id="inputPlanDate" class="form-input">
+              </div>
+              <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-600 mb-1">PIC</label>
+                <select id="inputPIC" multiple="multiple" class="form-input"></select>
+              </div>
+              <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-600 mb-1">No. VMC</label>
+                <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
+              </div>
+              <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-600 mb-1">No. Kendaraan</label>
+                <input type="text" id="inputKendaraan" placeholder="Contoh: B-1305-OPQ" class="form-input">
+              </div>
+            </div>
+            <div class="mt-5 flex justify-end">
+              <button onclick="submitTask()"
+                class="btn-press px-7 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow text-sm">Submit
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- PREPARE TABLE -->
-      <div class="ongoing-section">
-        <div class="ongoing-title">
-          <span>Task On Going — Prepare</span>
-          <div class="flex gap-2">
-            <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('prepare-section')">Share to
-              WhatsApp</button>
+      <!-- TASK ON GOING -->
+      <div id="content-StatusTask" class="page-content">
+        <h1 class="text-lg font-bold text-slate-800 mb-6">Task On Going</h1>
+
+        <!-- DISPATCH TABLE -->
+        <div class="ongoing-section">
+          <div class="ongoing-title">
+            <span id="dispatch-title-label">Task On Going — Dispatch</span>
+            <div class="flex gap-2">
+              <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('dispatch-section')">Share to
+                WhatsApp</button>
+            </div>
+          </div>
+          <div id="dispatch-section">
+            <p class="font-bold text-sm mb-2" style="color:#f5a623;">Task On Going — Dispatch</p>
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+              <table id="ongoing-dispatch-table">
+                <thead>
+                  <tr>
+                    <th>Divisi</th>
+                    <th>Plan Date</th>
+                    <th>PIC</th>
+                    <th>No.VMC</th>
+                    <th>TICKET</th>
+                    <th>BD</th>
+                    <th>LOC ID</th>
+                    <th>ACTION PLAN</th>
+                    <th>PROPOSED<br>VM TYPE</th>
+                    <th>LOCATION NAME</th>
+                    <th>NEW VM POSITION</th>
+                    <th>LOCATION TYPE</th>
+                    <th>VM<br>TYPE ON SITE</th>
+                    <th>REMARKS/<br>SPECIAL REQUIREMENTS</th>
+                    <th>MACHINE SET UP</th>
+                    <th>COMMERCIAL<br>TERM</th>
+                    <th>Term Detail</th>
+                    <th>PIC Site</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="ongoing-dispatch-body"></tbody>
+              </table>
+            </div>
+            <div id="ongoing-dispatch-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.
+            </div>
           </div>
         </div>
-        <div id="prepare-section">
-          <p class="font-bold text-sm mb-2" style="color:#f5a623;">Task On Going — Prepare</p>
-          <div class="overflow-x-auto rounded-lg border border-gray-200">
-            <table id="ongoing-prepare-table">
-              <thead>
-                <tr>
-                  <th>Divisi</th>
-                  <th>Plan Date</th>
-                  <th>PIC</th>
-                  <th>No.VMC</th>
-                  <th>ACTION PLAN</th>
-                  <th>Type Machine</th>
-                  <th>Ex Location</th>
-                  <th>Plan to Deploy</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody id="ongoing-prepare-body"></tbody>
-            </table>
+
+        <!-- PREPARE TABLE -->
+        <div class="ongoing-section">
+          <div class="ongoing-title">
+            <span>Task On Going — Prepare</span>
+            <div class="flex gap-2">
+              <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('prepare-section')">Share to
+                WhatsApp</button>
+            </div>
           </div>
-          <div id="ongoing-prepare-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.</div>
+          <div id="prepare-section">
+            <p class="font-bold text-sm mb-2" style="color:#f5a623;">Task On Going — Prepare</p>
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+              <table id="ongoing-prepare-table">
+                <thead>
+                  <tr>
+                    <th>Divisi</th>
+                    <th>Plan Date</th>
+                    <th>PIC</th>
+                    <th>No.VMC</th>
+                    <th>ACTION PLAN</th>
+                    <th>Type Machine</th>
+                    <th>Ex Location</th>
+                    <th>Plan to Deploy</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="ongoing-prepare-body"></tbody>
+              </table>
+            </div>
+            <div id="ongoing-prepare-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- TEAM DISPATCH (ADMIN view — semua kolom) -->
-    <div id="content-TeamDispatch" class="page-content">
-      <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Dispatch</h1>
+      <!-- TEAM DISPATCH (ADMIN view — semua kolom) -->
+      <div id="content-TeamDispatch" class="page-content">
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Dispatch</h1>
 
-      <!-- Tabel ADMIN: semua kolom -->
-      <div id="dispatch-admin-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow">
-        <table class="w-full">
-          <thead>
-            <tr>
-              <th>Divisi</th>
-              <th>Plan Date</th>
-              <th>PIC</th>
-              <th>No.VMC</th>
-              <th>TICKET</th>
-              <th>BD</th>
-              <th>ACTION PLAN</th>
-              <th>PROPOSED VM TYPE</th>
-              <th>LOCATION NAME</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="dispatch-table-body"></tbody>
-        </table>
+        <!-- Tabel ADMIN: semua kolom -->
+        <div id="dispatch-admin-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th>Divisi</th>
+                <th>Plan Date</th>
+                <th>PIC</th>
+                <th>No.VMC</th>
+                <th>TICKET</th>
+                <th>BD</th>
+                <th>ACTION PLAN</th>
+                <th>PROPOSED VM TYPE</th>
+                <th>LOCATION NAME</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="dispatch-table-body"></tbody>
+          </table>
+        </div>
+
+        <!-- Tabel DISPATCH USER: kolom terbatas sesuai permintaan -->
+        <div id="dispatch-user-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow"
+          style="display:none;">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th>Plan Date</th>
+                <th>PIC</th>
+                <th>No. VMC</th>
+                <th>Location Name</th>
+                <th>Action Plan</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="dispatch-user-table-body"></tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- Tabel DISPATCH USER: kolom terbatas sesuai permintaan -->
-      <div id="dispatch-user-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow" style="display:none;">
-        <table class="w-full">
-          <thead>
-            <tr>
-              <th>Plan Date</th>
-              <th>PIC</th>
-              <th>No. VMC</th>
-              <th>Location Name</th>
-              <th>Action Plan</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="dispatch-user-table-body"></tbody>
-        </table>
+      <!-- TEAM PREPARE -->
+      <div id="content-TeamPrepare" class="page-content">
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Prepare</h1>
+        <div class="overflow-x-auto rounded-lg border border-gray-300 shadow">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th>Plan Date</th>
+                <th>PIC</th>
+                <th>No. VMC</th>
+                <th>Action Plan</th>
+                <th>Type Machine</th>
+                <th>Ex Location</th>
+                <th>Plan to Deploy</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="prepare-user-table-body"></tbody>
+          </table>
+        </div>
+        <div id="prepare-user-empty" class="empty-msg" style="display:none;">Tidak ada task Prepare saat ini.</div>
       </div>
-    </div>
+    </main>
 
-    <!-- TEAM PREPARE -->
-    <div id="content-TeamPrepare" class="page-content">
-      <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Prepare</h1>
-      <div class="overflow-x-auto rounded-lg border border-gray-300 shadow">
-        <table class="w-full">
-          <thead>
-            <tr>
-              <th>Plan Date</th>
-              <th>PIC</th>
-              <th>No. VMC</th>
-              <th>Action Plan</th>
-              <th>Type Machine</th>
-              <th>Ex Location</th>
-              <th>Plan to Deploy</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="prepare-user-table-body"></tbody>
-        </table>
-      </div>
-      <div id="prepare-user-empty" class="empty-msg" style="display:none;">Tidak ada task Prepare saat ini.</div>
-    </div>
-  </main>
+    <script>
+      // =============================================
+      // AUTH — LOGIN, ROLE, LOGOUT
+      // =============================================
+      const PASSWORDS = {
+        ADMIN: 'admin123',
+        Dispatch: 'dispatch123',
+        Prepare: 'prepare123',
+      };
 
-  <script>
-    // =============================================
-    // AUTH — LOGIN, ROLE, LOGOUT
-    // =============================================
-    const PASSWORDS = {
-      ADMIN:    'admin123',
-      Dispatch: 'dispatch123',
-      Prepare:  'prepare123',
-    };
+      let currentRole = '';
+      let selectedRole = '';
 
-    let currentRole = '';
-    let selectedRole = '';
+      function selectRole(role) {
+        selectedRole = role;
+        ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
+          const btn = document.getElementById('role-' + r);
+          if (r === role) {
+            btn.style.background = '#f5a623';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#f5a623';
+            btn.style.boxShadow = '0 4px 12px rgba(245,166,35,.4)';
+          } else {
+            btn.style.background = '#f8fafc';
+            btn.style.color = '#64748b';
+            btn.style.borderColor = '#e2e8f0';
+            btn.style.boxShadow = 'none';
+          }
+        });
+        // Focus ke input password
+        document.getElementById('loginPassword').focus();
+      }
 
-    function selectRole(role) {
-      selectedRole = role;
-      ['ADMIN','Dispatch','Prepare'].forEach(r => {
-        const btn = document.getElementById('role-' + r);
-        if (r === role) {
-          btn.style.background    = '#f5a623';
-          btn.style.color         = '#fff';
-          btn.style.borderColor   = '#f5a623';
-          btn.style.boxShadow     = '0 4px 12px rgba(245,166,35,.4)';
-        } else {
-          btn.style.background    = '#f8fafc';
-          btn.style.color         = '#64748b';
-          btn.style.borderColor   = '#e2e8f0';
-          btn.style.boxShadow     = 'none';
+      function doLogin() {
+        const pass = document.getElementById('loginPassword').value;
+        const err = document.getElementById('login-error');
+
+        if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
+          err.style.display = 'block';
+          document.getElementById('loginPassword').value = '';
+          return;
         }
-      });
-      // Focus ke input password
-      document.getElementById('loginPassword').focus();
-    }
+        err.style.display = 'none';
+        currentRole = selectedRole;
 
-    function doLogin() {
-      const pass = document.getElementById('loginPassword').value;
-      const err  = document.getElementById('login-error');
+        // Sembunyikan login, tampilkan app
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('app-wrapper').style.display = 'block';
 
-      if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
-        err.style.display = 'block';
+        // Set badge role di sidebar
+        const badge = document.getElementById('sidebar-role-badge');
+        const roleIcon = { ADMIN: '', Dispatch: '', Prepare: '' };
+        badge.textContent = `${roleIcon[currentRole]} ${currentRole}`;
+
+        applyRoleAccess();
+      }
+
+      function doLogout() {
+        currentRole = '';
+        selectedRole = '';
         document.getElementById('loginPassword').value = '';
-        return;
+        document.getElementById('login-error').style.display = 'none';
+        // Reset role button
+        ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
+          const btn = document.getElementById('role-' + r);
+          btn.style.background = '#f8fafc';
+          btn.style.color = '#64748b';
+          btn.style.borderColor = '#e2e8f0';
+          btn.style.boxShadow = 'none';
+        });
+        document.getElementById('app-wrapper').style.display = 'none';
+        document.getElementById('login-page').style.display = 'flex';
       }
-      err.style.display = 'none';
-      currentRole = selectedRole;
 
-      // Sembunyikan login, tampilkan app
-      document.getElementById('login-page').style.display  = 'none';
-      document.getElementById('app-wrapper').style.display = 'block';
+      /**
+       * Terapkan akses sesuai role:
+       * - ADMIN     → semua menu tampil, langsung ke Dashboard
+       * - Dispatch  → hanya menu Team Dispatch, langsung ke Team Dispatch
+       * - Prepare   → hanya menu Team Prepare, langsung ke Team Prepare
+       */
+      function applyRoleAccess() {
+        const menuInventory = document.getElementById('menu-inventory-wrap');
+        const menuPlanTask = document.getElementById('menu-plantask-wrap');
+        const menuDispatch = document.getElementById('menu-dispatch-wrap');
+        const menuPrepare = document.getElementById('menu-prepare-wrap');
 
-      // Set badge role di sidebar
-      const badge = document.getElementById('sidebar-role-badge');
-      const roleIcon = { ADMIN:'', Dispatch:'', Prepare:'' };
-      badge.textContent = `${roleIcon[currentRole]} ${currentRole}`;
+        if (currentRole === 'ADMIN') {
+          // Semua menu tampil
+          [menuInventory, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
+          showPage('Dashboard');
+        } else if (currentRole === 'Dispatch') {
+          // Hanya Team Dispatch
+          if (menuInventory) menuInventory.style.display = 'none';
+          if (menuPlanTask) menuPlanTask.style.display = 'none';
+          if (menuDispatch) menuDispatch.style.display = '';
+          if (menuPrepare) menuPrepare.style.display = 'none';
+          // Buka submenu otomatis
+          document.getElementById('maintenance-sub').classList.remove('hidden');
+          showPage('Team Dispatch');
+          loadDataDispatch();
+        } else if (currentRole === 'Prepare') {
+          // Hanya Team Prepare
+          if (menuInventory) menuInventory.style.display = 'none';
+          if (menuPlanTask) menuPlanTask.style.display = 'none';
+          if (menuDispatch) menuDispatch.style.display = 'none';
+          if (menuPrepare) menuPrepare.style.display = '';
+          // Buka submenu otomatis
+          document.getElementById('po-sub').classList.remove('hidden');
+          showPage('Team Prepare');
+          loadDataPrepareUser();
+        }
+      }
 
-      applyRoleAccess();
-    }
-
-    function doLogout() {
-      currentRole  = '';
-      selectedRole = '';
-      document.getElementById('loginPassword').value = '';
-      document.getElementById('login-error').style.display = 'none';
-      // Reset role button
-      ['ADMIN','Dispatch','Prepare'].forEach(r => {
-        const btn = document.getElementById('role-' + r);
-        btn.style.background  = '#f8fafc';
-        btn.style.color       = '#64748b';
-        btn.style.borderColor = '#e2e8f0';
-        btn.style.boxShadow   = 'none';
+      // =============================================
+      // SIDEBAR TOGGLE
+      // =============================================
+      document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        if (btn && sidebar) {
+          btn.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.toggle('active'); });
+          document.addEventListener('click', e => { if (!sidebar.contains(e.target) && e.target !== btn) sidebar.classList.remove('active'); });
+        }
+        // Init Select2
+        $('#inputDivisi').select2({ placeholder: "Pilih Divisi" });
+        $('#inputPIC').select2({ placeholder: "Pilih PIC", multiple: true });
+        loadDataAndPopulate();
       });
-      document.getElementById('app-wrapper').style.display = 'none';
-      document.getElementById('login-page').style.display  = 'flex';
-    }
 
-    /**
-     * Terapkan akses sesuai role:
-     * - ADMIN     → semua menu tampil, langsung ke Dashboard
-     * - Dispatch  → hanya menu Team Dispatch, langsung ke Team Dispatch
-     * - Prepare   → hanya menu Team Prepare, langsung ke Team Prepare
-     */
-    function applyRoleAccess() {
-      const menuInventory = document.getElementById('menu-inventory-wrap');
-      const menuPlanTask  = document.getElementById('menu-plantask-wrap');
-      const menuDispatch  = document.getElementById('menu-dispatch-wrap');
-      const menuPrepare   = document.getElementById('menu-prepare-wrap');
-
-      if (currentRole === 'ADMIN') {
-        // Semua menu tampil
-        [menuInventory, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if(m) m.style.display = ''; });
-        showPage('Dashboard');
-      } else if (currentRole === 'Dispatch') {
-        // Hanya Team Dispatch
-        if (menuInventory) menuInventory.style.display = 'none';
-        if (menuPlanTask)  menuPlanTask.style.display  = 'none';
-        if (menuDispatch)  menuDispatch.style.display  = '';
-        if (menuPrepare)   menuPrepare.style.display   = 'none';
-        // Buka submenu otomatis
-        document.getElementById('maintenance-sub').classList.remove('hidden');
-        showPage('Team Dispatch');
-        loadDataDispatch();
-      } else if (currentRole === 'Prepare') {
-        // Hanya Team Prepare
-        if (menuInventory) menuInventory.style.display = 'none';
-        if (menuPlanTask)  menuPlanTask.style.display  = 'none';
-        if (menuDispatch)  menuDispatch.style.display  = 'none';
-        if (menuPrepare)   menuPrepare.style.display   = '';
-        // Buka submenu otomatis
-        document.getElementById('po-sub').classList.remove('hidden');
-        showPage('Team Prepare');
-        loadDataPrepareUser();
+      // =============================================
+      // NAVIGASI
+      // =============================================
+      function showPage(pageName) {
+        document.querySelectorAll('.page-content').forEach(el => { el.style.display = 'none'; el.classList.remove('active-page'); });
+        const targetId = 'content-' + pageName.replace(/\s+/g, '');
+        const target = document.getElementById(targetId);
+        if (target) { target.style.display = 'block'; target.classList.add('active-page'); return; }
+        let devPage = document.getElementById('content-Development');
+        if (!devPage) {
+          devPage = document.createElement('div');
+          devPage.id = 'content-Development';
+          devPage.className = 'page-content';
+          devPage.style.cssText = 'display:block;padding:40px;text-align:center;';
+          devPage.innerHTML = '<h1 class="text-2xl font-bold">Fitur Belum Tersedia</h1><p id="dev-message" class="mt-2 text-slate-500"></p>';
+          document.querySelector('main').appendChild(devPage);
+        }
+        document.getElementById('dev-message').textContent = 'Menu "' + pageName + '" sedang dalam pengembangan.';
+        devPage.style.display = 'block';
       }
-    }
-
-    // =============================================
-    // SIDEBAR TOGGLE
-    // =============================================
-    document.addEventListener('DOMContentLoaded', () => {
-      const btn = document.getElementById('menu-btn');
-      const sidebar = document.getElementById('sidebar');
-      if (btn && sidebar) {
-        btn.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.toggle('active'); });
-        document.addEventListener('click', e => { if (!sidebar.contains(e.target) && e.target !== btn) sidebar.classList.remove('active'); });
+      function toggleSubMenu(id, arrowId) {
+        const sub = document.getElementById(id); const arrow = document.getElementById(arrowId);
+        if (!sub) { showPage(id); return; }
+        sub.classList.toggle('hidden');
+        arrow.style.transform = sub.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+        sub.style.paddingBottom = sub.classList.contains('hidden') ? '0' : '10px';
       }
-      // Init Select2
-      $('#inputDivisi').select2({ placeholder: "Pilih Divisi" });
-      $('#inputPIC').select2({ placeholder: "Pilih PIC", multiple: true });
-      loadDataAndPopulate();
-    });
+      function showInventory(n) { showPage(n); }
 
-    // =============================================
-    // NAVIGASI
-    // =============================================
-    function showPage(pageName) {
-      document.querySelectorAll('.page-content').forEach(el => { el.style.display = 'none'; el.classList.remove('active-page'); });
-      const targetId = 'content-' + pageName.replace(/\s+/g, '');
-      const target = document.getElementById(targetId);
-      if (target) { target.style.display = 'block'; target.classList.add('active-page'); return; }
-      let devPage = document.getElementById('content-Development');
-      if (!devPage) {
-        devPage = document.createElement('div');
-        devPage.id = 'content-Development';
-        devPage.className = 'page-content';
-        devPage.style.cssText = 'display:block;padding:40px;text-align:center;';
-        devPage.innerHTML = '<h1 class="text-2xl font-bold">Fitur Belum Tersedia</h1><p id="dev-message" class="mt-2 text-slate-500"></p>';
-        document.querySelector('main').appendChild(devPage);
+      // =============================================
+      // GLOBALS
+      // =============================================
+      window.dataSheetUtama = [];
+      window.dataReqBD = [];
+      window.dataSource = [];
+
+      // =============================================
+      // LOAD DATA UTAMA (untuk pencarian tiket)
+      // =============================================
+      async function loadMainData() {
+        const URL = 'https://script.google.com/macros/s/AKfycbze58WL_LPRuAI9jXenMXrnlUqUdTj6sg0WavRVJszi_hCORiut3dB3wKXb2wQQFdOI5w/exec';
+        try { const r = await fetch(URL); window.dataSheetUtama = await r.json(); }
+        catch (e) { console.error("loadMainData:", e); }
       }
-      document.getElementById('dev-message').textContent = 'Menu "' + pageName + '" sedang dalam pengembangan.';
-      devPage.style.display = 'block';
-    }
-    function toggleSubMenu(id, arrowId) {
-      const sub = document.getElementById(id); const arrow = document.getElementById(arrowId);
-      if (!sub) { showPage(id); return; }
-      sub.classList.toggle('hidden');
-      arrow.style.transform = sub.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
-      sub.style.paddingBottom = sub.classList.contains('hidden') ? '0' : '10px';
-    }
-    function showInventory(n) { showPage(n); }
 
-    // =============================================
-    // GLOBALS
-    // =============================================
-    window.dataSheetUtama = [];
-    window.dataReqBD = [];
-    window.dataSource = [];
+      // =============================================
+      // LOAD DATA REQ_BD
+      // =============================================
+      async function loadReqBDData() {
+        const URL = 'https://script.google.com/macros/s/AKfycbxGWpV_8VeKO-AxUJwBzSJRPMWaO4ulBVhlagVLmdRLtoMhBjQVT46jonTQKr-Unozx4w/exec';
+        try { const r = await fetch(URL); window.dataReqBD = await r.json(); }
+        catch (e) { console.error("loadReqBDData:", e); }
+      }
 
-    // =============================================
-    // LOAD DATA UTAMA (untuk pencarian tiket)
-    // =============================================
-    async function loadMainData() {
-      const URL = 'https://script.google.com/macros/s/AKfycbze58WL_LPRuAI9jXenMXrnlUqUdTj6sg0WavRVJszi_hCORiut3dB3wKXb2wQQFdOI5w/exec';
-      try { const r = await fetch(URL); window.dataSheetUtama = await r.json(); }
-      catch (e) { console.error("loadMainData:", e); }
-    }
+      // =============================================
+      // LOAD SOURCE (dropdown)
+      // =============================================
+      async function loadSourceData() {
+        const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
+        try { const r = await fetch(URL); window.dataSource = await r.json(); }
+        catch (e) { console.error("loadSourceData:", e); }
+      }
+      async function loadDataAndPopulate() {
+        const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
+        try {
+          const r = await fetch(URL); window.dataSource = await r.json();
+          const divSel = $('#inputDivisi'), picSel = $('#inputPIC');
+          [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))].forEach(v => divSel.append(new Option(v, v)));
+          [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))].forEach(v => picSel.append(new Option(v, v)));
+          divSel.trigger('change'); picSel.trigger('change');
+        } catch (e) { console.error(e); }
+      }
 
-    // =============================================
-    // LOAD DATA REQ_BD
-    // =============================================
-    async function loadReqBDData() {
-      const URL = 'https://script.google.com/macros/s/AKfycbxGWpV_8VeKO-AxUJwBzSJRPMWaO4ulBVhlagVLmdRLtoMhBjQVT46jonTQKr-Unozx4w/exec';
-      try { const r = await fetch(URL); window.dataReqBD = await r.json(); }
-      catch (e) { console.error("loadReqBDData:", e); }
-    }
-
-    // =============================================
-    // LOAD SOURCE (dropdown)
-    // =============================================
-    async function loadSourceData() {
-      const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
-      try { const r = await fetch(URL); window.dataSource = await r.json(); }
-      catch (e) { console.error("loadSourceData:", e); }
-    }
-    async function loadDataAndPopulate() {
-      const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
-      try {
-        const r = await fetch(URL); window.dataSource = await r.json();
-        const divSel = $('#inputDivisi'), picSel = $('#inputPIC');
-        [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))].forEach(v => divSel.append(new Option(v, v)));
-        [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))].forEach(v => picSel.append(new Option(v, v)));
-        divSel.trigger('change'); picSel.trigger('change');
-      } catch (e) { console.error(e); }
-    }
-
-    // =============================================
-    // CARI TIKET
-    // =============================================
-    function displayTicketDetails() {
-      const selectedId = document.getElementById('ticketInput').value.trim();
-      if (!selectedId) { Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Harap masukkan ID Ticket.', timer: 1500, showConfirmButton: false }); return; }
-      const resultContainer = document.getElementById('ticket-result-container');
-      const foundUtama = window.dataSheetUtama.find(r => String(r[0]).trim() == selectedId);
-      resultContainer.style.display = foundUtama ? 'block' : 'none';
-      const headerRow = window.dataReqBD[0]; if (!headerRow) return;
-      const ticketColIndex = headerRow.indexOf('TICKET');
-      const foundReqBD = window.dataReqBD.find(r => String(r[ticketColIndex]).trim() == selectedId);
-      const container = document.getElementById('full-data-container');
-      const tbody = document.getElementById('full-data-body');
-      if (foundReqBD) {
-        container.style.display = 'block';
-        resultContainer.style.display = 'block';
-        const g = name => { const i = headerRow.indexOf(name); return (i !== -1 && foundReqBD[i] !== "") ? foundReqBD[i] : '-'; };
-        tbody.innerHTML = `<tr class="text-xs">
+      // =============================================
+      // CARI TIKET
+      // =============================================
+      function displayTicketDetails() {
+        const selectedId = document.getElementById('ticketInput').value.trim();
+        if (!selectedId) { Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Harap masukkan ID Ticket.', timer: 1500, showConfirmButton: false }); return; }
+        const resultContainer = document.getElementById('ticket-result-container');
+        const foundUtama = window.dataSheetUtama.find(r => String(r[0]).trim() == selectedId);
+        resultContainer.style.display = foundUtama ? 'block' : 'none';
+        const headerRow = window.dataReqBD[0]; if (!headerRow) return;
+        const ticketColIndex = headerRow.indexOf('TICKET');
+        const foundReqBD = window.dataReqBD.find(r => String(r[ticketColIndex]).trim() == selectedId);
+        const container = document.getElementById('full-data-container');
+        const tbody = document.getElementById('full-data-body');
+        if (foundReqBD) {
+          container.style.display = 'block';
+          resultContainer.style.display = 'block';
+          const g = name => { const i = headerRow.indexOf(name); return (i !== -1 && foundReqBD[i] !== "") ? foundReqBD[i] : '-'; };
+          tbody.innerHTML = `<tr class="text-xs">
           <td>${g('TICKET')}</td><td>${g('BD PIC')}</td><td>${g('TICKET NUMBER / LOCATION ID')}</td>
           <td>${g('ACTION PLAN')}</td><td>${g('PROPOSED VM TYPE')}</td><td>${g('LOCATION NAME')}</td>
           <td>${g('NEW VM POSITION')}</td><td>${g('LOCATION TYPE')}</td><td>${g('VM TYPE ON SITE')}</td>
@@ -980,167 +965,156 @@
           <td>${g('COMMERCIAL TERM')}</td><td>${g('SITE PIC')}</td><td>${g('SITE PIC PHONE NO.')}</td>
           <td>${g('DELIVERY / PICK UP ADDRESS')}</td><td>${g('CATEGORY')}</td>
         </tr>`;
-      } else {
-        container.style.display = 'none';
-        if (!foundUtama) Swal.fire({ icon: 'error', title: 'Tidak Ditemukan', text: `ID Ticket "${selectedId}" tidak ada dalam data.` });
-      }
-    }
-
-    // =============================================
-    // SUBMIT TASK
-    // =============================================
-    async function submitTask() {
-      try {
-        let pic = $('#inputPIC').val() || [];
-        if (typeof pic === 'string') pic = [pic];
-        const tbody = document.getElementById('full-data-body');
-        const row = tbody?.querySelector('tr');
-        if (!row) { Swal.fire({ icon: 'warning', title: 'Data belum dimuat', text: 'Cari dan muat tiket terlebih dahulu.' }); return; }
-        const cells = row.querySelectorAll('td');
-        if (cells.length < 16) { Swal.fire({ icon: 'error', title: 'Data tidak lengkap' }); return; }
-        const payload = {
-          Divisi: document.getElementById('inputDivisi').value,
-          PlanDate: document.getElementById('inputPlanDate').value,
-          PIC: pic.join(', '),
-          NoVMC: document.getElementById('inputVMC').value,
-          NoKendaraan: document.getElementById('inputKendaraan').value,
-          TICKET: cells[0].innerText, BD: cells[1].innerText,
-          TICKET_LOCATION_ID: cells[2].innerText, ACTION_PLAN: cells[3].innerText,
-          PROPOSED_VM_TYPE: cells[4].innerText, LOCATION_NAME: cells[5].innerText,
-          NEW_VM_POSITION: cells[6].innerText, LOCATION_TYPE: cells[7].innerText,
-          VM_TYPE_ON_SITE: cells[8].innerText, MACHINE_SETUP: cells[9].innerText,
-          COMMERCIAL_TERM: cells[10].innerText, SITE_PIC: cells[11].innerText,
-          PHONE_NO: "'" + cells[12].innerText, ADDRESS: cells[13].innerText,
-          CATEGORY: cells[14].innerText, STATUS: cells[15].innerText || 'Open'
-        };
-        const URL = 'https://script.google.com/macros/s/AKfycbzgslvschOPciAErBb0AaFfmx5yOgUjR9qekLMePsmdnYw6DcaR5FFg3ljqmk9lYTaW3g/exec';
-        const res = await fetch(URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (res.ok) {
-          Swal.fire({ title: 'On Task!', text: 'Data berhasil disimpan.', icon: 'success', showConfirmButton: false, timer: 1500 });
-          document.getElementById('inputDivisi').value = null;
-          document.getElementById('inputPIC').value = null;
-          $('#inputDivisi').trigger('change'); $('#inputPIC').trigger('change');
-          document.getElementById('inputPlanDate').value = '';
-          document.getElementById('inputVMC').value = '';
-          document.getElementById('inputKendaraan').value = '';
-        }
-      } catch (e) {
-        console.error(e);
-        Swal.fire({ title: 'Gagal!', text: 'Data tidak tersimpan.', icon: 'error' });
-      }
-    }
-
-    // =============================================
-    // FORMAT TANGGAL
-    // =============================================
-    const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-    /**
-     * Format tanggal dari berbagai format Google Sheets ke "DD Bulan YYYY".
-     *
-     * ROOT CAUSE tanggal mundur sehari:
-     * Google Apps Script mengirim tanggal sebagai ISO string dalam UTC,
-     * contoh: "2026-06-07T17:00:00.000Z" yang sebenarnya = 8 Juni 2026 WIB (UTC+7).
-     * Jika kita ambil bagian "2026-06-07" dari string → SALAH (mundur sehari).
-     *
-     * Solusi: pakai new Date() lalu getDate/Month/FullYear (LOCAL time)
-     * sehingga timezone WIB otomatis diperhitungkan dengan benar.
-     */
-    function formatDate(v) {
-      if (!v && v !== 0) return '';
-
-      // 1. Serial number Excel/Google Sheets (misal: 46181 = 8 Juni 2026)
-      //    Gunakan getUTC* karena serial dihitung dari UTC epoch
-      if (typeof v === 'number' ||
-          (typeof v === 'string' && !isNaN(v) &&
-           !String(v).includes('-') && !String(v).includes('/') &&
-           String(v).trim().length > 4)) {
-        const n = Number(v);
-        if (n > 59) {
-          const ms = Math.round((n - 25569) * 86400) * 1000;
-          const d  = new Date(ms);
-          return `${String(d.getUTCDate()).padStart(2,'0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+        } else {
+          container.style.display = 'none';
+          if (!foundUtama) Swal.fire({ icon: 'error', title: 'Tidak Ditemukan', text: `ID Ticket "${selectedId}" tidak ada dalam data.` });
         }
       }
 
-      const s = String(v).trim();
-
-      // 2. ISO string dari GAS — gunakan new Date() + getDate() LOCAL TIME
-      //    karena GAS mengirim dalam UTC, misal "2026-06-07T17:00:00.000Z"
-      //    yang artinya 8 Juni 2026 di WIB. getDate() local = 8 ✓
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-        const d = new Date(s);
-        if (!isNaN(d)) {
-          return `${String(d.getDate()).padStart(2,'0')} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
+      // =============================================
+      // SUBMIT TASK
+      // =============================================
+      async function submitTask() {
+        try {
+          let pic = $('#inputPIC').val() || [];
+          if (typeof pic === 'string') pic = [pic];
+          const tbody = document.getElementById('full-data-body');
+          const row = tbody?.querySelector('tr');
+          if (!row) { Swal.fire({ icon: 'warning', title: 'Data belum dimuat', text: 'Cari dan muat tiket terlebih dahulu.' }); return; }
+          const cells = row.querySelectorAll('td');
+          if (cells.length < 16) { Swal.fire({ icon: 'error', title: 'Data tidak lengkap' }); return; }
+          const payload = {
+            Divisi: document.getElementById('inputDivisi').value,
+            PlanDate: document.getElementById('inputPlanDate').value,
+            PIC: pic.join(', '),
+            NoVMC: document.getElementById('inputVMC').value,
+            NoKendaraan: document.getElementById('inputKendaraan').value,
+            TICKET: cells[0].innerText, BD: cells[1].innerText,
+            TICKET_LOCATION_ID: cells[2].innerText, ACTION_PLAN: cells[3].innerText,
+            PROPOSED_VM_TYPE: cells[4].innerText, LOCATION_NAME: cells[5].innerText,
+            NEW_VM_POSITION: cells[6].innerText, LOCATION_TYPE: cells[7].innerText,
+            VM_TYPE_ON_SITE: cells[8].innerText, MACHINE_SETUP: cells[9].innerText,
+            COMMERCIAL_TERM: cells[10].innerText, SITE_PIC: cells[11].innerText,
+            PHONE_NO: "'" + cells[12].innerText, ADDRESS: cells[13].innerText,
+            CATEGORY: cells[14].innerText, STATUS: cells[15].innerText || 'Open'
+          };
+          const URL = 'https://script.google.com/macros/s/AKfycbzgslvschOPciAErBb0AaFfmx5yOgUjR9qekLMePsmdnYw6DcaR5FFg3ljqmk9lYTaW3g/exec';
+          const res = await fetch(URL, { method: 'POST', body: JSON.stringify(payload) });
+          if (res.ok) {
+            Swal.fire({ title: 'On Task!', text: 'Data berhasil disimpan.', icon: 'success', showConfirmButton: false, timer: 1500 });
+            document.getElementById('inputDivisi').value = null;
+            document.getElementById('inputPIC').value = null;
+            $('#inputDivisi').trigger('change'); $('#inputPIC').trigger('change');
+            document.getElementById('inputPlanDate').value = '';
+            document.getElementById('inputVMC').value = '';
+            document.getElementById('inputKendaraan').value = '';
+          }
+        } catch (e) {
+          console.error(e);
+          Swal.fire({ title: 'Gagal!', text: 'Data tidak tersimpan.', icon: 'error' });
         }
       }
 
-      // 3. Format DD/MM/YYYY — parse langsung tanpa new Date()
-      const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (dmyMatch) {
-        return `${String(parseInt(dmyMatch[1])).padStart(2,'0')} ${BULAN[parseInt(dmyMatch[2])-1]} ${dmyMatch[3]}`;
+      // =============================================
+      // FORMAT TANGGAL
+      // =============================================
+      const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      function formatDate(val) {
+        if (!val) return '';
+
+        // 1. Jika berupa angka (Serial Number Excel/Sheets)
+        if (typeof val === 'number') {
+          // 25569 adalah angka untuk 1 Januari 1970
+          const ms = (val - 25569) * 86400 * 1000;
+          const d = new Date(ms);
+          // Gunakan getUTCDate() agar tidak terpengaruh timezone lokal
+          return `${d.getUTCDate().toString().padStart(2, '0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+        }
+
+        // 2. Jika berupa string tanggal ("2026-06-06")
+        const s = String(val).trim();
+        if (s.includes('-')) {
+          const p = s.split('T')[0].split('-'); // Ambil bagian tanggal saja
+          return `${p[2].padStart(2, '0')} ${BULAN[parseInt(p[1]) - 1]} ${p[0]}`;
+        }
+
+        return s;
       }
 
-      return v;
-    }
+      // =============================================
+      // DISPATCH URL
+      // =============================================
+      const DISPATCH_URL = "https://script.google.com/macros/s/AKfycby_GipEwHDORWvvnXi6HsLmo2wMkkC9txSI37x4v9xh725mrwPx9VP9kB7Bmt13t0LoOQ/exec";
+      
+      function parseDateOnly(val) {
+        if (!val) return null;
+        const s = String(val).trim();
 
-    // =============================================
-    // DISPATCH URL
-    // =============================================
-    const DISPATCH_URL = "https://script.google.com/macros/s/AKfycbyugKikyz8qyQg4SFfhzBVyhKIHyJDt1tKuZC0tzeDa7gQcCNAMzb8T8mGyyOd96HCmtA/exec";
-
-    // =============================================
-    // TASK TEAM DISPATCH
-    // =============================================
-    async function loadDataDispatch() {
-      // Tampilkan spinner di kedua tabel
-      const spinnerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-      const adminBody = document.getElementById('dispatch-table-body');
-      const userBody  = document.getElementById('dispatch-user-table-body');
-      if (adminBody) adminBody.innerHTML = spinnerHTML;
-      if (userBody)  userBody.innerHTML  = spinnerHTML;
-
-      try {
-        const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
-        const r = await fetch(urlWithCacheBuster);
-        renderDispatchTable(await r.json());
-      } catch (e) {
-        console.error(e);
-        const errHTML = '<tr><td colspan="11" style="color:#ef4444;padding:20px;text-align:center;">Gagal memuat data. Coba lagi.</td></tr>';
-        if (adminBody) adminBody.innerHTML = errHTML;
-        if (userBody)  userBody.innerHTML  = errHTML;
+        // Cukup gunakan logika ini untuk format YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+          const p = s.split('T')[0].split('-');
+          return {
+            year: parseInt(p[0]),
+            month: parseInt(p[1]) - 1, // Bulan 0-11
+            day: parseInt(p[2])
+          };
+        }
+        return null;
       }
-    }
-    function renderDispatchTable(data) {
-      // Tampilkan view sesuai role
-      const adminView = document.getElementById('dispatch-admin-view');
-      const userView  = document.getElementById('dispatch-user-view');
 
-      if (currentRole === 'Dispatch') {
-        if (adminView) adminView.style.display = 'none';
-        if (userView)  userView.style.display  = '';
-        renderDispatchUserTable(data);
-      } else {
-        if (adminView) adminView.style.display = '';
-        if (userView)  userView.style.display  = 'none';
-        renderDispatchAdminTable(data);
+      // =============================================
+      // TASK TEAM DISPATCH
+      // =============================================
+
+      async function loadDataDispatch() {
+        // Tampilkan spinner di kedua tabel
+        const spinnerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+        const adminBody = document.getElementById('dispatch-table-body');
+        const userBody = document.getElementById('dispatch-user-table-body');
+        if (adminBody) adminBody.innerHTML = spinnerHTML;
+        if (userBody) userBody.innerHTML = spinnerHTML;
+
+        try {
+          const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
+          const r = await fetch(urlWithCacheBuster);
+          renderDispatchTable(await r.json());
+        } catch (e) {
+          console.error(e);
+          const errHTML = '<tr><td colspan="11" style="color:#ef4444;padding:20px;text-align:center;">Gagal memuat data. Coba lagi.</td></tr>';
+          if (adminBody) adminBody.innerHTML = errHTML;
+          if (userBody) userBody.innerHTML = errHTML;
+        }
       }
-    }
+      function renderDispatchTable(data) {
+        // Tampilkan view sesuai role
+        const adminView = document.getElementById('dispatch-admin-view');
+        const userView = document.getElementById('dispatch-user-view');
 
-    /** Tabel ADMIN — semua kolom */
-    function renderDispatchAdminTable(data) {
-      const tbody = document.getElementById('dispatch-table-body');
-      tbody.innerHTML = '';
-      let count = 0;
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
-        if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-        const ticketId  = (row[4] ?? '').toString().trim();
-        const statusVal = (row[20] ?? '').toString().trim();
-        const tr = document.createElement('tr');
-        tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-        tr.innerHTML = `
+        if (currentRole === 'Dispatch') {
+          if (adminView) adminView.style.display = 'none';
+          if (userView) userView.style.display = '';
+          renderDispatchUserTable(data);
+        } else {
+          if (adminView) adminView.style.display = '';
+          if (userView) userView.style.display = 'none';
+          renderDispatchAdminTable(data);
+        }
+      }
+
+      /** Tabel ADMIN — semua kolom */
+      function renderDispatchAdminTable(data) {
+        const tbody = document.getElementById('dispatch-table-body');
+        tbody.innerHTML = '';
+        let count = 0;
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
+          if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
+          const ticketId = (row[4] ?? '').toString().trim();
+          const statusVal = (row[20] ?? '').toString().trim();
+          const tr = document.createElement('tr');
+          tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+          tr.innerHTML = `
           <td>${row[0] ?? ''}</td><td>${formatDate(row[1])}</td><td>${row[2] ?? ''}</td><td>${row[3] ?? ''}</td>
           <td>${row[4] ?? ''}</td><td>${row[5] ?? ''}</td><td>${row[7] ?? ''}</td><td>${row[8] ?? ''}</td>
           <td>${row[9] ?? ''}</td>
@@ -1149,28 +1123,28 @@
             <button onclick="handleAction('${ticketId}','Done')" class="btn-press bg-green-600 text-white px-2 py-1 rounded text-xs mr-1">Done</button>
             <button onclick="handleAction('${ticketId}','Cancel')" class="btn-press bg-red-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
           </td>`;
-        tbody.appendChild(tr);
-        count++;
+          tbody.appendChild(tr);
+          count++;
+        }
       }
-    }
 
-    /**
-     * Tabel USER Dispatch — kolom terbatas:
-     * Plan Date | PIC | No. Kendaraan | Location Name | Action Plan | Action (Done/Cancel)
-     * Kolom mapping (0-based): 1=PlanDate, 2=PIC, 3=No.VMC/Kendaraan, 7=ActionPlan, 9=LocName, 4=Ticket
-     */
-    function renderDispatchUserTable(data) {
-      const tbody = document.getElementById('dispatch-user-table-body');
-      tbody.innerHTML = '';
-      let count = 0;
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
-        if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-        const ticketId = (row[4] ?? '').toString().trim();
-        const tr = document.createElement('tr');
-        tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-        tr.innerHTML = `
+      /**
+       * Tabel USER Dispatch — kolom terbatas:
+       * Plan Date | PIC | No. Kendaraan | Location Name | Action Plan | Action (Done/Cancel)
+       * Kolom mapping (0-based): 1=PlanDate, 2=PIC, 3=No.VMC/Kendaraan, 7=ActionPlan, 9=LocName, 4=Ticket
+       */
+      function renderDispatchUserTable(data) {
+        const tbody = document.getElementById('dispatch-user-table-body');
+        tbody.innerHTML = '';
+        let count = 0;
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i];
+          if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
+          if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
+          const ticketId = (row[4] ?? '').toString().trim();
+          const tr = document.createElement('tr');
+          tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+          tr.innerHTML = `
           <td>${formatDate(row[1])}</td>
           <td>${row[2] ?? ''}</td>
           <td>${row[3] ?? ''}</td>
@@ -1182,36 +1156,36 @@
             <button onclick="handleAction('${ticketId}','Cancel')"
               class="btn-press bg-red-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
           </td>`;
-        tbody.appendChild(tr);
-        count++;
+          tbody.appendChild(tr);
+          count++;
+        }
+        if (count === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;padding:20px;text-align:center;">Tidak ada task Dispatch saat ini.</td></tr>';
+        }
       }
-      if (count === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;padding:20px;text-align:center;">Tidak ada task Dispatch saat ini.</td></tr>';
-      }
-    }
 
-    /** Load & render tabel Prepare untuk user Prepare */
-    async function loadDataPrepareUser() {
-      const tbody = document.getElementById('prepare-user-table-body');
-      if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-
-      try {
-        const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
-        const r = await fetch(urlWithCacheBuster);
-        const data = await r.json();
+      /** Load & render tabel Prepare untuk user Prepare */
+      async function loadDataPrepareUser() {
         const tbody = document.getElementById('prepare-user-table-body');
-        const empty = document.getElementById('prepare-user-empty');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        let count = 0;
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          if ((row[0] ?? '').toString().trim().toLowerCase() !== 'prepare') continue;
-          if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-          const statusVal = (row[20] ?? '').toString().trim();
-          const tr = document.createElement('tr');
-          tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-          tr.innerHTML = `
+        if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+
+        try {
+          const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
+          const r = await fetch(urlWithCacheBuster);
+          const data = await r.json();
+          const tbody = document.getElementById('prepare-user-table-body');
+          const empty = document.getElementById('prepare-user-empty');
+          if (!tbody) return;
+          tbody.innerHTML = '';
+          let count = 0;
+          for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            if ((row[0] ?? '').toString().trim().toLowerCase() !== 'prepare') continue;
+            if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
+            const statusVal = (row[20] ?? '').toString().trim();
+            const tr = document.createElement('tr');
+            tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+            tr.innerHTML = `
             <td>${formatDate(row[1])}</td>
             <td>${row[2] ?? ''}</td>
             <td>${row[3] ?? ''}</td>
@@ -1220,190 +1194,190 @@
             <td>${row[9] ?? ''}</td>
             <td>${row[10] ?? ''}</td>
             <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>`;
-          tbody.appendChild(tr);
-          count++;
+            tbody.appendChild(tr);
+            count++;
+          }
+          if (empty) empty.style.display = count === 0 ? 'block' : 'none';
+        } catch (e) {
+          console.error('loadDataPrepareUser:', e);
         }
-        if (empty) empty.style.display = count === 0 ? 'block' : 'none';
-      } catch(e) {
-        console.error('loadDataPrepareUser:', e);
       }
-    }
 
-    async function handleAction(ticketId, action) {
-      if (!ticketId) { Swal.fire({ icon: 'error', title: 'Ticket ID tidak ditemukan!' }); return; }
-      const title = action === "Done" ? "Alasan Take Out / Withdrawal / Switch Unit" : "Alasan Pembatalan";
-      const { value: reason } = await Swal.fire({
-        title, input: 'textarea',
-        inputPlaceholder: action === "Done" ? "Contoh: Mesin di-withdraw karena kontrak selesai..." : "Masukkan alasan pembatalan...",
-        inputAttributes: { rows: 3 }, showCancelButton: true,
-        confirmButtonText: 'Lanjutkan', cancelButtonText: 'Batal',
-        inputValidator: v => (!v || !v.trim()) ? 'Alasan tidak boleh kosong!' : null
-      });
-      if (!reason) return;
-      const ok = await Swal.fire({ title: `Konfirmasi ${action}`, text: `Tandai ticket "${ticketId}" sebagai ${action}?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, lanjutkan', cancelButtonText: 'Batal' });
-      if (!ok.isConfirmed) return;
-      try {
-        const payload = { ticketId: ticketId.trim(), action, reason: reason.trim(), sheetName: "Plan Task" };
-        const res = await fetch(DISPATCH_URL, { method: 'POST', body: JSON.stringify(payload) });
-        const text = await res.text();
-        let result;
-        try { result = JSON.parse(text); } catch { Swal.fire({ icon: 'error', title: 'Response tidak valid.' }); return; }
-        if (result.status === 'success') {
-          document.querySelectorAll('#dispatch-table-body tr').forEach(tr => {
-            if (tr.cells[4]?.innerText.trim() === ticketId) tr.remove();
-          });
-          Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false });
-          loadDataDispatch();
-        } else {
-          Swal.fire({ icon: 'error', title: 'Gagal', text: result.message || 'Terjadi kesalahan.' });
+      async function handleAction(ticketId, action) {
+        if (!ticketId) { Swal.fire({ icon: 'error', title: 'Ticket ID tidak ditemukan!' }); return; }
+        const title = action === "Done" ? "Alasan Take Out / Withdrawal / Switch Unit" : "Alasan Pembatalan";
+        const { value: reason } = await Swal.fire({
+          title, input: 'textarea',
+          inputPlaceholder: action === "Done" ? "Contoh: Mesin di-withdraw karena kontrak selesai..." : "Masukkan alasan pembatalan...",
+          inputAttributes: { rows: 3 }, showCancelButton: true,
+          confirmButtonText: 'Lanjutkan', cancelButtonText: 'Batal',
+          inputValidator: v => (!v || !v.trim()) ? 'Alasan tidak boleh kosong!' : null
+        });
+        if (!reason) return;
+        const ok = await Swal.fire({ title: `Konfirmasi ${action}`, text: `Tandai ticket "${ticketId}" sebagai ${action}?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, lanjutkan', cancelButtonText: 'Batal' });
+        if (!ok.isConfirmed) return;
+        try {
+          const payload = { ticketId: ticketId.trim(), action, reason: reason.trim(), sheetName: "Plan Task" };
+          const res = await fetch(DISPATCH_URL, { method: 'POST', body: JSON.stringify(payload) });
+          const text = await res.text();
+          let result;
+          try { result = JSON.parse(text); } catch { Swal.fire({ icon: 'error', title: 'Response tidak valid.' }); return; }
+          if (result.status === 'success') {
+            document.querySelectorAll('#dispatch-table-body tr').forEach(tr => {
+              if (tr.cells[4]?.innerText.trim() === ticketId) tr.remove();
+            });
+            Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false });
+            loadDataDispatch();
+          } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: result.message || 'Terjadi kesalahan.' });
+          }
+        } catch (e) { Swal.fire({ icon: 'error', title: 'Gagal mengirim data.' }); }
+      }
+
+      // =============================================
+      // TASK ON GOING — BucketTask
+      // Kriteria: Plan Date = BESOK (H+1)
+      // =============================================
+      const BUCKET_URL = "https://script.google.com/macros/s/AKfycbwC0X7E-XL3HazaB8xlyCWYrl-G4sHk6gR4Z8AhusPE8HusBCG-KuTPln6Ft1NqhvTN5w/exec";
+
+      // Ekstrak tanggal dari berbagai format → { year, month, day } atau null
+      function parseDateOnly(val) {
+        if (!val && val !== 0) return null;
+
+        // 1. Angka serial Excel/Sheets (misal: 46977)
+        if (typeof val === 'number' || (typeof val === 'string' && !isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
+          const n = Number(val);
+          if (n > 1000) {
+            const ms = (n - 25569) * 86400 * 1000;
+            const d = new Date(ms);
+            return { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate() };
+          }
+          return null;
         }
-      } catch (e) { Swal.fire({ icon: 'error', title: 'Gagal mengirim data.' }); }
-    }
 
-    // =============================================
-    // TASK ON GOING — BucketTask
-    // Kriteria: Plan Date = BESOK (H+1)
-    // =============================================
-    const BUCKET_URL = "https://script.google.com/macros/s/AKfycbwC0X7E-XL3HazaB8xlyCWYrl-G4sHk6gR4Z8AhusPE8HusBCG-KuTPln6Ft1NqhvTN5w/exec";
+        const s = String(val).trim();
 
-    // Ekstrak tanggal dari berbagai format → { year, month, day } atau null
-    function parseDateOnly(val) {
-      if (!val && val !== 0) return null;
-
-      // 1. Angka serial Excel/Sheets (misal: 46977)
-      if (typeof val === 'number' || (typeof val === 'string' && !isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
-        const n = Number(val);
-        if (n > 1000) {
-          const ms = (n - 25569) * 86400 * 1000;
-          const d = new Date(ms);
-          return { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate() };
+        // 2. ISO format: "2026-06-06" atau "2026-06-06T00:00:00.000Z"
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+          const p = s.split('T')[0].split('-');
+          return { year: parseInt(p[0]), month: parseInt(p[1]) - 1, day: parseInt(p[2]) };
         }
+
+        // 3. Format DD/MM/YYYY
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+          const p = s.split('/');
+          return { year: parseInt(p[2]), month: parseInt(p[1]) - 1, day: parseInt(p[0]) };
+        }
+
         return null;
       }
 
-      const s = String(val).trim();
+      // Cek apakah tanggal adalah hari ini ATAU besok
+      function isTodayOrTomorrow(val) {
+        const parsed = parseDateOnly(val);
+        if (!parsed) return false;
 
-      // 2. ISO format: "2026-06-06" atau "2026-06-06T00:00:00.000Z"
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-        const p = s.split('T')[0].split('-');
-        return { year: parseInt(p[0]), month: parseInt(p[1]) - 1, day: parseInt(p[2]) };
+        const now = new Date();
+
+        // Tanggal Hari Ini
+        const todayY = now.getFullYear();
+        const todayM = now.getMonth();
+        const todayD = now.getDate();
+
+        // Tanggal Besok
+        const tomorrow = new Date(todayY, todayM, todayD + 1);
+
+        // Cek Hari Ini
+        const isToday = (
+          parsed.year === todayY &&
+          parsed.month === todayM &&
+          parsed.day === todayD
+        );
+
+        // Cek Besok
+        const isTomorrow = (
+          parsed.year === tomorrow.getFullYear() &&
+          parsed.month === tomorrow.getMonth() &&
+          parsed.day === tomorrow.getDate()
+        );
+
+        return isToday || isTomorrow;
       }
 
-      // 3. Format DD/MM/YYYY
-      if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
-        const p = s.split('/');
-        return { year: parseInt(p[2]), month: parseInt(p[1]) - 1, day: parseInt(p[0]) };
-      }
+      async function loadTaskOnGoing() {
+        // Tampilkan loading
+        document.getElementById('ongoing-dispatch-body').innerHTML = '<tr><td colspan="22"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+        document.getElementById('ongoing-prepare-body').innerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
+        document.getElementById('ongoing-dispatch-empty').style.display = 'none';
+        document.getElementById('ongoing-prepare-empty').style.display = 'none';
 
-      return null;
-    }
+        try {
+          const res = await fetch(BUCKET_URL);
+          const data = await res.json();
 
-    // Cek apakah tanggal adalah hari ini ATAU besok
-    function isTodayOrTomorrow(val) {
-      const parsed = parseDateOnly(val);
-      if (!parsed) return false;
+          const header = data[0] || [];
+          // Cari index kolom kunci
+          const colDivisi = 0;  // A
+          const colPlanDate = 1;  // B
+          const colPIC = 2;  // C
+          const colVMC = 3;  // D
+          const colTicket = 4;  // E
+          const colBD = 5;  // F
+          const colLocId = 6;  // G
+          const colAction = 7;  // H
+          const colVMType = 8;  // I
+          const colLocName = 9;  // J
+          const colNewPos = 10; // K
+          const colLocType = 11; // L
+          const colVMOnSite = 12; // M
+          const colRemarks = 13; // N
+          const colMachSetup = 14; // O
+          const colComTerm = 15; // P
+          const colPicSite = 16; // Q
+          const colPhone = 17; // R
+          const colAddress = 18; // S
+          const colType = 19; // T
+          const colStatus = 20; // U
+          const colReason = 21; // V
+          // Prepare-specific
+          const colTypeMachine = 8;  // I (sesuaikan jika beda)
+          const colExLocation = 9;  // J
+          const colPlanDeploy = 10; // K
 
-      const now = new Date();
+          let dispatchRows = [], prepareRows = [];
 
-      // Tanggal Hari Ini
-      const todayY = now.getFullYear();
-      const todayM = now.getMonth();
-      const todayD = now.getDate();
+          console.log("=== DEBUG BucketTask: total baris =", data.length - 1);
+          // ... di dalam loop for (let i = 1; i < data.length; i++)
+          for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            const divisi = (row[colDivisi] ?? '').toString().trim().toLowerCase();
+            const planDate = row[colPlanDate];
 
-      // Tanggal Besok
-      const tomorrow = new Date(todayY, todayM, todayD + 1);
+            // GANTI DI SINI: menggunakan fungsi baru yang mencakup Hari Ini & Besok
+            const isTargetDate = isTodayOrTomorrow(planDate);
 
-      // Cek Hari Ini
-      const isToday = (
-        parsed.year === todayY &&
-        parsed.month === todayM &&
-        parsed.day === todayD
-      );
+            console.log(`Baris ${i} | divisi="${divisi}" | planDate="${planDate}" | isTargetDate=${isTargetDate}`);
 
-      // Cek Besok
-      const isTomorrow = (
-        parsed.year === tomorrow.getFullYear() &&
-        parsed.month === tomorrow.getMonth() &&
-        parsed.day === tomorrow.getDate()
-      );
+            if (!isTargetDate) continue; // Jika bukan hari ini atau besok, lewati
 
-      return isToday || isTomorrow;
-    }
+            if (divisi === 'dispatch') dispatchRows.push(row);
+            else if (divisi === 'prepare') prepareRows.push(row);
+          }
+          console.log("dispatchRows:", dispatchRows.length, "| prepareRows:", prepareRows.length);
 
-    async function loadTaskOnGoing() {
-      // Tampilkan loading
-      document.getElementById('ongoing-dispatch-body').innerHTML = '<tr><td colspan="22"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-      document.getElementById('ongoing-prepare-body').innerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-      document.getElementById('ongoing-dispatch-empty').style.display = 'none';
-      document.getElementById('ongoing-prepare-empty').style.display = 'none';
-
-      try {
-        const res = await fetch(BUCKET_URL);
-        const data = await res.json();
-
-        const header = data[0] || [];
-        // Cari index kolom kunci
-        const colDivisi = 0;  // A
-        const colPlanDate = 1;  // B
-        const colPIC = 2;  // C
-        const colVMC = 3;  // D
-        const colTicket = 4;  // E
-        const colBD = 5;  // F
-        const colLocId = 6;  // G
-        const colAction = 7;  // H
-        const colVMType = 8;  // I
-        const colLocName = 9;  // J
-        const colNewPos = 10; // K
-        const colLocType = 11; // L
-        const colVMOnSite = 12; // M
-        const colRemarks = 13; // N
-        const colMachSetup = 14; // O
-        const colComTerm = 15; // P
-        const colPicSite = 16; // Q
-        const colPhone = 17; // R
-        const colAddress = 18; // S
-        const colType = 19; // T
-        const colStatus = 20; // U
-        const colReason = 21; // V
-        // Prepare-specific
-        const colTypeMachine = 8;  // I (sesuaikan jika beda)
-        const colExLocation = 9;  // J
-        const colPlanDeploy = 10; // K
-
-        let dispatchRows = [], prepareRows = [];
-
-        console.log("=== DEBUG BucketTask: total baris =", data.length - 1);
-        // ... di dalam loop for (let i = 1; i < data.length; i++)
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          const divisi = (row[colDivisi] ?? '').toString().trim().toLowerCase();
-          const planDate = row[colPlanDate];
-
-          // GANTI DI SINI: menggunakan fungsi baru yang mencakup Hari Ini & Besok
-          const isTargetDate = isTodayOrTomorrow(planDate);
-
-          console.log(`Baris ${i} | divisi="${divisi}" | planDate="${planDate}" | isTargetDate=${isTargetDate}`);
-
-          if (!isTargetDate) continue; // Jika bukan hari ini atau besok, lewati
-
-          if (divisi === 'dispatch') dispatchRows.push(row);
-          else if (divisi === 'prepare') prepareRows.push(row);
-        }
-        console.log("dispatchRows:", dispatchRows.length, "| prepareRows:", prepareRows.length);
-
-        // Render Dispatch
-        const dispBody = document.getElementById('ongoing-dispatch-body');
-        const dispEmpty = document.getElementById('ongoing-dispatch-empty');
-        dispBody.innerHTML = '';
-        if (dispatchRows.length === 0) {
-          dispEmpty.style.display = 'block';
-        } else {
-          dispEmpty.style.display = 'none';
-          dispatchRows.forEach((row, idx) => {
-            const statusVal = (row[colStatus] ?? '').toString().trim();
-            const tr = document.createElement('tr');
-            tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-            tr.innerHTML = `
+          // Render Dispatch
+          const dispBody = document.getElementById('ongoing-dispatch-body');
+          const dispEmpty = document.getElementById('ongoing-dispatch-empty');
+          dispBody.innerHTML = '';
+          if (dispatchRows.length === 0) {
+            dispEmpty.style.display = 'block';
+          } else {
+            dispEmpty.style.display = 'none';
+            dispatchRows.forEach((row, idx) => {
+              const statusVal = (row[colStatus] ?? '').toString().trim();
+              const tr = document.createElement('tr');
+              tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+              tr.innerHTML = `
               <td>${row[colDivisi] ?? ''}</td><td>${formatDate(row[colPlanDate])}</td>
               <td>${row[colPIC] ?? ''}</td><td>${row[colVMC] ?? ''}</td>
               <td>${row[colTicket] ?? ''}</td><td>${row[colBD] ?? ''}</td>
@@ -1416,23 +1390,23 @@
               <td>${row[colAddress] ?? ''}</td><td>${row[colType] ?? ''}</td>
               <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
               <td>${row[colReason] ?? ''}</td>`;
-            dispBody.appendChild(tr);
-          });
-        }
+              dispBody.appendChild(tr);
+            });
+          }
 
-        // Render Prepare
-        const prepBody = document.getElementById('ongoing-prepare-body');
-        const prepEmpty = document.getElementById('ongoing-prepare-empty');
-        prepBody.innerHTML = '';
-        if (prepareRows.length === 0) {
-          prepEmpty.style.display = 'block';
-        } else {
-          prepEmpty.style.display = 'none';
-          prepareRows.forEach((row, idx) => {
-            const statusVal = (row[colStatus] ?? '').toString().trim();
-            const tr = document.createElement('tr');
-            tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-            tr.innerHTML = `
+          // Render Prepare
+          const prepBody = document.getElementById('ongoing-prepare-body');
+          const prepEmpty = document.getElementById('ongoing-prepare-empty');
+          prepBody.innerHTML = '';
+          if (prepareRows.length === 0) {
+            prepEmpty.style.display = 'block';
+          } else {
+            prepEmpty.style.display = 'none';
+            prepareRows.forEach((row, idx) => {
+              const statusVal = (row[colStatus] ?? '').toString().trim();
+              const tr = document.createElement('tr');
+              tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+              tr.innerHTML = `
               <td>${row[colDivisi] ?? ''}</td><td>${formatDate(row[colPlanDate])}</td>
               <td>${row[colPIC] ?? ''}</td><td>${row[colVMC] ?? ''}</td>
               <td>${row[colAction] ?? ''}</td><td>${row[colTypeMachine] ?? ''}</td>
@@ -1440,140 +1414,140 @@
               <td>${row[colType] ?? ''}</td>
               <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
               <td>${row[colReason] ?? ''}</td>`;
-            prepBody.appendChild(tr);
-          });
-        }
-      } catch (e) {
-        console.error("loadTaskOnGoing:", e);
-        document.getElementById('ongoing-dispatch-body').innerHTML = '';
-        document.getElementById('ongoing-dispatch-empty').style.display = 'block';
-        document.getElementById('ongoing-dispatch-empty').textContent = 'Gagal memuat data.';
-        document.getElementById('ongoing-prepare-body').innerHTML = '';
-        document.getElementById('ongoing-prepare-empty').style.display = 'block';
-        document.getElementById('ongoing-prepare-empty').textContent = 'Gagal memuat data.';
-      }
-    }
-
-    // =============================================
-    // EXPORT SECTION (PDF / JPG / Share Blob)
-    // =============================================
-    async function exportSection(sectionId, fmt) {
-      const originalTable = document.getElementById('ongoing-dispatch-table');
-      const targetDiv = document.getElementById('export-target');
-      const container = document.getElementById('export-container');
-
-      const clone = originalTable.cloneNode(true);
-      clone.className = 'table-export';
-
-      // 2. FILTER BARIS (Hanya H+1 & Hapus Baris Kosong)
-      const tbody = clone.querySelector('tbody');
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      const now = new Date();
-      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-      rows.forEach(tr => {
-        // Cek baris benar-benar kosong (abaikan spasi/karakter tidak terlihat)
-        const isBlank = tr.innerText.replace(/[\s\u200b]/g, "").length === 0;
-
-        // Cek tanggal (sesuaikan index kolom setelah kolom Ticket dihapus)
-        const dateText = tr.cells[1]?.innerText.trim();
-        const parsed = parseDateOnly(dateText);
-
-        let isTomorrow = false;
-        if (parsed) {
-          isTomorrow = (parsed.year === tomorrow.getFullYear() &&
-            parsed.month === tomorrow.getMonth() &&
-            parsed.day === tomorrow.getDate());
-        }
-
-        if (!isTomorrow || isBlank) {
-          tr.remove();
-        }
-      });
-
-      targetDiv.innerHTML = '';
-      targetDiv.appendChild(clone);
-      container.style.display = 'block';
-
-      // 3. CAPTURE PRESISI
-      Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-      // CAPTURE 'clone' (tabelnya langsung), BUKAN 'container'-nya
-      const canvas = await html2canvas(clone, {
-        scale: 4,
-        backgroundColor: '#ffffff',
-        logging: false,
-        // Pastikan ukuran canvas pas dengan elemen tabel
-        width: clone.offsetWidth,
-        height: clone.offsetHeight
-      });
-
-      container.style.display = 'none';
-      Swal.close();
-
-      // Kembalikan Blob untuk digunakan atau disimpan
-      return new Promise((resolve) => {
-        canvas.toBlob((blob) => {
-          if (fmt === 'jpg') {
-            const link = document.createElement('a');
-            link.download = sectionId + '_task_besok.jpg';
-            link.href = URL.createObjectURL(blob);
-            link.click();
-          } else if (fmt === 'pdf') {
-            const { jsPDF } = window.jspdf;
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const pdf = new jsPDF('l', 'px', [canvas.width, canvas.height]);
-            pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-            pdf.save(sectionId + '_task_besok.pdf');
+              prepBody.appendChild(tr);
+            });
           }
-          resolve(blob);
-        }, 'image/jpeg', 0.95);
-      });
-    }
-
-    // =============================================
-    // SHARE TO WHATSAPP (Web Share API)
-    // =============================================
-    async function shareToWA(sectionId) {
-      Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-      try {
-        // Jalankan ekspor dan ambil blob-nya langsung
-        const blob = await exportSection(sectionId, 'share');
-        const file = new File([blob], 'Dispatch_Besok.jpg', { type: 'image/jpeg' });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Dispatch Task',
-            text: 'Berikut Plan Dispatch besok ya gaes yak...'
-          });
-          Swal.close();
-        } else {
-          // Fallback jika tidak mendukung: Download saja
-          Swal.close();
-          alert("Browser Anda tidak mendukung share langsung. File akan didownload.");
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = 'Dispatch_Besok.jpg';
-          link.click();
+        } catch (e) {
+          console.error("loadTaskOnGoing:", e);
+          document.getElementById('ongoing-dispatch-body').innerHTML = '';
+          document.getElementById('ongoing-dispatch-empty').style.display = 'block';
+          document.getElementById('ongoing-dispatch-empty').textContent = 'Gagal memuat data.';
+          document.getElementById('ongoing-prepare-body').innerHTML = '';
+          document.getElementById('ongoing-prepare-empty').style.display = 'block';
+          document.getElementById('ongoing-prepare-empty').textContent = 'Gagal memuat data.';
         }
-      } catch (err) {
-        Swal.close();
-        console.error("Gagal berbagi:", err);
       }
-    }
 
-    // =============================================
-    // INISIALISASI
-    // =============================================
-    window.addEventListener('load', async () => {
-      await Promise.all([loadMainData(), loadReqBDData(), loadSourceData()]);
-    });
-  </script>
-  <div id="export-container" style="display:none; padding: 20px; background: white;">
-    <div id="export-target"></div>
-  </div>
+      // =============================================
+      // EXPORT SECTION (PDF / JPG / Share Blob)
+      // =============================================
+      async function exportSection(sectionId, fmt) {
+        const originalTable = document.getElementById('ongoing-dispatch-table');
+        const targetDiv = document.getElementById('export-target');
+        const container = document.getElementById('export-container');
+
+        const clone = originalTable.cloneNode(true);
+        clone.className = 'table-export';
+
+        // 2. FILTER BARIS (Hanya H+1 & Hapus Baris Kosong)
+        const tbody = clone.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const now = new Date();
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+        rows.forEach(tr => {
+          // Cek baris benar-benar kosong (abaikan spasi/karakter tidak terlihat)
+          const isBlank = tr.innerText.replace(/[\s\u200b]/g, "").length === 0;
+
+          // Cek tanggal (sesuaikan index kolom setelah kolom Ticket dihapus)
+          const dateText = tr.cells[1]?.innerText.trim();
+          const parsed = parseDateOnly(dateText);
+
+          let isTomorrow = false;
+          if (parsed) {
+            isTomorrow = (parsed.year === tomorrow.getFullYear() &&
+              parsed.month === tomorrow.getMonth() &&
+              parsed.day === tomorrow.getDate());
+          }
+
+          if (!isTomorrow || isBlank) {
+            tr.remove();
+          }
+        });
+
+        targetDiv.innerHTML = '';
+        targetDiv.appendChild(clone);
+        container.style.display = 'block';
+
+        // 3. CAPTURE PRESISI
+        Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        // CAPTURE 'clone' (tabelnya langsung), BUKAN 'container'-nya
+        const canvas = await html2canvas(clone, {
+          scale: 4,
+          backgroundColor: '#ffffff',
+          logging: false,
+          // Pastikan ukuran canvas pas dengan elemen tabel
+          width: clone.offsetWidth,
+          height: clone.offsetHeight
+        });
+
+        container.style.display = 'none';
+        Swal.close();
+
+        // Kembalikan Blob untuk digunakan atau disimpan
+        return new Promise((resolve) => {
+          canvas.toBlob((blob) => {
+            if (fmt === 'jpg') {
+              const link = document.createElement('a');
+              link.download = sectionId + '_task_besok.jpg';
+              link.href = URL.createObjectURL(blob);
+              link.click();
+            } else if (fmt === 'pdf') {
+              const { jsPDF } = window.jspdf;
+              const imgData = canvas.toDataURL('image/jpeg', 0.95);
+              const pdf = new jsPDF('l', 'px', [canvas.width, canvas.height]);
+              pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+              pdf.save(sectionId + '_task_besok.pdf');
+            }
+            resolve(blob);
+          }, 'image/jpeg', 0.95);
+        });
+      }
+
+      // =============================================
+      // SHARE TO WHATSAPP (Web Share API)
+      // =============================================
+      async function shareToWA(sectionId) {
+        Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+          // Jalankan ekspor dan ambil blob-nya langsung
+          const blob = await exportSection(sectionId, 'share');
+          const file = new File([blob], 'Dispatch_Besok.jpg', { type: 'image/jpeg' });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Dispatch Task',
+              text: 'Berikut Plan Dispatch besok ya gaes yak...'
+            });
+            Swal.close();
+          } else {
+            // Fallback jika tidak mendukung: Download saja
+            Swal.close();
+            alert("Browser Anda tidak mendukung share langsung. File akan didownload.");
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Dispatch_Besok.jpg';
+            link.click();
+          }
+        } catch (err) {
+          Swal.close();
+          console.error("Gagal berbagi:", err);
+        }
+      }
+
+      // =============================================
+      // INISIALISASI
+      // =============================================
+      window.addEventListener('load', async () => {
+        await Promise.all([loadMainData(), loadReqBDData(), loadSourceData()]);
+      });
+    </script>
+    <div id="export-container" style="display:none; padding: 20px; background: white;">
+      <div id="export-target"></div>
+    </div>
   </div><!-- /app-wrapper -->
 </body>
 
