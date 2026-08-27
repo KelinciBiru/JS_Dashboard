@@ -1,20 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warehouse Pulogadung</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- html2canvas + jsPDF untuk export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *,
     *::before,
@@ -142,191 +136,13 @@
       display: block;
     }
 
-    /* ---- TABEL ---- */
-    .table-wrapper {
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid #e5e7eb;
-    }
-
-    .table-wrapper table {
-      border-collapse: separate;
-      border-spacing: 0;
-      width: 100%;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: auto;
-      font-size: 10px;
-    }
-
-    th,
-    td {
-      padding: 6px 5px;
-      border: 1px solid #e5e7eb;
-      word-wrap: break-word;
-      white-space: normal;
-      vertical-align: middle;
+    .placeholder-box {
+      border: 2px dashed #e2e8f0;
+      border-radius: 16px;
+      padding: 48px 24px;
       text-align: center;
-    }
-
-    th {
-      background-color: #0d0923;
-      font-weight: bold;
-      text-align: center;
-      color: #fff;
-    }
-
-    /* CSS Khusus untuk tabel hasil Capture */
-    .table-export {
-      width: 1000px !important;
-      /* Tentukan lebar statis yang pas, jangan % */
-      margin: 0 !important;
-      border-collapse: collapse;
-      /* Ganti separate ke collapse */
-      border: 1px solid #e5e7eb;
-      font-family: 'Arial', sans-serif;
-      font-size: 8px !important;
-      /* Perkecil font agar kolom tidak terlalu lebar */
-      background: white;
-      table-layout: fixed;
-      /* KUNCI: Paksa lebar kolom agar tidak melebar */
-    }
-
-    .table-export td,
-    .table-export th {
-      word-wrap: break-word;
-      /* KUNCI: Agar teks panjang pindah baris */
-      overflow-wrap: break-word;
-      white-space: normal;
-      /* Pastikan teks tidak memaksa satu baris */
-    }
-
-    #export-container {
-      display: none;
-      background: white;
-      padding: 20px !important;
-      width: 1020px !important;
-      /* Sesuaikan dengan lebar tabel */
-    }
-
-    /* ---- FORM ---- */
-    .form-input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 14px;
-      transition: all 0.3s ease;
-      background-color: #f8fafc;
-    }
-
-    .form-input:focus {
-      outline: none;
-      border-color: #3b82f6;
-      background-color: #fff;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    .input-form-container {
-      max-width: 900px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .select2-container {
-      width: 100% !important;
-    }
-
-    .select2-selection {
-      height: 42px !important;
-      display: flex !important;
-      align-items: center !important;
-    }
-
-    /* ---- SECTION TASK ON GOING ---- */
-    .ongoing-section {
-      margin-bottom: 32px;
-    }
-
-    .ongoing-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: #1e293b;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .empty-msg {
-      color: #64748b;
-      font-size: 13px;
-      padding: 20px;
-      text-align: center;
-      border: 1px dashed #cbd5e1;
-      border-radius: 10px;
-    }
-
-    /* ---- SHARE BUTTONS (Update) ---- */
-    .share-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: white;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-
-    .share-btn:active {
-      transform: scale(0.95);
-    }
-
-    /* Tombol WhatsApp (Biru Gelap Elegan) */
-    .share-btn-wa {
-      background-color: #1e2947;
-    }
-
-    .share-btn-wa:hover {
-      background-color: #5a5b5a;
-    }
-
-    /* ---- LOADING SPINNER ---- */
-    .spinner-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 32px 16px;
-      color: #64748b;
-      font-size: 13px;
-    }
-
-    .spinner {
-      width: 22px;
-      height: 22px;
-      border: 3px solid #e2e8f0;
-      border-top-color: #f5a623;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      flex-shrink: 0;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
+      color: #94a3b8;
+      background: #f8fafc;
     }
   </style>
 </head>
@@ -413,9 +229,10 @@
           <h2 class="text-gray-800 font-bold text-base mt-1">Warehouse</h2>
           <span class="text-amber-600 font-semibold text-xs">Pulogadung</span>
         </div>
-        <button onclick="location.reload()"
-          class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm"></button>Menu
-        Utama</button>
+
+        <button onclick="showPage('Dashboard')"
+          class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm">Menu
+          Utama</button>
 
         <!-- Inventory (ADMIN only) -->
         <div id="menu-inventory-wrap" class="space-y-1 mt-1">
@@ -430,6 +247,22 @@
             <button onclick="showInventory('Report Inventory CIMB')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
               CIMB</button>
+            <button onclick="showInventory('Stock Opname');"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Stock Opname</button>
+          </div>
+        </div>
+
+        <!-- Request BD (ADMIN only) -->
+        <div id="menu-salesstatus-wrap" class="space-y-1 mt-1">
+          <button onclick="toggleSubMenu('requestbd-sub','arrow-requestbd')"
+            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+            <span>Request BD</span><span id="arrow-requestbd" class="text-xs">▼</span>
+          </button>
+          <div id="requestbd-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showJabodetabek()"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Jabodetabek</button>
+            <button onclick="showEvent()"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Event</button>
           </div>
         </div>
 
@@ -442,7 +275,7 @@
           <div id="plan-task-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
             <button onclick="showInventory('Input Task')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
-            <button onclick="showInventory('Status Task'); loadTaskOnGoing();"
+            <button onclick="showInventory('Status Task')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
           </div>
         </div>
@@ -454,7 +287,7 @@
             <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
           </button>
           <div id="maintenance-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Team Dispatch'); loadDataDispatch();"
+            <button onclick="showInventory('Team Dispatch')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
           </div>
         </div>
@@ -466,7 +299,7 @@
             <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
           </button>
           <div id="po-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Team Prepare'); if(currentRole==='Prepare') loadDataPrepareUser();"
+            <button onclick="showInventory('Team Prepare')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
           </div>
         </div>
@@ -497,245 +330,325 @@
     <main>
       <!-- DASHBOARD -->
       <div id="content-Dashboard" class="page-content active-page">
-        <h1 class="text-lg font-bold text-slate-800 mb-2">Dashboard</h1>
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Dashboard</h1>
+        <div class="placeholder-box">Konten Dashboard — placeholder, akan dibangun ulang.</div>
       </div>
 
       <!-- INPUT TASK -->
       <div id="content-InputTask" class="page-content">
-        <h1 class="text-lg font-bold text-slate-700 mb-4">Input Task</h1>
-        <label for="ticketInput" class="block mb-2 font-medium text-sm">ID Ticket:</label>
-        <div class="flex gap-2 mb-4">
-          <input type="text" id="ticketInput" placeholder="Ketik ID Tiket di sini..."
-            class="border border-gray-300 p-2 rounded w-full max-w-sm text-sm"
-            onkeydown="if(event.key==='Enter') displayTicketDetails()">
-          <button onclick="displayTicketDetails()"
-            class="btn-press bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded text-sm font-semibold shadow">Cari
-          </button>
-        </div>
-
-        <div id="ticket-result-container"
-          style="display:none; margin-top:16px; padding:16px; border:1px solid #ddd; border-radius:12px; background:#f9f9f9;">
-          <h3 class="font-bold text-sm mb-2">Detail Tiket: <span id="res-ticket-id" class="text-amber-600"></span></h3>
-          <div id="res-details"></div>
-          <div id="full-data-container"
-            style="display:none; margin-top:12px; padding:12px; border:1px solid #ddd; border-radius:12px; background:#fff;">
-            <div class="overflow-x-auto border border-gray-300 rounded-lg">
-              <table class="min-w-full">
-                <thead>
-                  <tr>
-                    <th>TICKET</th>
-                    <th>BD</th>
-                    <th>LOC ID</th>
-                    <th>ACTION PLAN</th>
-                    <th>PROPOSED VM TYPE</th>
-                    <th>LOCATION NAME</th>
-                    <th>NEW VM POSITION</th>
-                    <th>LOCATION TYPE</th>
-                    <th>VM TYPE ON SITE</th>
-                    <th>REMARKS</th>
-                    <th>MACHINE SET UP</th>
-                    <th>COMMERCIAL TERM</th>
-                    <th>PIC Site</th>
-                    <th>Phone</th>
-                    <th>Address</th>
-                    <th>Category</th>
-                  </tr>
-                </thead>
-                <tbody id="full-data-body"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- FORM PLAN TASK -->
-          <div class="input-form-container mt-6 p-6 bg-white rounded-2xl shadow border border-slate-100">
-            <h3 class="text-base font-bold text-slate-700 mb-4 border-b pb-2">Form Plan Task</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div class="flex flex-col">
-                <label class="text-xs font-semibold text-slate-600 mb-1">Divisi</label>
-                <select id="inputDivisi" class="form-input"></select>
-              </div>
-              <div class="flex flex-col">
-                <label class="text-xs font-semibold text-slate-600 mb-1">Plan Date</label>
-                <input type="date" id="inputPlanDate" class="form-input">
-              </div>
-              <div class="flex flex-col">
-                <label class="text-xs font-semibold text-slate-600 mb-1">PIC</label>
-                <select id="inputPIC" multiple="multiple" class="form-input"></select>
-              </div>
-              <div class="flex flex-col">
-                <label class="text-xs font-semibold text-slate-600 mb-1">No. VMC</label>
-                <input type="text" id="inputVMC" placeholder="Contoh: VMC-001" class="form-input">
-              </div>
-              <div class="flex flex-col">
-                <label class="text-xs font-semibold text-slate-600 mb-1">No. Kendaraan</label>
-                <input type="text" id="inputKendaraan" placeholder="Contoh: B-1305-OPQ" class="form-input">
-              </div>
-            </div>
-            <div class="mt-5 flex justify-end">
-              <button onclick="submitTask()"
-                class="btn-press px-7 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow text-sm">Submit
-              </button>
-            </div>
-          </div>
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Input Task</h1>
+        <div id="input-task-empty" class="placeholder-box">Belum ada data yang dikirim dari menu Jabodetabek. Buka menu Request BD &gt; Jabodetabek, centang data, lalu klik tombol "Add".</div>
+        <div id="input-task-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
+          <table id="input-task-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="input-task-colgroup"></colgroup>
+            <thead id="input-task-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="input-task-tbody"></tbody>
+          </table>
         </div>
       </div>
 
       <!-- TASK ON GOING -->
       <div id="content-StatusTask" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-6">Task On Going</h1>
-
-        <!-- DISPATCH TABLE -->
-        <div class="ongoing-section">
-          <div class="ongoing-title">
-            <span id="dispatch-title-label">Task On Going — Dispatch</span>
-            <div class="flex gap-2">
-              <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('dispatch-section')">Share to
-                WhatsApp</button>
-            </div>
-          </div>
-          <div id="dispatch-section">
-            <p class="font-bold text-sm mb-2" style="color:#f5a623;">Task On Going — Dispatch</p>
-            <div class="overflow-x-auto rounded-lg border border-gray-200">
-              <table id="ongoing-dispatch-table">
-                <thead>
-                  <tr>
-                    <th>Divisi</th>
-                    <th>Plan Date</th>
-                    <th>PIC</th>
-                    <th>No.VMC</th>
-                    <th>TICKET</th>
-                    <th>BD</th>
-                    <th>LOC ID</th>
-                    <th>ACTION PLAN</th>
-                    <th>PROPOSED<br>VM TYPE</th>
-                    <th>LOCATION NAME</th>
-                    <th>NEW VM POSITION</th>
-                    <th>LOCATION TYPE</th>
-                    <th>VM<br>TYPE ON SITE</th>
-                    <th>REMARKS/<br>SPECIAL REQUIREMENTS</th>
-                    <th>MACHINE SET UP</th>
-                    <th>COMMERCIAL<br>TERM</th>
-                    <th>Term Detail</th>
-                    <th>PIC Site</th>
-                    <th>Phone</th>
-                    <th>Address</th>
-                    <th>Status</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody id="ongoing-dispatch-body"></tbody>
-              </table>
-            </div>
-            <div id="ongoing-dispatch-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.
-            </div>
-          </div>
-        </div>
-
-        <!-- PREPARE TABLE -->
-        <div class="ongoing-section">
-          <div class="ongoing-title">
-            <span>Task On Going — Prepare</span>
-            <div class="flex gap-2">
-              <button class="share-btn share-btn-wa btn-press" onclick="shareToWA('prepare-section')">Share to
-                WhatsApp</button>
-            </div>
-          </div>
-          <div id="prepare-section">
-            <p class="font-bold text-sm mb-2" style="color:#f5a623;">Task On Going — Prepare</p>
-            <div class="overflow-x-auto rounded-lg border border-gray-200">
-              <table id="ongoing-prepare-table">
-                <thead>
-                  <tr>
-                    <th>Divisi</th>
-                    <th>Plan Date</th>
-                    <th>PIC</th>
-                    <th>No.VMC</th>
-                    <th>ACTION PLAN</th>
-                    <th>Type Machine</th>
-                    <th>Ex Location</th>
-                    <th>Plan to Deploy</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Reason</th>
-                  </tr>
-                </thead>
-                <tbody id="ongoing-prepare-body"></tbody>
-              </table>
-            </div>
-            <div id="ongoing-prepare-empty" class="empty-msg" style="display:none;">Tidak ada Task yang berlangsung.
-            </div>
-          </div>
-        </div>
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Task On Going</h1>
+        <div class="placeholder-box">Konten Task On Going — placeholder, akan dibangun ulang.</div>
       </div>
 
-      <!-- TEAM DISPATCH (ADMIN view — semua kolom) -->
+      <!-- TEAM DISPATCH -->
       <div id="content-TeamDispatch" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Dispatch</h1>
-
-        <!-- Tabel ADMIN: semua kolom -->
-        <div id="dispatch-admin-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow">
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th>Divisi</th>
-                <th>Plan Date</th>
-                <th>PIC</th>
-                <th>No.VMC</th>
-                <th>TICKET</th>
-                <th>BD</th>
-                <th>ACTION PLAN</th>
-                <th>PROPOSED VM TYPE</th>
-                <th>LOCATION NAME</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="dispatch-table-body"></tbody>
-          </table>
-        </div>
-
-        <!-- Tabel DISPATCH USER: kolom terbatas sesuai permintaan -->
-        <div id="dispatch-user-view" class="overflow-x-auto rounded-lg border border-gray-300 shadow"
-          style="display:none;">
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th>Plan Date</th>
-                <th>PIC</th>
-                <th>No. VMC</th>
-                <th>Location Name</th>
-                <th>Action Plan</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="dispatch-user-table-body"></tbody>
-          </table>
-        </div>
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Team Dispatch</h1>
+        <div class="placeholder-box">Konten Team Dispatch — placeholder, akan dibangun ulang.</div>
       </div>
 
       <!-- TEAM PREPARE -->
       <div id="content-TeamPrepare" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Task Team Prepare</h1>
-        <div class="overflow-x-auto rounded-lg border border-gray-300 shadow">
-          <table class="w-full">
-            <thead>
-              <tr>
-                <th>Plan Date</th>
-                <th>PIC</th>
-                <th>No. VMC</th>
-                <th>Action Plan</th>
-                <th>Type Machine</th>
-                <th>Ex Location</th>
-                <th>Plan to Deploy</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="prepare-user-table-body"></tbody>
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Team Prepare</h1>
+        <div class="placeholder-box">Konten Team Prepare — placeholder, akan dibangun ulang.</div>
+      </div>
+
+      <!-- REPORT INVENTORY JS -->
+      <div id="content-ReportInventoryJS" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">Inventory Machine JS</h1>
+          <div class="flex items-center gap-2">
+            <input id="invJS-search" type="text" placeholder="Cari data..."
+              oninput="renderInventoryJSTable()"
+              class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            <button onclick="loadInventoryJS(true)"
+              class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+              ⟳ Refresh
+            </button>
+          </div>
+        </div>
+        <div id="invJS-status" class="text-xs text-slate-400 mb-2"></div>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full text-xs sm:text-sm">
+            <thead id="invJS-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="invJS-tbody"></tbody>
           </table>
         </div>
-        <div id="prepare-user-empty" class="empty-msg" style="display:none;">Tidak ada task Prepare saat ini.</div>
+      </div>
+
+      <!-- REPORT INVENTORY CIMB -->
+      <div id="content-ReportInventoryCIMB" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">Inventory Machine CIMB</h1>
+          <div class="flex items-center gap-2">
+            <input id="invCIMB-search" type="text" placeholder="Cari data..."
+              oninput="renderInventoryCIMBTable()"
+              class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            <button onclick="loadInventoryCIMB(true)"
+              class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+              ⟳ Refresh
+            </button>
+          </div>
+        </div>
+        <div id="invCIMB-status" class="text-xs text-slate-400 mb-2"></div>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full text-xs sm:text-sm">
+            <thead id="invCIMB-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="invCIMB-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- STOCK OPNAME -->
+      <div id="content-StockOpname" class="page-content">
+        <h1 class="text-lg font-bold text-slate-800 mb-4">Stock Opname</h1>
+
+        <div class="border border-slate-200 rounded-xl p-5 sm:p-6 bg-white">
+          <h2 class="text-sm font-semibold text-slate-700 mb-1">Form Input Stock Opname</h2>
+          <div id="stockOpname-status" class="text-xs text-slate-400 mb-4"></div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">No. VMC</label>
+              <input id="so-noVMC" type="text" placeholder="No. VMC"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Serial Number</label>
+              <input id="so-serialNumber" type="text" placeholder="Serial Number"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Ex Location</label>
+              <input id="so-exLocation" type="text" placeholder="Ex Location"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Machine Detail</label>
+              <select id="so-machineDetail"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih Machine Detail --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Machine Type</label>
+              <select id="so-machineType"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih Machine Type --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Loc ID</label>
+              <input id="so-locId" type="text" placeholder="Loc ID"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Location Name</label>
+              <input id="so-locationName" type="text" placeholder="Location Name"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Inbound Date</label>
+              <input id="so-inboundDate" type="date"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Outbound Date</label>
+              <input id="so-outboundDate" type="date"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Warehouse</label>
+              <select id="so-warehouse"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih Warehouse --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Final Status</label>
+              <select id="so-finalStatus"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih Final Status --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Assets</label>
+              <select id="so-assets"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih Assets --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Alokasi</label>
+              <select id="so-alokasi"
+                class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih Alokasi --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex justify-end mt-6">
+            <button onclick="saveStockOpname()"
+              class="btn-press px-6 py-2.5 text-sm font-bold rounded-lg text-white whitespace-nowrap"
+              style="background: linear-gradient(135deg,#f5a623,#e8910d); box-shadow:0 4px 14px rgba(245,166,35,.45);">
+              Simpan
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REQUEST BD - JABODETABEK -->
+      <div id="content-RequestBDJabodetabek" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">Request BD - Jabodetabek</h1>
+          <div class="flex flex-col items-stretch sm:items-end gap-2">
+            <div class="flex items-center gap-2">
+              <input id="jabodetabek-search" type="text" placeholder="Cari data..."
+                oninput="renderJabodetabekTable()"
+                class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+              <button onclick="loadJabodetabek(true)"
+                class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+                ⟳ Refresh
+              </button>
+            </div>
+            <div class="flex items-center gap-2 justify-end">
+              <button id="jabodetabek-addtask-btn" onclick="toggleJabodetabekAddTask()"
+                class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-amber-300 text-amber-600 hover:bg-amber-50 whitespace-nowrap">
+                + Add Task
+              </button>
+              <button id="jabodetabek-add-btn" onclick="confirmJabodetabekAddTask()"
+                class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-green-500 bg-green-500 text-white hover:bg-green-600 whitespace-nowrap">
+                Add
+              </button>
+              <button id="jabodetabek-cancel-btn" onclick="cancelJabodetabekAddTask()"
+                class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600 whitespace-nowrap">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="jabodetabek-status" class="text-xs text-slate-400 mb-2"></div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+          <table id="jabodetabek-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="jabodetabek-colgroup"></colgroup>
+            <thead id="jabodetabek-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="jabodetabek-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- REQUEST BD - EVENT -->
+      <div id="content-RequestBDEvent" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">Request BD - Event</h1>
+          <div class="flex flex-col items-stretch sm:items-end gap-2">
+            <div class="flex items-center gap-2">
+              <input id="event-search" type="text" placeholder="Cari data..."
+                oninput="renderEventTable()"
+                class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+              <button onclick="loadEvent(true)"
+                class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+                ⟳ Refresh
+              </button>
+            </div>
+            <div class="flex items-center gap-2 justify-end">
+              <button id="event-addtask-btn" onclick="toggleEventAddTask()"
+                class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-amber-300 text-amber-600 hover:bg-amber-50 whitespace-nowrap">
+                + Add Task
+              </button>
+              <button id="event-add-btn" onclick="confirmEventAddTask()"
+                class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-green-500 bg-green-500 text-white hover:bg-green-600 whitespace-nowrap">
+                Add
+              </button>
+              <button id="event-cancel-btn" onclick="cancelEventAddTask()"
+                class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600 whitespace-nowrap">
+                Batal
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="event-status" class="text-xs text-slate-400 mb-2"></div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+          <table id="event-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="event-colgroup"></colgroup>
+            <thead id="event-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="event-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </main>
+
+    <!-- ============================================================
+         STOCK OPNAME - POPUP PILIH SHEET TUJUAN
+    ============================================================ -->
+    <div id="so-target-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-black/50 p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <h3 class="text-sm font-bold text-slate-800 mb-1">Pilih Sheet Tujuan</h3>
+        <p class="text-xs text-slate-500 mb-4">Pilih salah satu sheet tempat data Stock Opname akan disimpan.</p>
+
+        <div id="so-target-options" class="flex flex-col gap-2 mb-2">
+          <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+            <input type="checkbox" class="so-target-checkbox w-4 h-4 accent-amber-500" value="Mart-Unique Machine Report" onchange="handleTargetCheckboxChange(this)">
+            Mart-Unique Machine Report
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+            <input type="checkbox" class="so-target-checkbox w-4 h-4 accent-amber-500" value="TT Machine Report" onchange="handleTargetCheckboxChange(this)">
+            TT Machine Report
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+            <input type="checkbox" class="so-target-checkbox w-4 h-4 accent-amber-500" value="FS ICE Machine Report" onchange="handleTargetCheckboxChange(this)">
+            FS ICE Machine Report
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+            <input type="checkbox" class="so-target-checkbox w-4 h-4 accent-amber-500" value="FS HOT Machine Report" onchange="handleTargetCheckboxChange(this)">
+            FS HOT Machine Report
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+            <input type="checkbox" class="so-target-checkbox w-4 h-4 accent-amber-500" value="Coffee Capsule Report IZZIO - JS" onchange="handleTargetCheckboxChange(this)">
+            Coffee Capsule Report IZZIO - JS
+          </label>
+        </div>
+
+        <div id="so-target-error" class="text-xs text-red-500 mb-1 hidden">⚠️ Pilih salah satu sheet tujuan terlebih dahulu.</div>
+
+        <!-- Progress bar saat proses simpan -->
+        <div id="so-save-progress-wrap" class="hidden mt-3">
+          <div class="flex justify-between text-xs text-slate-500 mb-1">
+            <span>Menyimpan data...</span>
+            <span id="so-save-progress-pct">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div id="so-save-progress-bar"
+              class="h-full rounded-full"
+              style="width:0%; background: linear-gradient(135deg,#f5a623,#e8910d); transition: width 0.2s ease;"></div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-5">
+          <button id="so-modal-cancel-btn" onclick="closeStockOpnameTargetModal()"
+            class="btn-press px-5 py-2.5 text-sm font-bold rounded-lg border-2 border-slate-200 text-slate-600">
+            Batal
+          </button>
+          <button id="so-modal-save-btn" onclick="confirmSaveStockOpname()"
+            class="btn-press px-5 py-2.5 text-sm font-bold rounded-lg text-white"
+            style="background: linear-gradient(135deg,#f5a623,#e8910d); box-shadow:0 4px 14px rgba(245,166,35,.45);">
+            Simpan
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
       // =============================================
@@ -746,6 +659,13 @@
         Dispatch: 'dispatch123',
         Prepare: 'prepare123',
       };
+
+      // =============================================
+      // KONFIGURASI GAS BACKEND
+      // =============================================
+      const INVENTORY_JS_GAS_URL = 'https://script.google.com/macros/s/AKfycbyePiLWXnEBqi2WgugH6723y3jAFREKhZlfLf8SpcdVngrwqz7Yw09SxFIFB7doAxz_/exec';
+      // Stock Opname sekarang disimpan lewat GAS backend yang sama (INVENTORY_JS_GAS_URL),
+      // action doPost baru: 'saveStockOpname'. Tidak perlu GAS URL terpisah lagi.
 
       let currentRole = '';
       let selectedRole = '';
@@ -766,7 +686,6 @@
             btn.style.boxShadow = 'none';
           }
         });
-        // Focus ke input password
         document.getElementById('loginPassword').focus();
       }
 
@@ -782,14 +701,13 @@
         err.style.display = 'none';
         currentRole = selectedRole;
 
-        // Sembunyikan login, tampilkan app
+        localStorage.setItem('nod_currentRole', currentRole);
+
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('app-wrapper').style.display = 'block';
 
-        // Set badge role di sidebar
         const badge = document.getElementById('sidebar-role-badge');
-        const roleIcon = { ADMIN: '', Dispatch: '', Prepare: '' };
-        badge.textContent = `${roleIcon[currentRole]} ${currentRole}`;
+        badge.textContent = currentRole;
 
         applyRoleAccess();
       }
@@ -797,9 +715,9 @@
       function doLogout() {
         currentRole = '';
         selectedRole = '';
+        localStorage.removeItem('nod_currentRole');
         document.getElementById('loginPassword').value = '';
         document.getElementById('login-error').style.display = 'none';
-        // Reset role button
         ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
           const btn = document.getElementById('role-' + r);
           btn.style.background = '#f8fafc';
@@ -812,6 +730,24 @@
       }
 
       /**
+       * Cek sesi tersimpan di localStorage saat halaman dimuat/refresh.
+       */
+      function restoreSession() {
+        const savedRole = localStorage.getItem('nod_currentRole');
+        if (savedRole && PASSWORDS.hasOwnProperty(savedRole)) {
+          currentRole = savedRole;
+
+          document.getElementById('login-page').style.display = 'none';
+          document.getElementById('app-wrapper').style.display = 'block';
+
+          const badge = document.getElementById('sidebar-role-badge');
+          if (badge) badge.textContent = currentRole;
+
+          applyRoleAccess();
+        }
+      }
+
+      /**
        * Terapkan akses sesuai role:
        * - ADMIN     → semua menu tampil, langsung ke Dashboard
        * - Dispatch  → hanya menu Team Dispatch, langsung ke Team Dispatch
@@ -819,51 +755,45 @@
        */
       function applyRoleAccess() {
         const menuInventory = document.getElementById('menu-inventory-wrap');
+        const menuSalesStatus = document.getElementById('menu-salesstatus-wrap');
         const menuPlanTask = document.getElementById('menu-plantask-wrap');
         const menuDispatch = document.getElementById('menu-dispatch-wrap');
         const menuPrepare = document.getElementById('menu-prepare-wrap');
 
         if (currentRole === 'ADMIN') {
-          // Semua menu tampil
-          [menuInventory, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
+          [menuInventory, menuSalesStatus, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
           showPage('Dashboard');
         } else if (currentRole === 'Dispatch') {
-          // Hanya Team Dispatch
           if (menuInventory) menuInventory.style.display = 'none';
+          if (menuSalesStatus) menuSalesStatus.style.display = 'none';
           if (menuPlanTask) menuPlanTask.style.display = 'none';
           if (menuDispatch) menuDispatch.style.display = '';
           if (menuPrepare) menuPrepare.style.display = 'none';
-          // Buka submenu otomatis
           document.getElementById('maintenance-sub').classList.remove('hidden');
           showPage('Team Dispatch');
-          loadDataDispatch();
         } else if (currentRole === 'Prepare') {
-          // Hanya Team Prepare
           if (menuInventory) menuInventory.style.display = 'none';
+          if (menuSalesStatus) menuSalesStatus.style.display = 'none';
           if (menuPlanTask) menuPlanTask.style.display = 'none';
           if (menuDispatch) menuDispatch.style.display = 'none';
           if (menuPrepare) menuPrepare.style.display = '';
-          // Buka submenu otomatis
           document.getElementById('po-sub').classList.remove('hidden');
           showPage('Team Prepare');
-          loadDataPrepareUser();
         }
       }
 
       // =============================================
-      // SIDEBAR TOGGLE
+      // SIDEBAR TOGGLE + INIT
       // =============================================
       document.addEventListener('DOMContentLoaded', () => {
+        restoreSession();
+
         const btn = document.getElementById('menu-btn');
         const sidebar = document.getElementById('sidebar');
         if (btn && sidebar) {
           btn.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.toggle('active'); });
           document.addEventListener('click', e => { if (!sidebar.contains(e.target) && e.target !== btn) sidebar.classList.remove('active'); });
         }
-        // Init Select2
-        $('#inputDivisi').select2({ placeholder: "Pilih Divisi" });
-        $('#inputPIC').select2({ placeholder: "Pilih PIC", multiple: true });
-        loadDataAndPopulate();
       });
 
       // =============================================
@@ -893,661 +823,741 @@
         arrow.style.transform = sub.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
         sub.style.paddingBottom = sub.classList.contains('hidden') ? '0' : '10px';
       }
-      function showInventory(n) { showPage(n); }
+      function showInventory(n) {
+        showPage(n);
+        if (n === 'Report Inventory JS') loadInventoryJS(false);
+        if (n === 'Report Inventory CIMB') loadInventoryCIMB(false);
+        if (n === 'Stock Opname') loadStockOpnameSource(false);
+        if (n === 'Input Task') renderInputTaskTable();
+      }
 
-      // =============================================
-      // GLOBALS
-      // =============================================
-      window.dataSheetUtama = [];
-      window.dataReqBD = [];
-      window.dataSource = [];
-
-      // =============================================
-      // LOAD DATA UTAMA (untuk pencarian tiket)
-      // =============================================
-      async function loadMainData() {
-        const URL = 'https://script.google.com/macros/s/AKfycbze58WL_LPRuAI9jXenMXrnlUqUdTj6sg0WavRVJszi_hCORiut3dB3wKXb2wQQFdOI5w/exec';
-        try { const r = await fetch(URL); window.dataSheetUtama = await r.json(); }
-        catch (e) { console.error("loadMainData:", e); }
+      function showJabodetabek() {
+        showPage('Request BD Jabodetabek');
+        loadJabodetabek(false);
       }
 
       // =============================================
-      // LOAD DATA REQ_BD
+      // INVENTORY MACHINE JS
       // =============================================
-      async function loadReqBDData() {
-        const URL = 'https://script.google.com/macros/s/AKfycbxGWpV_8VeKO-AxUJwBzSJRPMWaO4ulBVhlagVLmdRLtoMhBjQVT46jonTQKr-Unozx4w/exec';
-        try { const r = await fetch(URL); window.dataReqBD = await r.json(); }
-        catch (e) { console.error("loadReqBDData:", e); }
-      }
+      let _invJSHeaders = [];
+      let _invJSData = [];
+      let _invJSLoaded = false;
 
-      // =============================================
-      // LOAD SOURCE (dropdown)
-      // =============================================
-      async function loadSourceData() {
-        const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
-        try { const r = await fetch(URL); window.dataSource = await r.json(); }
-        catch (e) { console.error("loadSourceData:", e); }
-      }
-      async function loadDataAndPopulate() {
-        const URL = 'https://script.google.com/macros/s/AKfycbxNAfLfHg9KiuCBe1OV3OylGaNfsGTTazO06JSKm77Io0U0o6k8dA7z3BUqRWGAihruPw/exec';
+      async function loadInventoryJS(forceRefresh) {
+        const statusEl = document.getElementById('invJS-status');
+        if (_invJSLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
         try {
-          const r = await fetch(URL); window.dataSource = await r.json();
-          const divSel = $('#inputDivisi'), picSel = $('#inputPIC');
-          [...new Set(window.dataSource.slice(1).map(r => r[3]).filter(v => v))].forEach(v => divSel.append(new Option(v, v)));
-          [...new Set(window.dataSource.slice(1).map(r => r[4]).filter(v => v))].forEach(v => picSel.append(new Option(v, v)));
-          divSel.trigger('change'); picSel.trigger('change');
-        } catch (e) { console.error(e); }
-      }
-
-      // =============================================
-      // CARI TIKET
-      // =============================================
-      function displayTicketDetails() {
-        const selectedId = document.getElementById('ticketInput').value.trim();
-        if (!selectedId) { Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Harap masukkan ID Ticket.', timer: 1500, showConfirmButton: false }); return; }
-        const resultContainer = document.getElementById('ticket-result-container');
-        const foundUtama = window.dataSheetUtama.find(r => String(r[0]).trim() == selectedId);
-        resultContainer.style.display = foundUtama ? 'block' : 'none';
-        const headerRow = window.dataReqBD[0]; if (!headerRow) return;
-        const ticketColIndex = headerRow.indexOf('TICKET');
-        const foundReqBD = window.dataReqBD.find(r => String(r[ticketColIndex]).trim() == selectedId);
-        const container = document.getElementById('full-data-container');
-        const tbody = document.getElementById('full-data-body');
-        if (foundReqBD) {
-          container.style.display = 'block';
-          resultContainer.style.display = 'block';
-          const g = name => { const i = headerRow.indexOf(name); return (i !== -1 && foundReqBD[i] !== "") ? foundReqBD[i] : '-'; };
-          tbody.innerHTML = `<tr class="text-xs">
-          <td>${g('TICKET')}</td><td>${g('BD PIC')}</td><td>${g('TICKET NUMBER / LOCATION ID')}</td>
-          <td>${g('ACTION PLAN')}</td><td>${g('PROPOSED VM TYPE')}</td><td>${g('LOCATION NAME')}</td>
-          <td>${g('NEW VM POSITION')}</td><td>${g('LOCATION TYPE')}</td><td>${g('VM TYPE ON SITE')}</td>
-          <td>${g('REMARKS/SPECIAL REQUIREMENTS')}</td><td>${g('MACHINE SET UP')}</td>
-          <td>${g('COMMERCIAL TERM')}</td><td>${g('SITE PIC')}</td><td>${g('SITE PIC PHONE NO.')}</td>
-          <td>${g('DELIVERY / PICK UP ADDRESS')}</td><td>${g('CATEGORY')}</td>
-        </tr>`;
-        } else {
-          container.style.display = 'none';
-          if (!foundUtama) Swal.fire({ icon: 'error', title: 'Tidak Ditemukan', text: `ID Ticket "${selectedId}" tidak ada dalam data.` });
-        }
-      }
-
-      // =============================================
-      // SUBMIT TASK
-      // =============================================
-      async function submitTask() {
-        try {
-          let pic = $('#inputPIC').val() || [];
-          if (typeof pic === 'string') pic = [pic];
-          const tbody = document.getElementById('full-data-body');
-          const row = tbody?.querySelector('tr');
-          if (!row) { Swal.fire({ icon: 'warning', title: 'Data belum dimuat', text: 'Cari dan muat tiket terlebih dahulu.' }); return; }
-          const cells = row.querySelectorAll('td');
-          if (cells.length < 16) { Swal.fire({ icon: 'error', title: 'Data tidak lengkap' }); return; }
-          const payload = {
-            Divisi: document.getElementById('inputDivisi').value,
-            PlanDate: document.getElementById('inputPlanDate').value,
-            PIC: pic.join(', '),
-            NoVMC: document.getElementById('inputVMC').value,
-            NoKendaraan: document.getElementById('inputKendaraan').value,
-            TICKET: cells[0].innerText, BD: cells[1].innerText,
-            TICKET_LOCATION_ID: cells[2].innerText, ACTION_PLAN: cells[3].innerText,
-            PROPOSED_VM_TYPE: cells[4].innerText, LOCATION_NAME: cells[5].innerText,
-            NEW_VM_POSITION: cells[6].innerText, LOCATION_TYPE: cells[7].innerText,
-            VM_TYPE_ON_SITE: cells[8].innerText, MACHINE_SETUP: cells[9].innerText,
-            COMMERCIAL_TERM: cells[10].innerText, SITE_PIC: cells[11].innerText,
-            PHONE_NO: "'" + cells[12].innerText, ADDRESS: cells[13].innerText,
-            CATEGORY: cells[14].innerText, STATUS: cells[15].innerText || 'Open'
-          };
-          const URL = 'https://script.google.com/macros/s/AKfycbzgslvschOPciAErBb0AaFfmx5yOgUjR9qekLMePsmdnYw6DcaR5FFg3ljqmk9lYTaW3g/exec';
-          const res = await fetch(URL, { method: 'POST', body: JSON.stringify(payload) });
-          if (res.ok) {
-            Swal.fire({ title: 'On Task!', text: 'Data berhasil disimpan.', icon: 'success', showConfirmButton: false, timer: 1500 });
-            document.getElementById('inputDivisi').value = null;
-            document.getElementById('inputPIC').value = null;
-            $('#inputDivisi').trigger('change'); $('#inputPIC').trigger('change');
-            document.getElementById('inputPlanDate').value = '';
-            document.getElementById('inputVMC').value = '';
-            document.getElementById('inputKendaraan').value = '';
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getInventoryJS');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
           }
-        } catch (e) {
-          console.error(e);
-          Swal.fire({ title: 'Gagal!', text: 'Data tidak tersimpan.', icon: 'error' });
-        }
-      }
-
-      // =============================================
-      // FORMAT TANGGAL
-      // =============================================
-      const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-      function formatDate(val) {
-        if (!val) return '';
-
-        // 1. Jika berupa angka (Serial Number Excel/Sheets)
-        if (typeof val === 'number') {
-          // 25569 adalah angka untuk 1 Januari 1970
-          const ms = (val - 25569) * 86400 * 1000;
-          const d = new Date(ms);
-          // Gunakan getUTCDate() agar tidak terpengaruh timezone lokal
-          return `${d.getUTCDate().toString().padStart(2, '0')} ${BULAN[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-        }
-
-        // 2. Jika berupa string tanggal ("2026-06-06")
-        const s = String(val).trim();
-        if (s.includes('-')) {
-          const p = s.split('T')[0].split('-'); // Ambil bagian tanggal saja
-          return `${p[2].padStart(2, '0')} ${BULAN[parseInt(p[1]) - 1]} ${p[0]}`;
-        }
-
-        return s;
-      }
-
-      // =============================================
-      // DISPATCH URL
-      // =============================================
-      const DISPATCH_URL = "https://script.google.com/macros/s/AKfycby_GipEwHDORWvvnXi6HsLmo2wMkkC9txSI37x4v9xh725mrwPx9VP9kB7Bmt13t0LoOQ/exec";
-      
-      function parseDateOnly(val) {
-        if (!val) return null;
-        const s = String(val).trim();
-
-        // Cukup gunakan logika ini untuk format YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-          const p = s.split('T')[0].split('-');
-          return {
-            year: parseInt(p[0]),
-            month: parseInt(p[1]) - 1, // Bulan 0-11
-            day: parseInt(p[2])
-          };
-        }
-        return null;
-      }
-
-      // =============================================
-      // TASK TEAM DISPATCH
-      // =============================================
-
-      async function loadDataDispatch() {
-        // Tampilkan spinner di kedua tabel
-        const spinnerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-        const adminBody = document.getElementById('dispatch-table-body');
-        const userBody = document.getElementById('dispatch-user-table-body');
-        if (adminBody) adminBody.innerHTML = spinnerHTML;
-        if (userBody) userBody.innerHTML = spinnerHTML;
-
-        try {
-          const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
-          const r = await fetch(urlWithCacheBuster);
-          renderDispatchTable(await r.json());
-        } catch (e) {
-          console.error(e);
-          const errHTML = '<tr><td colspan="11" style="color:#ef4444;padding:20px;text-align:center;">Gagal memuat data. Coba lagi.</td></tr>';
-          if (adminBody) adminBody.innerHTML = errHTML;
-          if (userBody) userBody.innerHTML = errHTML;
-        }
-      }
-      function renderDispatchTable(data) {
-        // Tampilkan view sesuai role
-        const adminView = document.getElementById('dispatch-admin-view');
-        const userView = document.getElementById('dispatch-user-view');
-
-        if (currentRole === 'Dispatch') {
-          if (adminView) adminView.style.display = 'none';
-          if (userView) userView.style.display = '';
-          renderDispatchUserTable(data);
-        } else {
-          if (adminView) adminView.style.display = '';
-          if (userView) userView.style.display = 'none';
-          renderDispatchAdminTable(data);
-        }
-      }
-
-      /** Tabel ADMIN — semua kolom */
-      function renderDispatchAdminTable(data) {
-        const tbody = document.getElementById('dispatch-table-body');
-        tbody.innerHTML = '';
-        let count = 0;
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
-          if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-          const ticketId = (row[4] ?? '').toString().trim();
-          const statusVal = (row[20] ?? '').toString().trim();
-          const tr = document.createElement('tr');
-          tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-          tr.innerHTML = `
-          <td>${row[0] ?? ''}</td><td>${formatDate(row[1])}</td><td>${row[2] ?? ''}</td><td>${row[3] ?? ''}</td>
-          <td>${row[4] ?? ''}</td><td>${row[5] ?? ''}</td><td>${row[7] ?? ''}</td><td>${row[8] ?? ''}</td>
-          <td>${row[9] ?? ''}</td>
-          <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
-          <td class="whitespace-nowrap">
-            <button onclick="handleAction('${ticketId}','Done')" class="btn-press bg-green-600 text-white px-2 py-1 rounded text-xs mr-1">Done</button>
-            <button onclick="handleAction('${ticketId}','Cancel')" class="btn-press bg-red-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
-          </td>`;
-          tbody.appendChild(tr);
-          count++;
-        }
-      }
-
-      /**
-       * Tabel USER Dispatch — kolom terbatas:
-       * Plan Date | PIC | No. Kendaraan | Location Name | Action Plan | Action (Done/Cancel)
-       * Kolom mapping (0-based): 1=PlanDate, 2=PIC, 3=No.VMC/Kendaraan, 7=ActionPlan, 9=LocName, 4=Ticket
-       */
-      function renderDispatchUserTable(data) {
-        const tbody = document.getElementById('dispatch-user-table-body');
-        tbody.innerHTML = '';
-        let count = 0;
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i];
-          if ((row[0] ?? '').toString().trim().toLowerCase() !== 'dispatch') continue;
-          if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-          const ticketId = (row[4] ?? '').toString().trim();
-          const tr = document.createElement('tr');
-          tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-          tr.innerHTML = `
-          <td>${formatDate(row[1])}</td>
-          <td>${row[2] ?? ''}</td>
-          <td>${row[3] ?? ''}</td>
-          <td>${row[9] ?? ''}</td>
-          <td>${row[7] ?? ''}</td>
-          <td class="whitespace-nowrap">
-            <button onclick="handleAction('${ticketId}','Done')"
-              class="btn-press bg-green-600 text-white px-2 py-1 rounded text-xs mr-1">Done</button>
-            <button onclick="handleAction('${ticketId}','Cancel')"
-              class="btn-press bg-red-500 text-white px-2 py-1 rounded text-xs">Cancel</button>
-          </td>`;
-          tbody.appendChild(tr);
-          count++;
-        }
-        if (count === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;padding:20px;text-align:center;">Tidak ada task Dispatch saat ini.</td></tr>';
-        }
-      }
-
-      /** Load & render tabel Prepare untuk user Prepare */
-      async function loadDataPrepareUser() {
-        const tbody = document.getElementById('prepare-user-table-body');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-
-        try {
-          const urlWithCacheBuster = DISPATCH_URL + "?v=" + new Date().getTime();
-          const r = await fetch(urlWithCacheBuster);
-          const data = await r.json();
-          const tbody = document.getElementById('prepare-user-table-body');
-          const empty = document.getElementById('prepare-user-empty');
-          if (!tbody) return;
-          tbody.innerHTML = '';
-          let count = 0;
-          for (let i = 1; i < data.length; i++) {
-            const row = data[i];
-            if ((row[0] ?? '').toString().trim().toLowerCase() !== 'prepare') continue;
-            if ((row[20] ?? '').toString().trim().toLowerCase() === 'closed') continue;
-            const statusVal = (row[20] ?? '').toString().trim();
-            const tr = document.createElement('tr');
-            tr.className = count % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-            tr.innerHTML = `
-            <td>${formatDate(row[1])}</td>
-            <td>${row[2] ?? ''}</td>
-            <td>${row[3] ?? ''}</td>
-            <td>${row[7] ?? ''}</td>
-            <td>${row[8] ?? ''}</td>
-            <td>${row[9] ?? ''}</td>
-            <td>${row[10] ?? ''}</td>
-            <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>`;
-            tbody.appendChild(tr);
-            count++;
-          }
-          if (empty) empty.style.display = count === 0 ? 'block' : 'none';
-        } catch (e) {
-          console.error('loadDataPrepareUser:', e);
-        }
-      }
-
-      async function handleAction(ticketId, action) {
-        if (!ticketId) { Swal.fire({ icon: 'error', title: 'Ticket ID tidak ditemukan!' }); return; }
-        const title = action === "Done" ? "Alasan Take Out / Withdrawal / Switch Unit" : "Alasan Pembatalan";
-        const { value: reason } = await Swal.fire({
-          title, input: 'textarea',
-          inputPlaceholder: action === "Done" ? "Contoh: Mesin di-withdraw karena kontrak selesai..." : "Masukkan alasan pembatalan...",
-          inputAttributes: { rows: 3 }, showCancelButton: true,
-          confirmButtonText: 'Lanjutkan', cancelButtonText: 'Batal',
-          inputValidator: v => (!v || !v.trim()) ? 'Alasan tidak boleh kosong!' : null
-        });
-        if (!reason) return;
-        const ok = await Swal.fire({ title: `Konfirmasi ${action}`, text: `Tandai ticket "${ticketId}" sebagai ${action}?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, lanjutkan', cancelButtonText: 'Batal' });
-        if (!ok.isConfirmed) return;
-        try {
-          const payload = { ticketId: ticketId.trim(), action, reason: reason.trim(), sheetName: "Plan Task" };
-          const res = await fetch(DISPATCH_URL, { method: 'POST', body: JSON.stringify(payload) });
-          const text = await res.text();
-          let result;
-          try { result = JSON.parse(text); } catch { Swal.fire({ icon: 'error', title: 'Response tidak valid.' }); return; }
-          if (result.status === 'success') {
-            document.querySelectorAll('#dispatch-table-body tr').forEach(tr => {
-              if (tr.cells[4]?.innerText.trim() === ticketId) tr.remove();
-            });
-            Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false });
-            loadDataDispatch();
-          } else {
-            Swal.fire({ icon: 'error', title: 'Gagal', text: result.message || 'Terjadi kesalahan.' });
-          }
-        } catch (e) { Swal.fire({ icon: 'error', title: 'Gagal mengirim data.' }); }
-      }
-
-      // =============================================
-      // TASK ON GOING — BucketTask
-      // Kriteria: Plan Date = BESOK (H+1)
-      // =============================================
-      const BUCKET_URL = "https://script.google.com/macros/s/AKfycbwC0X7E-XL3HazaB8xlyCWYrl-G4sHk6gR4Z8AhusPE8HusBCG-KuTPln6Ft1NqhvTN5w/exec";
-
-      // Ekstrak tanggal dari berbagai format → { year, month, day } atau null
-      function parseDateOnly(val) {
-        if (!val && val !== 0) return null;
-
-        // 1. Angka serial Excel/Sheets (misal: 46977)
-        if (typeof val === 'number' || (typeof val === 'string' && !isNaN(val) && !String(val).includes('-') && !String(val).includes('/'))) {
-          const n = Number(val);
-          if (n > 1000) {
-            const ms = (n - 25569) * 86400 * 1000;
-            const d = new Date(ms);
-            return { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate() };
-          }
-          return null;
-        }
-
-        const s = String(val).trim();
-
-        // 2. ISO format: "2026-06-06" atau "2026-06-06T00:00:00.000Z"
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-          const p = s.split('T')[0].split('-');
-          return { year: parseInt(p[0]), month: parseInt(p[1]) - 1, day: parseInt(p[2]) };
-        }
-
-        // 3. Format DD/MM/YYYY
-        if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
-          const p = s.split('/');
-          return { year: parseInt(p[2]), month: parseInt(p[1]) - 1, day: parseInt(p[0]) };
-        }
-
-        return null;
-      }
-
-      // Cek apakah tanggal adalah hari ini ATAU besok
-      function isTodayOrTomorrow(val) {
-        const parsed = parseDateOnly(val);
-        if (!parsed) return false;
-
-        const now = new Date();
-
-        // Tanggal Hari Ini
-        const todayY = now.getFullYear();
-        const todayM = now.getMonth();
-        const todayD = now.getDate();
-
-        // Tanggal Besok
-        const tomorrow = new Date(todayY, todayM, todayD + 1);
-
-        // Cek Hari Ini
-        const isToday = (
-          parsed.year === todayY &&
-          parsed.month === todayM &&
-          parsed.day === todayD
-        );
-
-        // Cek Besok
-        const isTomorrow = (
-          parsed.year === tomorrow.getFullYear() &&
-          parsed.month === tomorrow.getMonth() &&
-          parsed.day === tomorrow.getDate()
-        );
-
-        return isToday || isTomorrow;
-      }
-
-      async function loadTaskOnGoing() {
-        // Tampilkan loading
-        document.getElementById('ongoing-dispatch-body').innerHTML = '<tr><td colspan="22"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-        document.getElementById('ongoing-prepare-body').innerHTML = '<tr><td colspan="11"><div class="spinner-wrap"><div class="spinner"></div><span>Memuat data...</span></div></td></tr>';
-        document.getElementById('ongoing-dispatch-empty').style.display = 'none';
-        document.getElementById('ongoing-prepare-empty').style.display = 'none';
-
-        try {
-          const res = await fetch(BUCKET_URL);
-          const data = await res.json();
-
-          const header = data[0] || [];
-          // Cari index kolom kunci
-          const colDivisi = 0;  // A
-          const colPlanDate = 1;  // B
-          const colPIC = 2;  // C
-          const colVMC = 3;  // D
-          const colTicket = 4;  // E
-          const colBD = 5;  // F
-          const colLocId = 6;  // G
-          const colAction = 7;  // H
-          const colVMType = 8;  // I
-          const colLocName = 9;  // J
-          const colNewPos = 10; // K
-          const colLocType = 11; // L
-          const colVMOnSite = 12; // M
-          const colRemarks = 13; // N
-          const colMachSetup = 14; // O
-          const colComTerm = 15; // P
-          const colPicSite = 16; // Q
-          const colPhone = 17; // R
-          const colAddress = 18; // S
-          const colType = 19; // T
-          const colStatus = 20; // U
-          const colReason = 21; // V
-          // Prepare-specific
-          const colTypeMachine = 8;  // I (sesuaikan jika beda)
-          const colExLocation = 9;  // J
-          const colPlanDeploy = 10; // K
-
-          let dispatchRows = [], prepareRows = [];
-
-          console.log("=== DEBUG BucketTask: total baris =", data.length - 1);
-          // ... di dalam loop for (let i = 1; i < data.length; i++)
-          for (let i = 1; i < data.length; i++) {
-            const row = data[i];
-            const divisi = (row[colDivisi] ?? '').toString().trim().toLowerCase();
-            const planDate = row[colPlanDate];
-
-            // GANTI DI SINI: menggunakan fungsi baru yang mencakup Hari Ini & Besok
-            const isTargetDate = isTodayOrTomorrow(planDate);
-
-            console.log(`Baris ${i} | divisi="${divisi}" | planDate="${planDate}" | isTargetDate=${isTargetDate}`);
-
-            if (!isTargetDate) continue; // Jika bukan hari ini atau besok, lewati
-
-            if (divisi === 'dispatch') dispatchRows.push(row);
-            else if (divisi === 'prepare') prepareRows.push(row);
-          }
-          console.log("dispatchRows:", dispatchRows.length, "| prepareRows:", prepareRows.length);
-
-          // Render Dispatch
-          const dispBody = document.getElementById('ongoing-dispatch-body');
-          const dispEmpty = document.getElementById('ongoing-dispatch-empty');
-          dispBody.innerHTML = '';
-          if (dispatchRows.length === 0) {
-            dispEmpty.style.display = 'block';
-          } else {
-            dispEmpty.style.display = 'none';
-            dispatchRows.forEach((row, idx) => {
-              const statusVal = (row[colStatus] ?? '').toString().trim();
-              const tr = document.createElement('tr');
-              tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-              tr.innerHTML = `
-              <td>${row[colDivisi] ?? ''}</td><td>${formatDate(row[colPlanDate])}</td>
-              <td>${row[colPIC] ?? ''}</td><td>${row[colVMC] ?? ''}</td>
-              <td>${row[colTicket] ?? ''}</td><td>${row[colBD] ?? ''}</td>
-              <td>${row[colLocId] ?? ''}</td><td>${row[colAction] ?? ''}</td>
-              <td>${row[colVMType] ?? ''}</td><td>${row[colLocName] ?? ''}</td>
-              <td>${row[colNewPos] ?? ''}</td><td>${row[colLocType] ?? ''}</td>
-              <td>${row[colVMOnSite] ?? ''}</td><td>${row[colRemarks] ?? ''}</td>
-              <td>${row[colMachSetup] ?? ''}</td><td>${row[colComTerm] ?? ''}</td>
-              <td>${row[colPicSite] ?? ''}</td><td>${row[colPhone] ?? ''}</td>
-              <td>${row[colAddress] ?? ''}</td><td>${row[colType] ?? ''}</td>
-              <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
-              <td>${row[colReason] ?? ''}</td>`;
-              dispBody.appendChild(tr);
-            });
-          }
-
-          // Render Prepare
-          const prepBody = document.getElementById('ongoing-prepare-body');
-          const prepEmpty = document.getElementById('ongoing-prepare-empty');
-          prepBody.innerHTML = '';
-          if (prepareRows.length === 0) {
-            prepEmpty.style.display = 'block';
-          } else {
-            prepEmpty.style.display = 'none';
-            prepareRows.forEach((row, idx) => {
-              const statusVal = (row[colStatus] ?? '').toString().trim();
-              const tr = document.createElement('tr');
-              tr.className = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-              tr.innerHTML = `
-              <td>${row[colDivisi] ?? ''}</td><td>${formatDate(row[colPlanDate])}</td>
-              <td>${row[colPIC] ?? ''}</td><td>${row[colVMC] ?? ''}</td>
-              <td>${row[colAction] ?? ''}</td><td>${row[colTypeMachine] ?? ''}</td>
-              <td>${row[colExLocation] ?? ''}</td><td>${row[colPlanDeploy] ?? ''}</td>
-              <td>${row[colType] ?? ''}</td>
-              <td>${statusVal === '' ? '<span style="color:green;font-weight:600;">Open</span>' : statusVal}</td>
-              <td>${row[colReason] ?? ''}</td>`;
-              prepBody.appendChild(tr);
-            });
-          }
-        } catch (e) {
-          console.error("loadTaskOnGoing:", e);
-          document.getElementById('ongoing-dispatch-body').innerHTML = '';
-          document.getElementById('ongoing-dispatch-empty').style.display = 'block';
-          document.getElementById('ongoing-dispatch-empty').textContent = 'Gagal memuat data.';
-          document.getElementById('ongoing-prepare-body').innerHTML = '';
-          document.getElementById('ongoing-prepare-empty').style.display = 'block';
-          document.getElementById('ongoing-prepare-empty').textContent = 'Gagal memuat data.';
-        }
-      }
-
-      // =============================================
-      // EXPORT SECTION (PDF / JPG / Share Blob)
-      // =============================================
-      async function exportSection(sectionId, fmt) {
-        const originalTable = document.getElementById('ongoing-dispatch-table');
-        const targetDiv = document.getElementById('export-target');
-        const container = document.getElementById('export-container');
-
-        const clone = originalTable.cloneNode(true);
-        clone.className = 'table-export';
-
-        // 2. FILTER BARIS (Hanya H+1 & Hapus Baris Kosong)
-        const tbody = clone.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        const now = new Date();
-        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-        rows.forEach(tr => {
-          // Cek baris benar-benar kosong (abaikan spasi/karakter tidak terlihat)
-          const isBlank = tr.innerText.replace(/[\s\u200b]/g, "").length === 0;
-
-          // Cek tanggal (sesuaikan index kolom setelah kolom Ticket dihapus)
-          const dateText = tr.cells[1]?.innerText.trim();
-          const parsed = parseDateOnly(dateText);
-
-          let isTomorrow = false;
-          if (parsed) {
-            isTomorrow = (parsed.year === tomorrow.getFullYear() &&
-              parsed.month === tomorrow.getMonth() &&
-              parsed.day === tomorrow.getDate());
-          }
-
-          if (!isTomorrow || isBlank) {
-            tr.remove();
-          }
-        });
-
-        targetDiv.innerHTML = '';
-        targetDiv.appendChild(clone);
-        container.style.display = 'block';
-
-        // 3. CAPTURE PRESISI
-        Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        // CAPTURE 'clone' (tabelnya langsung), BUKAN 'container'-nya
-        const canvas = await html2canvas(clone, {
-          scale: 4,
-          backgroundColor: '#ffffff',
-          logging: false,
-          // Pastikan ukuran canvas pas dengan elemen tabel
-          width: clone.offsetWidth,
-          height: clone.offsetHeight
-        });
-
-        container.style.display = 'none';
-        Swal.close();
-
-        // Kembalikan Blob untuk digunakan atau disimpan
-        return new Promise((resolve) => {
-          canvas.toBlob((blob) => {
-            if (fmt === 'jpg') {
-              const link = document.createElement('a');
-              link.download = sectionId + '_task_besok.jpg';
-              link.href = URL.createObjectURL(blob);
-              link.click();
-            } else if (fmt === 'pdf') {
-              const { jsPDF } = window.jspdf;
-              const imgData = canvas.toDataURL('image/jpeg', 0.95);
-              const pdf = new jsPDF('l', 'px', [canvas.width, canvas.height]);
-              pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-              pdf.save(sectionId + '_task_besok.pdf');
-            }
-            resolve(blob);
-          }, 'image/jpeg', 0.95);
-        });
-      }
-
-      // =============================================
-      // SHARE TO WHATSAPP (Web Share API)
-      // =============================================
-      async function shareToWA(sectionId) {
-        Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        try {
-          // Jalankan ekspor dan ambil blob-nya langsung
-          const blob = await exportSection(sectionId, 'share');
-          const file = new File([blob], 'Dispatch_Besok.jpg', { type: 'image/jpeg' });
-
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: 'Dispatch Task',
-              text: 'Berikut Plan Dispatch besok ya gaes yak...'
-            });
-            Swal.close();
-          } else {
-            // Fallback jika tidak mendukung: Download saja
-            Swal.close();
-            alert("Browser Anda tidak mendukung share langsung. File akan didownload.");
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'Dispatch_Besok.jpg';
-            link.click();
-          }
+          _invJSHeaders = json.headers || [];
+          _invJSData = json.data || [];
+          _invJSLoaded = true;
+          statusEl.textContent = _invJSData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderInventoryJSTable();
         } catch (err) {
-          Swal.close();
-          console.error("Gagal berbagi:", err);
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
         }
       }
 
+      function renderInventoryJSTable() {
+        const thead = document.getElementById('invJS-thead');
+        const tbody = document.getElementById('invJS-tbody');
+        const keyword = (document.getElementById('invJS-search').value || '').toLowerCase().trim();
+
+        thead.innerHTML = '<tr>' + _invJSHeaders.map(h =>
+          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200">' + (h || '') + '</th>'
+        ).join('') + '</tr>';
+
+        const filtered = !keyword ? _invJSData : _invJSData.filter(row =>
+          _invJSHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
+        );
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + (_invJSHeaders.length || 1) +
+            '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(row =>
+          '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+          _invJSHeaders.map(h => '<td class="px-3 py-2">' + (row[h] ?? '') + '</td>').join('') +
+          '</tr>'
+        ).join('');
+      }
+
       // =============================================
-      // INISIALISASI
+      // INVENTORY MACHINE CIMB
       // =============================================
-      window.addEventListener('load', async () => {
-        await Promise.all([loadMainData(), loadReqBDData(), loadSourceData()]);
-      });
+      let _invCIMBHeaders = [];
+      let _invCIMBData = [];
+      let _invCIMBLoaded = false;
+
+      async function loadInventoryCIMB(forceRefresh) {
+        const statusEl = document.getElementById('invCIMB-status');
+        if (_invCIMBLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getInventoryCIMB');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _invCIMBHeaders = json.headers || [];
+          _invCIMBData = json.data || [];
+          _invCIMBLoaded = true;
+          statusEl.textContent = _invCIMBData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderInventoryCIMBTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderInventoryCIMBTable() {
+        const thead = document.getElementById('invCIMB-thead');
+        const tbody = document.getElementById('invCIMB-tbody');
+        const keyword = (document.getElementById('invCIMB-search').value || '').toLowerCase().trim();
+
+        thead.innerHTML = '<tr>' + _invCIMBHeaders.map(h =>
+          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200">' + (h || '') + '</th>'
+        ).join('') + '</tr>';
+
+        const filtered = !keyword ? _invCIMBData : _invCIMBData.filter(row =>
+          _invCIMBHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
+        );
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + (_invCIMBHeaders.length || 1) +
+            '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(row =>
+          '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+          _invCIMBHeaders.map(h => '<td class="px-3 py-2">' + (row[h] ?? '') + '</td>').join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // =============================================
+      // REQUEST BD - JABODETABEK
+      // =============================================
+      let _jabodetabekHeaders = [];
+      let _jabodetabekData = [];
+      let _jabodetabekLoaded = false;
+      let _jabodetabekAddTaskMode = false;
+      let _jabodetabekSelectedRows = new Set();
+
+      // Kolom yang ditampilkan di menu "Input Task" setelah data dikirim dari Jabodetabek
+      const INPUT_TASK_COLUMNS = [
+        'TICKET', 'BD PIC', 'TICKET NUMBER / LOCATION ID', 'ACTION PLAN',
+        'PROPOSED VM TYPE', 'LOCATION NAME', 'NEW VM POSITION',
+        'VM TYPE ON SITE', 'REMARKS', 'DELIVERY / PICK UP ADDRESS'
+      ];
+      let _inputTaskRows = [];
+
+      // Cari nama header asli di sheet yang cocok (case/spasi-insensitive) dengan
+      // nama kolom target, supaya tidak meleset kalau ada beda kapitalisasi/spasi.
+      function _findHeaderKey(headers, target) {
+        const norm = s => String(s).trim().toLowerCase().replace(/\s+/g, ' ');
+        const found = headers.find(h => norm(h) === norm(target));
+        return found !== undefined ? found : target;
+      }
+
+      function _mapToInputTaskColumns(row) {
+        const obj = {};
+        INPUT_TASK_COLUMNS.forEach(col => {
+          const key = _findHeaderKey(_jabodetabekHeaders, col);
+          obj[col] = row[key] ?? '';
+        });
+        return obj;
+      }
+
+      // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
+      function toggleJabodetabekAddTask() {
+        _jabodetabekAddTaskMode = true;
+        _jabodetabekSelectedRows.clear();
+        document.getElementById('jabodetabek-addtask-btn').classList.add('hidden');
+        document.getElementById('jabodetabek-add-btn').classList.remove('hidden');
+        document.getElementById('jabodetabek-cancel-btn').classList.remove('hidden');
+        renderJabodetabekTable();
+      }
+
+      // Tombol "Batal": kembali ke tampilan semula tanpa checkbox
+      function cancelJabodetabekAddTask() {
+        _jabodetabekAddTaskMode = false;
+        _jabodetabekSelectedRows.clear();
+        document.getElementById('jabodetabek-addtask-btn').classList.remove('hidden');
+        document.getElementById('jabodetabek-add-btn').classList.add('hidden');
+        document.getElementById('jabodetabek-cancel-btn').classList.add('hidden');
+        renderJabodetabekTable();
+      }
+
+      function handleJabodetabekRowCheck(checkbox, rowIndex) {
+        if (checkbox.checked) _jabodetabekSelectedRows.add(rowIndex);
+        else _jabodetabekSelectedRows.delete(rowIndex);
+      }
+
+      function handleJabodetabekSelectAll(checkbox) {
+        document.querySelectorAll('.jabodetabek-row-checkbox').forEach(cb => {
+          cb.checked = checkbox.checked;
+          const idx = Number(cb.dataset.rowIndex);
+          if (checkbox.checked) _jabodetabekSelectedRows.add(idx);
+          else _jabodetabekSelectedRows.delete(idx);
+        });
+      }
+
+      // Tombol "Add": proses baris yang dicentang lalu kembali ke tampilan semula
+      function confirmJabodetabekAddTask() {
+        if (_jabodetabekSelectedRows.size === 0) {
+          alert('Pilih minimal satu baris data terlebih dahulu.');
+          return;
+        }
+        // Indeks di _jabodetabekSelectedRows mengacu pada hasil filter (pencarian) saat
+        // checkbox dicentang, jadi pakai ulang filter yang sama supaya baris yang diambil tepat.
+        const keyword = (document.getElementById('jabodetabek-search').value || '').toLowerCase().trim();
+        const filtered = !keyword ? _jabodetabekData : _jabodetabekData.filter(row =>
+          _jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
+        );
+
+        _inputTaskRows = Array.from(_jabodetabekSelectedRows)
+          .sort((a, b) => a - b)
+          .map(i => filtered[i])
+          .filter(Boolean)
+          .map(_mapToInputTaskColumns);
+
+        cancelJabodetabekAddTask();
+        showPage('Input Task');
+        renderInputTaskTable();
+      }
+
+      async function loadJabodetabek(forceRefresh) {
+        const statusEl = document.getElementById('jabodetabek-status');
+        if (_jabodetabekLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabek');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _jabodetabekHeaders = json.headers || [];
+          _jabodetabekData = json.data || [];
+          _jabodetabekLoaded = true;
+          statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderJabodetabekTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      // Lebar minimum per kolom (px) supaya tidak terlalu sempit saat kolom banyak
+      const MIN_COL_WIDTH_PX = 150;
+      const CHECKBOX_COL_WIDTH_PX = 44;
+
+      // hasCheckbox: true jika mode "Add Task" aktif, sehingga kolom checkbox
+      // ekstra di sebelah kiri ikut dihitung di <colgroup> (kalau tidak, jumlah
+      // <col> tidak sama dengan jumlah kolom tabel dan layout tabel jadi rusak).
+      function applyEqualColumns(tableId, colgroupId, headers, hasCheckbox) {
+        const table = document.getElementById(tableId);
+        const colgroup = document.getElementById(colgroupId);
+        const n = headers.length || 1;
+
+        const checkboxCol = hasCheckbox ? '<col style="width:' + CHECKBOX_COL_WIDTH_PX + 'px">' : '';
+        const dataColWidth = hasCheckbox
+          ? 'calc((100% - ' + CHECKBOX_COL_WIDTH_PX + 'px) / ' + n + ')'
+          : (100 / n).toFixed(4) + '%';
+
+        colgroup.innerHTML = checkboxCol + headers.map(() => '<col style="width:' + dataColWidth + '">').join('');
+        table.style.minWidth = (n * MIN_COL_WIDTH_PX + (hasCheckbox ? CHECKBOX_COL_WIDTH_PX : 0)) + 'px';
+        table.style.width = '100%';
+      }
+
+      function renderJabodetabekTable() {
+        const thead = document.getElementById('jabodetabek-thead');
+        const tbody = document.getElementById('jabodetabek-tbody');
+        const keyword = (document.getElementById('jabodetabek-search').value || '').toLowerCase().trim();
+
+        applyEqualColumns('jabodetabek-table', 'jabodetabek-colgroup', _jabodetabekHeaders, _jabodetabekAddTaskMode);
+
+        const checkboxTh = _jabodetabekAddTaskMode
+          ? '<th class="px-2 py-3 text-center border-b border-slate-700 align-bottom">' +
+            '<input type="checkbox" onchange="handleJabodetabekSelectAll(this)"></th>'
+          : '';
+
+        thead.innerHTML = '<tr>' + checkboxTh + _jabodetabekHeaders.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          (h || '') + '</th>'
+        ).join('') + '</tr>';
+
+        const filtered = !keyword ? _jabodetabekData : _jabodetabekData.filter(row =>
+          _jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
+        );
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + (_jabodetabekHeaders.length + (_jabodetabekAddTaskMode ? 1 : 0) || 1) +
+            '" class="px-3 py-8 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map((row, i) => {
+          const checkboxTd = _jabodetabekAddTaskMode
+            ? '<td class="px-2 py-2.5 text-center align-top">' +
+              '<input type="checkbox" class="jabodetabek-row-checkbox" data-row-index="' + i + '" ' +
+              (_jabodetabekSelectedRows.has(i) ? 'checked ' : '') +
+              'onchange="handleJabodetabekRowCheck(this, ' + i + ')"></td>'
+            : '';
+          return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+            checkboxTd +
+            _jabodetabekHeaders.map(h =>
+              '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
+            ).join('') +
+            '</tr>';
+        }).join('');
+      }
+
+      // =============================================
+      // INPUT TASK (data dikirim dari Request BD - Jabodetabek)
+      // =============================================
+      function renderInputTaskTable() {
+        const emptyEl = document.getElementById('input-task-empty');
+        const wrapEl = document.getElementById('input-task-table-wrap');
+        const thead = document.getElementById('input-task-thead');
+        const tbody = document.getElementById('input-task-tbody');
+
+        if (!_inputTaskRows.length) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.classList.add('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        wrapEl.classList.remove('hidden');
+
+        applyEqualColumns('input-task-table', 'input-task-colgroup', INPUT_TASK_COLUMNS, false);
+
+        thead.innerHTML = '<tr>' + INPUT_TASK_COLUMNS.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          h + '</th>'
+        ).join('') + '</tr>';
+
+        tbody.innerHTML = _inputTaskRows.map((row, i) =>
+          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+          INPUT_TASK_COLUMNS.map(h =>
+            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
+          ).join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // =============================================
+      // REQUEST BD - EVENT
+      // =============================================
+      let _eventHeaders = [];
+      let _eventData = [];
+      let _eventLoaded = false;
+      let _eventAddTaskMode = false;
+      let _eventSelectedRows = new Set();
+
+      // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
+      function toggleEventAddTask() {
+        _eventAddTaskMode = true;
+        _eventSelectedRows.clear();
+        document.getElementById('event-addtask-btn').classList.add('hidden');
+        document.getElementById('event-add-btn').classList.remove('hidden');
+        document.getElementById('event-cancel-btn').classList.remove('hidden');
+        renderEventTable();
+      }
+
+      // Tombol "Batal": kembali ke tampilan semula tanpa checkbox
+      function cancelEventAddTask() {
+        _eventAddTaskMode = false;
+        _eventSelectedRows.clear();
+        document.getElementById('event-addtask-btn').classList.remove('hidden');
+        document.getElementById('event-add-btn').classList.add('hidden');
+        document.getElementById('event-cancel-btn').classList.add('hidden');
+        renderEventTable();
+      }
+
+      function handleEventRowCheck(checkbox, rowIndex) {
+        if (checkbox.checked) _eventSelectedRows.add(rowIndex);
+        else _eventSelectedRows.delete(rowIndex);
+      }
+
+      function handleEventSelectAll(checkbox) {
+        document.querySelectorAll('.event-row-checkbox').forEach(cb => {
+          cb.checked = checkbox.checked;
+          const idx = Number(cb.dataset.rowIndex);
+          if (checkbox.checked) _eventSelectedRows.add(idx);
+          else _eventSelectedRows.delete(idx);
+        });
+      }
+
+      // Tombol "Add": proses baris yang dicentang lalu kembali ke tampilan semula
+      function confirmEventAddTask() {
+        if (_eventSelectedRows.size === 0) {
+          alert('Pilih minimal satu baris data terlebih dahulu.');
+          return;
+        }
+        // TODO: sambungkan ke logika/endpoint "Add Task" sesungguhnya di sini
+        alert(_eventSelectedRows.size + ' baris data dipilih untuk ditambahkan sebagai task.');
+        cancelEventAddTask();
+      }
+
+      function showEvent() {
+        showPage('Request BD Event');
+        loadEvent(false);
+      }
+
+      async function loadEvent(forceRefresh) {
+        const statusEl = document.getElementById('event-status');
+        if (_eventLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getEvent');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _eventHeaders = json.headers || [];
+          _eventData = json.data || [];
+          _eventLoaded = true;
+          statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderEventTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderEventTable() {
+        const thead = document.getElementById('event-thead');
+        const tbody = document.getElementById('event-tbody');
+        const keyword = (document.getElementById('event-search').value || '').toLowerCase().trim();
+
+        applyEqualColumns('event-table', 'event-colgroup', _eventHeaders, _eventAddTaskMode);
+
+        const checkboxTh = _eventAddTaskMode
+          ? '<th class="px-2 py-3 text-center border-b border-slate-700 align-bottom">' +
+            '<input type="checkbox" onchange="handleEventSelectAll(this)"></th>'
+          : '';
+
+        thead.innerHTML = '<tr>' + checkboxTh + _eventHeaders.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          (h || '') + '</th>'
+        ).join('') + '</tr>';
+
+        const filtered = !keyword ? _eventData : _eventData.filter(row =>
+          _eventHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
+        );
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + (_eventHeaders.length + (_eventAddTaskMode ? 1 : 0) || 1) +
+            '" class="px-3 py-8 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map((row, i) => {
+          const checkboxTd = _eventAddTaskMode
+            ? '<td class="px-2 py-2.5 text-center align-top">' +
+              '<input type="checkbox" class="event-row-checkbox" data-row-index="' + i + '" ' +
+              (_eventSelectedRows.has(i) ? 'checked ' : '') +
+              'onchange="handleEventRowCheck(this, ' + i + ')"></td>'
+            : '';
+          return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+            checkboxTd +
+            _eventHeaders.map(h =>
+              '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
+            ).join('') +
+            '</tr>';
+        }).join('');
+      }
+
+      // =============================================
+      // STOCK OPNAME — FORM INPUT
+      // =============================================
+      const STOCK_OPNAME_FIELD_IDS = [
+        'so-noVMC', 'so-serialNumber', 'so-exLocation', 'so-machineDetail',
+        'so-machineType', 'so-locId', 'so-locationName', 'so-inboundDate',
+        'so-outboundDate', 'so-warehouse', 'so-finalStatus', 'so-assets', 'so-alokasi'
+      ];
+
+      // Dropdown Stock Opname yang sumbernya dari sheet "Source" (satu GAS backend
+      // yang sama dengan INVENTORY_JS_GAS_URL, action baru: getSourceDropdowns)
+      const STOCK_OPNAME_DROPDOWN_MAP = {
+        'so-machineDetail': { key: 'machineDetail', placeholder: '-- Pilih Machine Detail --' },
+        'so-machineType': { key: 'machineType', placeholder: '-- Pilih Machine Type --' },
+        'so-warehouse': { key: 'warehouse', placeholder: '-- Pilih Warehouse --' },
+        'so-finalStatus': { key: 'finalStatus', placeholder: '-- Pilih Final Status --' },
+        'so-assets': { key: 'assets', placeholder: '-- Pilih Assets --' },
+        'so-alokasi': { key: 'alokasi', placeholder: '-- Pilih Alokasi --' },
+      };
+      let _stockOpnameSourceLoaded = false;
+
+      async function loadStockOpnameSource(forceRefresh) {
+        const statusEl = document.getElementById('stockOpname-status');
+        if (_stockOpnameSourceLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat pilihan dropdown...';
+        statusEl.style.color = '#94a3b8';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSourceDropdowns');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat pilihan dropdown');
+            statusEl.style.color = '#ef4444';
+            return;
+          }
+
+          Object.keys(STOCK_OPNAME_DROPDOWN_MAP).forEach(function (elId) {
+            const cfg = STOCK_OPNAME_DROPDOWN_MAP[elId];
+            const selectEl = document.getElementById(elId);
+            const options = json[cfg.key] || [];
+            selectEl.innerHTML = '<option value="">' + cfg.placeholder + '</option>' +
+              options.map(function (v) {
+                return '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>';
+              }).join('');
+          });
+
+          _stockOpnameSourceLoaded = true;
+          statusEl.textContent = '';
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          statusEl.style.color = '#ef4444';
+        }
+      }
+
+      let _pendingStockOpnamePayload = null;
+
+      // Tombol "Simpan" utama di form: validasi field wajib, lalu buka popup pilih sheet tujuan
+      function saveStockOpname() {
+        const statusEl = document.getElementById('stockOpname-status');
+
+        const payload = {
+          noVMC: document.getElementById('so-noVMC').value.trim(),
+          serialNumber: document.getElementById('so-serialNumber').value.trim(),
+          exLocation: document.getElementById('so-exLocation').value.trim(),
+          machineDetail: document.getElementById('so-machineDetail').value.trim(),
+          machineType: document.getElementById('so-machineType').value.trim(),
+          locId: document.getElementById('so-locId').value.trim(),
+          locationName: document.getElementById('so-locationName').value.trim(),
+          inboundDate: document.getElementById('so-inboundDate').value,
+          outboundDate: document.getElementById('so-outboundDate').value,
+          warehouse: document.getElementById('so-warehouse').value.trim(),
+          finalStatus: document.getElementById('so-finalStatus').value.trim(),
+          assets: document.getElementById('so-assets').value.trim(),
+          alokasi: document.getElementById('so-alokasi').value.trim(),
+        };
+
+        if (!payload.noVMC || !payload.serialNumber) {
+          statusEl.textContent = '⚠️ No. VMC dan Serial Number wajib diisi.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script untuk menyimpan ke Sheet.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        statusEl.textContent = '';
+        _pendingStockOpnamePayload = payload;
+        openStockOpnameTargetModal();
+      }
+
+      function openStockOpnameTargetModal() {
+        const modal = document.getElementById('so-target-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      function closeStockOpnameTargetModal() {
+        const modal = document.getElementById('so-target-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.querySelectorAll('.so-target-checkbox').forEach(cb => { cb.checked = false; });
+        document.getElementById('so-target-error').classList.add('hidden');
+        _stopStockOpnameProgressSim();
+        _setStockOpnameModalBusy(false);
+      }
+
+      // Checkbox target sheet hanya boleh salah satu yang tercentang
+      function handleTargetCheckboxChange(checkbox) {
+        if (checkbox.checked) {
+          document.querySelectorAll('.so-target-checkbox').forEach(cb => {
+            if (cb !== checkbox) cb.checked = false;
+          });
+        }
+        document.getElementById('so-target-error').classList.add('hidden');
+      }
+
+      // =============================================
+      // PROGRESS BAR SIMULASI SAAT MENYIMPAN STOCK OPNAME
+      // (request POST-nya kecil/instan, jadi persentase disimulasikan naik
+      // halus sampai 90% sambil menunggu respons GAS, lalu loncat ke 100%
+      // begitu respons diterima)
+      // =============================================
+      let _soProgressInterval = null;
+      let _soProgressValue = 0;
+
+      function _startStockOpnameProgressSim() {
+        const wrap = document.getElementById('so-save-progress-wrap');
+        const bar = document.getElementById('so-save-progress-bar');
+        const pct = document.getElementById('so-save-progress-pct');
+
+        _soProgressValue = 0;
+        bar.style.width = '0%';
+        pct.textContent = '0%';
+        wrap.classList.remove('hidden');
+
+        clearInterval(_soProgressInterval);
+        _soProgressInterval = setInterval(() => {
+          // naik makin lambat semakin dekat ke 90%, tidak pernah melewati 90% sebelum respons datang
+          const remaining = 90 - _soProgressValue;
+          const step = Math.max(0.5, remaining * 0.12);
+          _soProgressValue = Math.min(90, _soProgressValue + step);
+          bar.style.width = _soProgressValue.toFixed(0) + '%';
+          pct.textContent = _soProgressValue.toFixed(0) + '%';
+        }, 150);
+      }
+
+      function _finishStockOpnameProgressSim(onDone) {
+        clearInterval(_soProgressInterval);
+        const bar = document.getElementById('so-save-progress-bar');
+        const pct = document.getElementById('so-save-progress-pct');
+        _soProgressValue = 100;
+        bar.style.width = '100%';
+        pct.textContent = '100%';
+        setTimeout(() => {
+          _stopStockOpnameProgressSim();
+          if (onDone) onDone();
+        }, 350);
+      }
+
+      function _stopStockOpnameProgressSim() {
+        clearInterval(_soProgressInterval);
+        _soProgressInterval = null;
+        _soProgressValue = 0;
+        const wrap = document.getElementById('so-save-progress-wrap');
+        const bar = document.getElementById('so-save-progress-bar');
+        const pct = document.getElementById('so-save-progress-pct');
+        if (wrap) wrap.classList.add('hidden');
+        if (bar) bar.style.width = '0%';
+        if (pct) pct.textContent = '0%';
+      }
+
+      // Nonaktifkan checkbox & tombol popup selagi proses simpan berjalan
+      function _setStockOpnameModalBusy(busy) {
+        document.querySelectorAll('.so-target-checkbox').forEach(cb => { cb.disabled = busy; });
+        const cancelBtn = document.getElementById('so-modal-cancel-btn');
+        const saveBtn = document.getElementById('so-modal-save-btn');
+        [cancelBtn, saveBtn].forEach(btn => {
+          if (!btn) return;
+          btn.disabled = busy;
+          btn.classList.toggle('opacity-50', busy);
+          btn.classList.toggle('pointer-events-none', busy);
+        });
+      }
+
+      // Tombol "Simpan" di dalam popup: validasi sheet terpilih, lalu kirim ke GAS
+      function confirmSaveStockOpname() {
+        const checkedEl = document.querySelector('.so-target-checkbox:checked');
+        if (!checkedEl) {
+          document.getElementById('so-target-error').classList.remove('hidden');
+          return;
+        }
+        if (!_pendingStockOpnamePayload) {
+          closeStockOpnameTargetModal();
+          return;
+        }
+
+        const targetSheet = checkedEl.value;
+        const statusEl = document.getElementById('stockOpname-status');
+        statusEl.textContent = '';
+
+        _setStockOpnameModalBusy(true);
+        _startStockOpnameProgressSim();
+
+        fetch(INVENTORY_JS_GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'saveStockOpname',
+            targetSheet: targetSheet,
+            data: _pendingStockOpnamePayload,
+          }),
+        })
+          .then(res => res.json())
+          .then(json => {
+            _finishStockOpnameProgressSim(() => {
+              _setStockOpnameModalBusy(false);
+              if (json.success) {
+                statusEl.textContent = '✅ Data berhasil disimpan ke "' + targetSheet + '" — ' + new Date().toLocaleTimeString('id-ID');
+                statusEl.style.color = '#16a34a';
+                resetStockOpnameForm();
+                _pendingStockOpnamePayload = null;
+                closeStockOpnameTargetModal();
+              } else {
+                statusEl.textContent = '❌ ' + (json.message || 'Gagal menyimpan data');
+                statusEl.style.color = '#ef4444';
+                closeStockOpnameTargetModal();
+              }
+            });
+          })
+          .catch(err => {
+            _finishStockOpnameProgressSim(() => {
+              _setStockOpnameModalBusy(false);
+              statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+              statusEl.style.color = '#ef4444';
+              closeStockOpnameTargetModal();
+            });
+          });
+      }
+
+      function resetStockOpnameForm() {
+        STOCK_OPNAME_FIELD_IDS.forEach(id => { document.getElementById(id).value = ''; });
+        // untuk elemen <select>, pastikan kembali ke opsi placeholder paling atas
+        Object.keys(STOCK_OPNAME_DROPDOWN_MAP).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.selectedIndex = 0;
+        });
+      }
     </script>
-    <div id="export-container" style="display:none; padding: 20px; background: white;">
-      <div id="export-target"></div>
-    </div>
   </div><!-- /app-wrapper -->
 </body>
 
