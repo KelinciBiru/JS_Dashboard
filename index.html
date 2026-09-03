@@ -629,7 +629,7 @@
 
           <div class="overflow-auto border border-slate-100 rounded-lg flex-1">
             <table class="min-w-full text-xs">
-              <thead id="dashboard-detail-thead" class="bg-slate-50 sticky top-0"></thead>
+              <thead id="dashboard-detail-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
               <tbody id="dashboard-detail-tbody"></tbody>
             </table>
           </div>
@@ -647,7 +647,7 @@
 
           <div class="overflow-auto border border-slate-100 rounded-lg flex-1">
             <table class="min-w-full text-xs">
-              <thead id="bd-status-detail-thead" class="bg-slate-50 sticky top-0"></thead>
+              <thead id="bd-status-detail-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
               <tbody id="bd-status-detail-tbody"></tbody>
             </table>
           </div>
@@ -1596,7 +1596,7 @@
 
         const cols = _dashboardDetailColumns(status);
         document.getElementById('dashboard-detail-thead').innerHTML = '<tr>' +
-          cols.map(c => '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">' + c.label + '</th>').join('') +
+          cols.map(c => '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">' + c.label + '</th>').join('') +
           '</tr>';
 
         const tbody = document.getElementById('dashboard-detail-tbody');
@@ -1697,9 +1697,9 @@
           rows.length + ' data — tahun berjalan, diurut TIMESTAMP terbaru';
 
         document.getElementById('bd-status-detail-thead').innerHTML = '<tr>' +
-          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">BD PIC</th>' +
-          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">Action Plan / VM Type On Site</th>' +
-          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">Location Name</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">BD PIC</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Action Plan / VM Type On Site</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Location Name</th>' +
           '</tr>';
 
         const tbody = document.getElementById('bd-status-detail-tbody');
