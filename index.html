@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     *,
     *::before,
@@ -21,11 +22,22 @@
     :root {
       --sidebar-w: 260px;
       --yellow: #F5A623;
+
+      /* ===== NEUMORPHISM DESIGN TOKENS — dipakai desktop & HP ===== */
+      --neu-bg: #e9edf3;
+      --neu-bg-soft: #eef1f6;
+      --neu-text: #47536b;
+      --neu-text-soft: #64748b;
+      --neu-shadow-dark: #c3cbd8;
+      --neu-shadow-light: #ffffff;
+      --neu-radius-lg: 22px;
+      --neu-radius-md: 16px;
+      --neu-radius-sm: 12px;
     }
 
     body {
       font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
-      background: #ffffff;
+      background: var(--neu-bg);
       color: #333;
       display: flex;
       min-height: 100vh;
@@ -40,7 +52,7 @@
       font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
     }
 
-    /* ---- TOMBOL ANIMASI TEKAN ---- */
+    /* ---- TOMBOL ANIMASI TEKAN (dipakai beberapa tombol lewat class btn-press) ---- */
     .btn-press {
       transition: transform 0.1s ease, box-shadow 0.1s ease;
       cursor: pointer;
@@ -48,33 +60,90 @@
 
     .btn-press:active {
       transform: scale(0.94);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) inset;
     }
 
     .btn-press:hover {
-      filter: brightness(1.08);
+      filter: brightness(1.06);
+    }
+
+    /* ============================================================
+       NEUMORPHISM — TOMBOL (global, berlaku di desktop MAUPUN HP)
+       Semua elemen tombol (button) otomatis jadi permukaan timbul lembut
+       (soft UI) tanpa perlu ubah tiap tombol satu-satu. Link menu
+       sidebar paling dalam (leaf) sengaja dikecualikan lewat
+       selector .neu-flat di bawah supaya daftar menu tetap ringkas
+       dan tidak penuh bayangan.
+    ============================================================ */
+    button {
+      border: none;
+      cursor: pointer;
+      box-shadow: 4px 4px 9px var(--neu-shadow-dark), -4px -4px 9px var(--neu-shadow-light);
+      transition: box-shadow .15s ease, transform .1s ease, filter .15s ease;
+    }
+
+    button:active {
+      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+      transform: scale(0.97);
+    }
+
+    button:hover {
+      filter: brightness(1.04);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .65;
+      filter: none;
+    }
+
+    /* Link menu sidebar paling dalam (Inventory Machine JS, Jabodetabek, dst)
+       dibiarkan flat/teks biasa supaya daftar menu tidak ramai bayangan. */
+    .neu-flat,
+    nav .block.w-full.text-left {
+      box-shadow: none !important;
+      background: transparent !important;
+    }
+
+    .neu-flat:active,
+    nav .block.w-full.text-left:active {
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    /* ============================================================
+       TOP BAR MOBILE — pengganti tombol hamburger lepas.
+       Selalu fixed 1 baris penuh di paling atas layar, sehingga
+       TIDAK PERNAH ikut "melayang" menimpa tombol/header halaman
+       manapun saat discroll — konten (main) diberi padding-top
+       sebesar tinggi bar ini, jadi kontennya sendiri yang berhenti
+       tepat di bawah bar, bukan bar yang menimpa konten.
+    ============================================================ */
+    #mobile-topbar {
+      display: none;
     }
 
     #menu-btn {
-      display: none;
-      position: fixed;
-      top: 15px;
-      right: 15px;
-      z-index: 10000;
-      background: var(--yellow);
-      color: white;
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: none;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--neu-bg);
+      color: var(--neu-text);
+      border-radius: 14px;
       font-weight: bold;
-      cursor: pointer;
-      transition: transform 0.1s, box-shadow 0.1s;
+      font-size: 17px;
+      box-shadow: 5px 5px 10px var(--neu-shadow-dark), -5px -5px 10px var(--neu-shadow-light);
     }
 
     #menu-btn:active {
-      transform: scale(0.93);
+      box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
+      transform: scale(0.95);
     }
 
+    /* ============================================================
+       SIDEBAR — permukaan neumorphism
+    ============================================================ */
     aside {
       width: var(--sidebar-w);
       height: 100vh;
@@ -82,17 +151,38 @@
       top: 0;
       left: 0;
       z-index: 9999;
-      background-color: #fff;
+      background-color: var(--neu-bg);
       padding: 28px 20px;
       overflow-y: auto;
       transition: transform 0.3s ease-in-out;
-      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 8px 0 24px var(--neu-shadow-dark);
       transform: translateX(-100%);
     }
 
     @media (max-width: 768px) {
-      #menu-btn {
-        display: block;
+      #mobile-topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        padding: 0 16px;
+        z-index: 10000;
+        background: var(--neu-bg);
+        box-shadow: 0 6px 16px var(--neu-shadow-dark);
+      }
+
+      #mobile-topbar-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--neu-text);
+      }
+
+      aside {
+        padding-top: 76px !important;
       }
 
       aside.active {
@@ -101,7 +191,9 @@
 
       main {
         margin-left: 0 !important;
-        padding: 20px !important;
+        /* padding-top diperbesar supaya konten & header tiap halaman
+           mulai TEPAT di bawah top bar — tidak pernah tertimpa. */
+        padding: 84px 20px 28px !important;
         width: 100%;
       }
     }
@@ -137,12 +229,153 @@
     }
 
     .placeholder-box {
-      border: 2px dashed #e2e8f0;
-      border-radius: 16px;
+      border: none;
+      border-radius: var(--neu-radius-md);
       padding: 48px 24px;
       text-align: center;
-      color: #94a3b8;
-      background: #f8fafc;
+      color: var(--neu-text-soft);
+      background: var(--neu-bg);
+      box-shadow: inset 5px 5px 10px var(--neu-shadow-dark), inset -5px -5px 10px var(--neu-shadow-light);
+    }
+
+    /* ============================================================
+       VIEW CARD — semua kartu (Task Team Dispatch, blok batch Plan
+       Task, panel Form Plan Task, panel tabel, dsb) jadi permukaan
+       neumorphism timbul lembut.
+    ============================================================ */
+    .bg-white.rounded-lg.shadow,
+    .overflow-x-auto.rounded-lg.shadow,
+    .border.border-slate-200.rounded-xl.bg-white,
+    #pt-pic-panel {
+      background: var(--neu-bg) !important;
+      border: none !important;
+      box-shadow: 9px 9px 18px var(--neu-shadow-dark), -9px -9px 18px var(--neu-shadow-light) !important;
+    }
+
+    /* ============================================================
+       HEADER TABEL — permukaan gelap timbul (warna navy khas
+       aplikasi dipertahankan, hanya ditambah kedalaman/dimensi).
+    ============================================================ */
+    thead {
+      background: linear-gradient(145deg, #10284a, #0a1c34) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 10px rgba(10, 28, 52, .35), inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+    }
+
+    /* ============================================================
+       TOAST & MODAL ALERT — neumorphism di SEMUA ukuran layar
+       (sebelumnya cuma aktif di HP, sekarang berlaku juga desktop)
+    ============================================================ */
+    .app-toast {
+      pointer-events: auto;
+      background: var(--neu-bg);
+      color: var(--neu-text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 16px;
+      border-radius: var(--neu-radius-sm);
+      box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      word-break: break-word;
+      animation: app-toast-in .25s ease-out;
+    }
+
+    .app-toast.app-toast-out {
+      animation: app-toast-out .2s ease-in forwards;
+    }
+
+    @keyframes app-toast-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes app-toast-out {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      to {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+    }
+
+    #app-alert-modal-panel {
+      animation: app-modal-in .18s ease-out;
+    }
+
+    @keyframes app-modal-in {
+      from {
+        opacity: 0;
+        transform: scale(0.92);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* ============================================================
+       MODAL / POPUP — semua panel modal (Alert, Pilih Team/PIC,
+       Preview Plan Task, Konfirmasi Delivered, Target Stock Opname)
+       jadi permukaan neumorphism, berlaku di semua ukuran layar.
+    ============================================================ */
+    #plan-task-pic-modal>div,
+    #plan-task-preview-modal>div,
+    #dispatch-delivered-modal>div,
+    #so-target-modal>div,
+    #app-alert-modal-panel {
+      background: var(--neu-bg) !important;
+      border: none !important;
+      border-radius: var(--neu-radius-lg) !important;
+      box-shadow: 12px 12px 26px var(--neu-shadow-dark), -12px -12px 26px var(--neu-shadow-light) !important;
+    }
+
+    #app-alert-modal-ok {
+      border-radius: var(--neu-radius-sm) !important;
+    }
+
+    /* ---- IKON BULAT: panah submenu, toggle PIC ---- */
+    #arrow-inventory,
+    #arrow-requestbd,
+    #arrow-plan,
+    #arrow-maintenance,
+    #arrow-po,
+    #pt-pic-toggle span.shrink-0 {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--neu-bg);
+      color: var(--neu-text);
+      box-shadow: 3px 3px 6px var(--neu-shadow-dark), -3px -3px 6px var(--neu-shadow-light);
+    }
+
+    #plan-task-preview-modal button[onclick="closePlanTaskPreviewModal()"],
+    .neu-badge-close {
+      width: 26px;
+      height: 26px;
+      border-radius: 50% !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--neu-bg) !important;
+      color: var(--neu-text) !important;
+      box-shadow: 3px 3px 6px var(--neu-shadow-dark), -3px -3px 6px var(--neu-shadow-light) !important;
     }
   </style>
 </head>
@@ -219,7 +452,10 @@
 
   <!-- APP (tersembunyi sebelum login) -->
   <div id="app-wrapper" style="display:none;width:100%;">
-    <button id="menu-btn">☰ Menu</button>
+    <div id="mobile-topbar">
+      <button id="menu-btn" aria-label="Buka menu">☰</button>
+      <span id="mobile-topbar-title">Warehouse Pulogadung</span>
+    </div>
 
     <aside id="sidebar">
       <nav class="p-4">
@@ -275,6 +511,8 @@
           <div id="plan-task-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
             <button onclick="showInventory('Input Task')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
+            <button onclick="showInventory('Plan Task')"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Plan Task</button>
             <button onclick="showInventory('Status Task')"
               class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
           </div>
@@ -336,7 +574,11 @@
 
       <!-- INPUT TASK -->
       <div id="content-InputTask" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Input Task</h1>
+        <div class="flex items-center justify-between mb-4 gap-2">
+          <h1 class="text-lg font-bold text-slate-800">Input Task</h1>
+          <button id="input-task-clear-btn" onclick="clearInputTaskPage()"
+            class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">Bersihkan Halaman</button>
+        </div>
         <div id="input-task-empty" class="placeholder-box">Belum ada data yang dikirim dari menu Jabodetabek. Buka menu Request BD &gt; Jabodetabek, centang data, lalu klik tombol "Add".</div>
         <div id="input-task-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
           <table id="input-task-table" class="table-fixed text-xs sm:text-sm border-collapse">
@@ -345,18 +587,208 @@
             <tbody id="input-task-tbody"></tbody>
           </table>
         </div>
+
+        <!-- FORM PLAN TASK -->
+        <div class="mt-6 bg-white rounded-lg shadow p-4 sm:p-5">
+          <h2 class="text-sm font-bold text-slate-800 mb-3">Form Plan Task</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Divisi</label>
+              <select id="pt-divisi" onchange="savePlanTaskFormDraft()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                <option value="">-- Pilih Divisi --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">PIC (bisa pilih lebih dari satu)
+                <button type="button" onclick="loadPlanTaskDropdowns(true)" title="Muat ulang pilihan Divisi/PIC"
+                  class="text-slate-400 hover:text-amber-600">🔄</button>
+              </label>
+              <div class="relative">
+                <button type="button" id="pt-pic-toggle" onclick="togglePicDropdown()"
+                  class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm text-left bg-white flex justify-between items-center gap-2">
+                  <span id="pt-pic-label" class="text-slate-400 truncate">-- Pilih PIC --</span>
+                  <span class="text-xs text-slate-400 shrink-0">▼</span>
+                </button>
+                <div id="pt-pic-panel"
+                  class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-md shadow-lg max-h-56 overflow-y-auto">
+                  <div id="pt-pic-options" class="py-1"></div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Plan Date</label>
+              <input id="pt-planDate" type="date" oninput="savePlanTaskFormDraft()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">NO VMC JUMPSTART</label>
+              <input id="pt-noVmcJumpstart" type="text" placeholder="NO VMC JUMPSTART" oninput="savePlanTaskFormDraft()"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">No. Kendaraan</label>
+              <input id="pt-noKendaraan" type="text" placeholder="No. Kendaraan" oninput="savePlanTaskFormDraft()"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+            </div>
+          </div>
+          <div class="mt-4 flex items-center gap-3">
+            <button onclick="submitPlanTask()"
+              class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-md">Submit</button>
+            <span id="plan-task-status" class="text-xs"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAN TASK -->
+      <div id="content-PlanTask" class="page-content">
+        <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Plan Task</h1>
+          <div class="flex items-center gap-2">
+            <button onclick="openPlanTaskPicModal('preview')"
+              class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Preview</button>
+            <button onclick="openPlanTaskPicModal('share')"
+              class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-md whitespace-nowrap">Share to WhatsApp</button>
+          </div>
+        </div>
+
+        <div id="plan-task-empty" class="placeholder-box">Belum ada Plan Task yang disubmit. Isi Form Plan Task di menu Input Task lalu klik Submit.</div>
+
+        <!-- Diisi dinamis oleh renderPlanTaskTable(): satu blok (header Divisi/PIC/No.
+             Kendaraan + tabel) per BATCH (satu batch = satu kali submit Plan Task dari
+             menu Input Task). Submit baru dengan PIC/team berbeda TIDAK menimpa batch
+             yang sudah ada — batch baru ditambahkan sebagai blok baru di bawahnya. -->
+        <div id="plan-task-result-wrap" class="hidden space-y-6"></div>
+      </div>
+
+      <!-- MODAL: Pilih Team (PIC) untuk Preview / Share to WhatsApp Plan Task -->
+      <div id="plan-task-pic-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
+          <h3 id="plan-task-pic-modal-title" class="text-sm font-bold text-slate-800 mb-3">Pilih Team</h3>
+          <select id="plan-task-pic-select" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-3">
+            <option value="">-- Pilih Team --</option>
+          </select>
+          <div id="plan-task-pic-modal-status" class="text-xs mb-3"></div>
+          <div class="flex justify-end gap-2">
+            <button onclick="closePlanTaskPicModal()"
+              class="px-3 py-1.5 text-xs font-semibold text-slate-600">Batal</button>
+            <button id="plan-task-pic-modal-confirm" onclick="confirmPlanTaskPicModal()"
+              class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-md">Lanjut</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Hasil Preview Plan Task per PIC -->
+      <div id="plan-task-preview-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-5">
+          <div class="flex justify-between items-center mb-3 gap-2">
+            <h3 class="text-sm font-bold text-slate-800">Preview Plan Task — <span id="plan-task-preview-pic"></span></h3>
+            <button onclick="closePlanTaskPreviewModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+          </div>
+          <div id="plan-task-preview-area" class="overflow-x-auto rounded-lg shadow">
+            <table id="plan-task-preview-table" class="table-fixed text-xs sm:text-sm border-collapse">
+              <colgroup id="plan-task-preview-colgroup"></colgroup>
+              <thead id="plan-task-preview-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+              <tbody id="plan-task-preview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- TASK ON GOING -->
       <div id="content-StatusTask" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Task On Going</h1>
-        <div class="placeholder-box">Konten Task On Going — placeholder, akan dibangun ulang.</div>
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Task On Going</h1>
+          <button onclick="loadTaskOnGoing(true)"
+            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
+        </div>
+        <div id="task-ongoing-status" class="text-xs text-slate-500 mb-3"></div>
+        <div id="task-ongoing-empty" class="placeholder-box">Belum ada Task dengan status "Open".</div>
+        <div id="task-ongoing-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
+          <table id="task-ongoing-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="task-ongoing-colgroup"></colgroup>
+            <thead id="task-ongoing-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="task-ongoing-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- TEAM DISPATCH -->
       <div id="content-TeamDispatch" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Team Dispatch</h1>
-        <div class="placeholder-box">Konten Team Dispatch — placeholder, akan dibangun ulang.</div>
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Team Dispatch</h1>
+          <div class="flex gap-2">
+            <button onclick="checkDispatchQueueStatus()"
+              class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-md whitespace-nowrap">Cek Antrian</button>
+            <button onclick="loadTeamDispatchTasks(true)"
+              class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
+          </div>
+        </div>
+        <div id="team-dispatch-status" class="text-xs text-slate-500 mb-3"></div>
+        <div id="team-dispatch-queue-status" class="text-xs mb-3"></div>
+        <div id="team-dispatch-empty" class="placeholder-box">Belum ada Task untuk didispatch.</div>
+        <div id="team-dispatch-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+
+      <!-- MODAL: Delivered — Team Dispatch -->
+      <div id="dispatch-delivered-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
+          <h3 class="text-sm font-bold text-slate-800 mb-3">Konfirmasi Delivered</h3>
+
+          <div class="space-y-3 text-sm">
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Loading Plan Date</label>
+              <input id="dd-loading-plan-date" type="text" readonly
+                class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">NO VMC JUMPSTART</label>
+              <input id="dd-no-vmc" type="text" placeholder="NO VMC JUMPSTART"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">MACHINE TYPE (sent from WH)</label>
+              <select id="dd-machine-type"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                <option value="">-- Pilih Machine Type --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Logistics Detail Remark</label>
+              <textarea id="dd-remark" rows="3"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm"
+                placeholder="Catatan detail logistik..."></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Loading Date (Actual)</label>
+              <input id="dd-loading-date-actual" type="date"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">PIC Dispatch</label>
+              <select id="dd-pic-select" onchange="handleDispatchPicSelect(this)"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-1">
+                <option value="">-- Pilih dari daftar PIC (opsional) --</option>
+              </select>
+              <input id="dd-pic-dispatch" type="text"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm"
+                placeholder="Nama PIC, pisahkan dengan koma jika lebih dari satu">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Foto Bukti Selesai</label>
+              <input id="dd-photo-input" type="file" accept="image/*" multiple capture="environment"
+                onchange="handleDispatchDeliveredPhotoInput(this)"
+                class="w-full text-xs text-slate-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-amber-500 file:text-white file:text-xs file:font-semibold hover:file:bg-amber-600">
+              <div id="dd-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+            <div id="dd-status" class="text-xs"></div>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <button onclick="closeDispatchDeliveredModal()"
+              class="px-3 py-1.5 text-xs font-semibold text-slate-600">Batal</button>
+            <button id="dd-save-btn" onclick="submitDispatchDelivered()"
+              class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md">Simpan</button>
+          </div>
+        </div>
       </div>
 
       <!-- TEAM PREPARE -->
@@ -593,7 +1025,7 @@
     <!-- ============================================================
          STOCK OPNAME - POPUP PILIH SHEET TUJUAN
     ============================================================ -->
-    <div id="so-target-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-black/50 p-4">
+    <div id="so-target-modal" class="fixed inset-0 z-[20000] hidden items-center justify-center bg-black/50 p-4">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
         <h3 class="text-sm font-bold text-slate-800 mb-1">Pilih Sheet Tujuan</h3>
         <p class="text-xs text-slate-500 mb-4">Pilih salah satu sheet tempat data Stock Opname akan disimpan.</p>
@@ -650,7 +1082,71 @@
       </div>
     </div>
 
+    <!-- ============================================================
+         TOAST NOTIFICATION — pengganti pesan status ringan
+    ============================================================ -->
+    <div id="app-toast-container" aria-live="polite" style="
+      position:fixed; z-index:20001; left:50%; bottom:24px; transform:translateX(-50%);
+      display:flex; flex-direction:column; gap:8px; align-items:center;
+      pointer-events:none; width:100%; max-width:360px; padding:0 16px;">
+    </div>
+
+    <!-- ============================================================
+         MODAL ALERT — pengganti window.alert() bawaan browser
+    ============================================================ -->
+    <div id="app-alert-modal" class="hidden fixed inset-0 z-[20002] flex items-center justify-center bg-black/40 p-4">
+      <div id="app-alert-modal-panel" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 text-center">
+        <div id="app-alert-modal-icon" style="font-size:32px;line-height:1;margin-bottom:10px;">ℹ️</div>
+        <p id="app-alert-modal-message" class="text-sm text-slate-700 mb-5" style="white-space:pre-line;"></p>
+        <button id="app-alert-modal-ok" onclick="closeAppAlert()"
+          class="btn-press px-6 py-2.5 text-sm font-bold rounded-lg text-white"
+          style="background: linear-gradient(135deg,#f5a623,#e8910d); box-shadow:0 4px 14px rgba(245,166,35,.45);">
+          OK
+        </button>
+      </div>
+    </div>
+
     <script>
+      // =============================================
+      // UI HELPER — TOAST & MODAL ALERT
+      // Pengganti alert() bawaan browser: tidak nge-block halaman,
+      // dan tampilannya mengikuti gaya neumorphism di layar HP
+      // (lihat blok @media (max-width:768px) di <style> atas).
+      // =============================================
+      function showToast(message, type) {
+        const container = document.getElementById('app-toast-container');
+        if (!container) { return; }
+        const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+        const el = document.createElement('div');
+        el.className = 'app-toast';
+        const iconSpan = document.createElement('span');
+        iconSpan.textContent = icon;
+        const textSpan = document.createElement('span');
+        textSpan.textContent = message;
+        el.appendChild(iconSpan);
+        el.appendChild(textSpan);
+        container.appendChild(el);
+        setTimeout(() => {
+          el.classList.add('app-toast-out');
+          setTimeout(() => el.remove(), 250);
+        }, 3200);
+      }
+
+      function showAppAlert(message, type) {
+        const modal = document.getElementById('app-alert-modal');
+        const iconEl = document.getElementById('app-alert-modal-icon');
+        const msgEl = document.getElementById('app-alert-modal-message');
+        if (!modal || !iconEl || !msgEl) { window.alert(message); return; }
+        iconEl.textContent = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+        msgEl.textContent = message;
+        modal.classList.remove('hidden');
+      }
+
+      function closeAppAlert() {
+        const modal = document.getElementById('app-alert-modal');
+        if (modal) modal.classList.add('hidden');
+      }
+
       // =============================================
       // AUTH — LOGIN, ROLE, LOGOUT
       // =============================================
@@ -663,7 +1159,7 @@
       // =============================================
       // KONFIGURASI GAS BACKEND
       // =============================================
-      const INVENTORY_JS_GAS_URL = 'https://script.google.com/macros/s/AKfycbyePiLWXnEBqi2WgugH6723y3jAFREKhZlfLf8SpcdVngrwqz7Yw09SxFIFB7doAxz_/exec';
+      const INVENTORY_JS_GAS_URL = 'https://script.google.com/macros/s/AKfycbxJZfuP2HeBTX4qVwLnYLXehmGAwgx2Z0LoOpNbSDmo61ArKjQ3T4OovQWAlc1KwRZ5/exec';
       // Stock Opname sekarang disimpan lewat GAS backend yang sama (INVENTORY_JS_GAS_URL),
       // action doPost baru: 'saveStockOpname'. Tidak perlu GAS URL terpisah lagi.
 
@@ -770,7 +1266,7 @@
           if (menuDispatch) menuDispatch.style.display = '';
           if (menuPrepare) menuPrepare.style.display = 'none';
           document.getElementById('maintenance-sub').classList.remove('hidden');
-          showPage('Team Dispatch');
+          showInventory('Team Dispatch');
         } else if (currentRole === 'Prepare') {
           if (menuInventory) menuInventory.style.display = 'none';
           if (menuSalesStatus) menuSalesStatus.style.display = 'none';
@@ -786,7 +1282,22 @@
       // SIDEBAR TOGGLE + INIT
       // =============================================
       document.addEventListener('DOMContentLoaded', () => {
+        restoreInputTaskRows();
         restoreSession();
+
+        // Pulihkan data Plan Task / Task On Going / Team Dispatch / draft Form
+        // Plan Task dari localStorage supaya tidak hilang saat browser di-refresh
+        // (F5) atau saat user berpindah-pindah halaman. Render langsung di sini
+        // sehingga begitu user membuka menunya, data lama sudah tampil (tanpa
+        // menunggu fetch ulang ke server, yang tetap berjalan seperti biasa saat
+        // menu dibuka lewat showInventory()).
+        restorePlanTaskResult();
+        restoreTaskOnGoingRows();
+        restoreTeamDispatchRows();
+        renderPlanTaskTable();
+        renderTaskOnGoingTable();
+        renderTeamDispatchCards();
+        restorePlanTaskFormDraft();
 
         const btn = document.getElementById('menu-btn');
         const sidebar = document.getElementById('sidebar');
@@ -828,7 +1339,10 @@
         if (n === 'Report Inventory JS') loadInventoryJS(false);
         if (n === 'Report Inventory CIMB') loadInventoryCIMB(false);
         if (n === 'Stock Opname') loadStockOpnameSource(false);
-        if (n === 'Input Task') renderInputTaskTable();
+        if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); }
+        if (n === 'Plan Task') { renderPlanTaskTable(); }
+        if (n === 'Status Task') { loadTaskOnGoing(false); }
+        if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); }
       }
 
       function showJabodetabek() {
@@ -973,6 +1487,126 @@
       ];
       let _inputTaskRows = [];
 
+      // Simpan/pulihkan _inputTaskRows ke localStorage supaya data yang sudah
+      // masuk ke Input Task tidak hilang saat halaman di-refresh (F5).
+      const INPUT_TASK_STORAGE_KEY = 'nod_inputTaskRows';
+      function saveInputTaskRows() {
+        try { localStorage.setItem(INPUT_TASK_STORAGE_KEY, JSON.stringify(_inputTaskRows)); } catch (e) { /* storage penuh/diblokir, abaikan */ }
+      }
+      function restoreInputTaskRows() {
+        try {
+          const raw = localStorage.getItem(INPUT_TASK_STORAGE_KEY);
+          if (raw) _inputTaskRows = JSON.parse(raw) || [];
+        } catch (e) { _inputTaskRows = []; }
+      }
+
+      // =============================================
+      // PERSISTENSI LINTAS HALAMAN/REFRESH — Plan Task, Task On Going,
+      // Team Dispatch, dan draft Form Plan Task.
+      // Supaya data yang sudah dibuat/dimuat tidak hilang saat user
+      // pindah menu atau me-refresh browser (F5), memakai pola yang sama
+      // dengan _inputTaskRows di atas: simpan ke localStorage tiap kali
+      // state berubah, lalu pulihkan saat halaman dimuat ulang.
+      // =============================================
+      const PLAN_TASK_RESULT_STORAGE_KEY = 'nod_planTaskResult';
+      const TASK_ONGOING_STORAGE_KEY = 'nod_taskOnGoingRows';
+      const TEAM_DISPATCH_STORAGE_KEY = 'nod_teamDispatchRows';
+      const PLAN_TASK_FORM_DRAFT_STORAGE_KEY = 'nod_planTaskFormDraft';
+      let _planTaskFormDraftDivisi = '';
+
+      function savePlanTaskResult() {
+        try {
+          localStorage.setItem(PLAN_TASK_RESULT_STORAGE_KEY,
+            JSON.stringify({ batches: _planTaskBatches }));
+        } catch (e) { /* storage penuh/diblokir, abaikan */ }
+      }
+      function restorePlanTaskResult() {
+        try {
+          const raw = localStorage.getItem(PLAN_TASK_RESULT_STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw) || {};
+            if (Array.isArray(parsed.batches)) {
+              // Format baru: banyak batch (satu batch = satu kali submit Plan Task
+              // dengan Divisi/PIC/No. Kendaraan-nya sendiri).
+              _planTaskBatches = parsed.batches;
+            } else if (Array.isArray(parsed.rows)) {
+              // Migrasi dari format lama (satu batch tunggal) supaya data yang
+              // sudah tersimpan sebelumnya tidak hilang.
+              _planTaskBatches = parsed.rows.length
+                ? [{ divisi: (parsed.info || {}).divisi || '', pic: (parsed.info || {}).pic || '',
+                     noKendaraan: (parsed.info || {}).noKendaraan || '', rows: parsed.rows }]
+                : [];
+            } else {
+              _planTaskBatches = [];
+            }
+          }
+        } catch (e) { /* abaikan */ }
+      }
+
+      function saveTaskOnGoingRows() {
+        try { localStorage.setItem(TASK_ONGOING_STORAGE_KEY, JSON.stringify(_taskOnGoingRows)); } catch (e) { /* abaikan */ }
+      }
+      function restoreTaskOnGoingRows() {
+        try {
+          const raw = localStorage.getItem(TASK_ONGOING_STORAGE_KEY);
+          if (raw) _taskOnGoingRows = JSON.parse(raw) || [];
+        } catch (e) { _taskOnGoingRows = []; }
+      }
+
+      function saveTeamDispatchRows() {
+        try { localStorage.setItem(TEAM_DISPATCH_STORAGE_KEY, JSON.stringify(_teamDispatchRows)); } catch (e) { /* abaikan */ }
+      }
+      function restoreTeamDispatchRows() {
+        try {
+          const raw = localStorage.getItem(TEAM_DISPATCH_STORAGE_KEY);
+          if (raw) _teamDispatchRows = JSON.parse(raw) || [];
+        } catch (e) { _teamDispatchRows = []; }
+      }
+
+      // Draft Form Plan Task (Divisi/PIC/Plan Date/NO VMC JUMPSTART/No. Kendaraan)
+      // supaya isian yang belum sempat di-Submit tidak hilang kalau user pindah
+      // menu atau refresh browser di tengah pengisian.
+      function savePlanTaskFormDraft() {
+        try {
+          const divisiEl = document.getElementById('pt-divisi');
+          const dateEl = document.getElementById('pt-planDate');
+          const vmcEl = document.getElementById('pt-noVmcJumpstart');
+          const kendaraanEl = document.getElementById('pt-noKendaraan');
+          const draft = {
+            divisi: divisiEl ? divisiEl.value : '',
+            picSelected: Array.from(_ptPicSelected),
+            planDate: dateEl ? dateEl.value : '',
+            noVmcJumpstart: vmcEl ? vmcEl.value : '',
+            noKendaraan: kendaraanEl ? kendaraanEl.value : ''
+          };
+          localStorage.setItem(PLAN_TASK_FORM_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+        } catch (e) { /* abaikan */ }
+      }
+      function restorePlanTaskFormDraft() {
+        try {
+          const raw = localStorage.getItem(PLAN_TASK_FORM_DRAFT_STORAGE_KEY);
+          if (!raw) return;
+          const draft = JSON.parse(raw) || {};
+          const dateEl = document.getElementById('pt-planDate');
+          const vmcEl = document.getElementById('pt-noVmcJumpstart');
+          const kendaraanEl = document.getElementById('pt-noKendaraan');
+          if (dateEl && draft.planDate) dateEl.value = draft.planDate;
+          if (vmcEl && draft.noVmcJumpstart) vmcEl.value = draft.noVmcJumpstart;
+          if (kendaraanEl && draft.noKendaraan) kendaraanEl.value = draft.noKendaraan;
+          if (Array.isArray(draft.picSelected) && draft.picSelected.length) {
+            _ptPicSelected = new Set(draft.picSelected);
+            updatePicLabel();
+          }
+          // Nilai Divisi baru diterapkan setelah dropdown-nya selesai dimuat
+          // (opsinya datang dari server), lihat loadPlanTaskDropdowns().
+          _planTaskFormDraftDivisi = draft.divisi || '';
+        } catch (e) { /* abaikan */ }
+      }
+      function clearPlanTaskFormDraft() {
+        _planTaskFormDraftDivisi = '';
+        try { localStorage.removeItem(PLAN_TASK_FORM_DRAFT_STORAGE_KEY); } catch (e) { /* abaikan */ }
+      }
+
       // Cari nama header asli di sheet yang cocok (case/spasi-insensitive) dengan
       // nama kolom target, supaya tidak meleset kalau ada beda kapitalisasi/spasi.
       function _findHeaderKey(headers, target) {
@@ -981,13 +1615,18 @@
         return found !== undefined ? found : target;
       }
 
-      function _mapToInputTaskColumns(row) {
+      function _mapRowToInputTaskColumns(row, headers) {
         const obj = {};
         INPUT_TASK_COLUMNS.forEach(col => {
-          const key = _findHeaderKey(_jabodetabekHeaders, col);
+          const key = _findHeaderKey(headers, col);
           obj[col] = row[key] ?? '';
         });
         return obj;
+      }
+
+      // Kompatibilitas nama lama (dipakai Jabodetabek)
+      function _mapToInputTaskColumns(row) {
+        return _mapRowToInputTaskColumns(row, _jabodetabekHeaders);
       }
 
       // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
@@ -1027,7 +1666,7 @@
       // Tombol "Add": proses baris yang dicentang lalu kembali ke tampilan semula
       function confirmJabodetabekAddTask() {
         if (_jabodetabekSelectedRows.size === 0) {
-          alert('Pilih minimal satu baris data terlebih dahulu.');
+          showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
           return;
         }
         // Indeks di _jabodetabekSelectedRows mengacu pada hasil filter (pencarian) saat
@@ -1037,11 +1676,14 @@
           _jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
         );
 
-        _inputTaskRows = Array.from(_jabodetabekSelectedRows)
+        // Data yang sudah ada di Input Task (mis. dikirim sebelumnya dari Jabodetabek/Event)
+        // tidak ditimpa — baris baru ditambahkan setelah baris yang sudah ada.
+        const newRows = Array.from(_jabodetabekSelectedRows)
           .sort((a, b) => a - b)
           .map(i => filtered[i])
           .filter(Boolean)
-          .map(_mapToInputTaskColumns);
+          .map(row => _mapRowToInputTaskColumns(row, _jabodetabekHeaders));
+        _inputTaskRows = _inputTaskRows.concat(newRows);
 
         cancelJabodetabekAddTask();
         showPage('Input Task');
@@ -1144,6 +1786,11 @@
       // INPUT TASK (data dikirim dari Request BD - Jabodetabek)
       // =============================================
       function renderInputTaskTable() {
+        // Setiap kali tabel Input Task dirender ulang, simpan state-nya ke
+        // localStorage — titik tunggal ini otomatis meng-cover semua aksi yang
+        // mengubah _inputTaskRows (Add dari Jabodetabek/Event, Bersihkan Halaman,
+        // submit Plan Task) karena semuanya memanggil renderInputTaskTable().
+        saveInputTaskRows();
         const emptyEl = document.getElementById('input-task-empty');
         const wrapEl = document.getElementById('input-task-table-wrap');
         const thead = document.getElementById('input-task-thead');
@@ -1171,6 +1818,1227 @@
           ).join('') +
           '</tr>'
         ).join('');
+      }
+
+      // Tombol "Bersihkan Halaman": kosongkan tabel Input Task + reset Form Plan Task
+      function clearInputTaskPage() {
+        _inputTaskRows = [];
+        renderInputTaskTable();
+        resetPlanTaskForm();
+      }
+
+      // =============================================
+      // FORM PLAN TASK (di bawah tabel Input Task)
+      // =============================================
+      let _planTaskDropdownsLoaded = false;
+      let _planTaskPicList = [];
+      let _ptPicSelected = new Set();
+
+      function togglePicDropdown() {
+        document.getElementById('pt-pic-panel').classList.toggle('hidden');
+      }
+
+      document.addEventListener('click', (e) => {
+        const panel = document.getElementById('pt-pic-panel');
+        const toggle = document.getElementById('pt-pic-toggle');
+        if (!panel || !toggle) return;
+        if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+          panel.classList.add('hidden');
+        }
+      });
+
+      function handlePicCheck(name, checked) {
+        if (checked) _ptPicSelected.add(name);
+        else _ptPicSelected.delete(name);
+        updatePicLabel();
+        savePlanTaskFormDraft();
+      }
+
+      function updatePicLabel() {
+        const labelEl = document.getElementById('pt-pic-label');
+        const arr = Array.from(_ptPicSelected);
+        if (arr.length === 0) {
+          labelEl.textContent = '-- Pilih PIC --';
+          labelEl.className = 'text-slate-400 truncate';
+        } else {
+          labelEl.textContent = arr.join(', ');
+          labelEl.className = 'text-slate-800 truncate';
+        }
+      }
+
+      function getPicValue() {
+        return Array.from(_ptPicSelected).join(', ');
+      }
+
+      function resetPicSelection() {
+        _ptPicSelected.clear();
+        updatePicLabel();
+        document.querySelectorAll('.pt-pic-checkbox').forEach(cb => { cb.checked = false; });
+      }
+
+      // Dropdown Divisi/PIC sumbernya dari spreadsheet "Dashboard Dispatch V2"
+      // sheet "Source" (kolom A = Divisi, kolom B = PIC), lewat GAS backend yang
+      // sama dengan INVENTORY_JS_GAS_URL, action baru: getPlanTaskDropdowns
+      // _planTaskDropdownsRetrying mencegah beberapa panggilan retry menumpuk
+      // kalau user berkali-kali pindah ke menu Input Task saat retry masih berjalan.
+      let _planTaskDropdownsRetrying = false;
+
+      async function loadPlanTaskDropdowns(forceRefresh, _attempt) {
+        const attempt = _attempt || 1;
+        const statusEl = document.getElementById('plan-task-status');
+        if (_planTaskDropdownsLoaded && !forceRefresh) return;
+        if (_planTaskDropdownsRetrying && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        if (attempt === 1) {
+          statusEl.textContent = 'Memuat pilihan Divisi/PIC...';
+          statusEl.style.color = '#64748b';
+        }
+
+        // Bug lama: flag _planTaskDropdownsLoaded ditandai sukses walaupun hasil
+        // dari GAS kosong (mis. sheet belum sempat kebaca sempurna / cold start),
+        // sehingga dropdown PIC kosong dan tidak pernah dicoba ulang sampai
+        // halaman di-refresh manual. Sekarang: kalau hasil kosong, retry otomatis
+        // beberapa kali dulu sebelum menyerah, dan flag baru ditandai sukses
+        // kalau datanya benar-benar terisi.
+        const MAX_ATTEMPTS = 4;
+        const RETRY_DELAY_MS = 1200;
+
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskDropdowns');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat pilihan Divisi/PIC');
+            statusEl.style.color = '#ef4444';
+            _planTaskDropdownsRetrying = false;
+            return;
+          }
+
+          const divisiList = json.divisi || [];
+          const picList = json.pic || [];
+
+          if (picList.length === 0 && divisiList.length === 0 && attempt < MAX_ATTEMPTS) {
+            _planTaskDropdownsRetrying = true;
+            statusEl.textContent = 'Memuat pilihan Divisi/PIC... (percobaan ' + attempt + ')';
+            setTimeout(() => loadPlanTaskDropdowns(true, attempt + 1), RETRY_DELAY_MS);
+            return;
+          }
+          _planTaskDropdownsRetrying = false;
+
+          const divisiEl = document.getElementById('pt-divisi');
+          divisiEl.innerHTML = '<option value="">-- Pilih Divisi --</option>' +
+            divisiList.map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+
+          // Terapkan draft Divisi yang tersimpan (kalau ada) sekarang, setelah
+          // opsinya tersedia — cukup sekali supaya tidak menimpa pilihan user
+          // kalau dropdown di-reload manual belakangan.
+          if (_planTaskFormDraftDivisi) {
+            divisiEl.value = _planTaskFormDraftDivisi;
+            _planTaskFormDraftDivisi = '';
+          }
+
+          _planTaskPicList = picList;
+          const picOptionsEl = document.getElementById('pt-pic-options');
+          picOptionsEl.innerHTML = _planTaskPicList.map(v => {
+            const esc = String(v).replace(/"/g, '&quot;');
+            const checked = _ptPicSelected.has(v) ? 'checked' : '';
+            return '<label class="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-amber-50 cursor-pointer">' +
+              '<input type="checkbox" class="pt-pic-checkbox" value="' + esc + '" ' + checked +
+              ' onchange="handlePicCheck(this.value, this.checked)"><span>' + v + '</span></label>';
+          }).join('');
+
+          // Hanya tandai "sudah dimuat" kalau datanya benar-benar ada, supaya
+          // kalau ternyata masih kosong setelah semua percobaan, kunjungan
+          // berikutnya ke menu Input Task tetap otomatis mencoba fetch lagi
+          // tanpa perlu refresh browser.
+          if (picList.length > 0 || divisiList.length > 0) {
+            _planTaskDropdownsLoaded = true;
+            statusEl.textContent = '';
+          } else {
+            statusEl.textContent = '⚠️ Pilihan Divisi/PIC masih kosong. Klik tombol reload di sebelah label PIC.';
+            statusEl.style.color = '#ef4444';
+          }
+        } catch (err) {
+          _planTaskDropdownsRetrying = false;
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          statusEl.style.color = '#ef4444';
+        }
+      }
+
+      // Tombol "Submit": kirim Form Plan Task ke GAS (action submitPlanTask), berikut
+      // seluruh task yang sedang tampil di tabel Input Task (_inputTaskRows), supaya
+      // satu Plan Task langsung berlaku untuk semua task yang sudah dipilih/dikirim
+      // dari menu Jabodetabek/Event.
+      function submitPlanTask() {
+        const statusEl = document.getElementById('plan-task-status');
+
+        const payload = {
+          divisi: document.getElementById('pt-divisi').value.trim(),
+          pic: getPicValue(),
+          planDate: document.getElementById('pt-planDate').value,
+          noVmcJumpstart: document.getElementById('pt-noVmcJumpstart').value.trim(),
+          noKendaraan: document.getElementById('pt-noKendaraan').value.trim(),
+          tasks: _inputTaskRows,
+        };
+
+        if (!payload.divisi || !payload.pic || !payload.planDate) {
+          statusEl.textContent = '⚠️ Divisi, PIC, dan Plan Date wajib diisi.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script untuk menyimpan ke Sheet.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        statusEl.textContent = 'Menyimpan...';
+        statusEl.style.color = '#94a3b8';
+
+        fetch(INVENTORY_JS_GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'submitPlanTask', data: payload }),
+        })
+          .then(res => res.json())
+          .then(json => {
+            if (json.success) {
+              statusEl.textContent = '✅ ' + (json.message || 'Plan Task berhasil disimpan') + ' — ' + new Date().toLocaleTimeString('id-ID');
+              statusEl.style.color = '#16a34a';
+
+              // Data hasil submit (sudah dilengkapi lookup dari Spreadsheet "Logistic
+              // Request 2026" oleh server untuk kolom yang masih kosong) ditampilkan
+              // di menu "Plan Task" berupa tabel. Setiap submit adalah SATU BATCH
+              // (satu team/PIC) dan DITAMBAHKAN sebagai blok baru — tidak menimpa
+              // batch/team lain yang sudah ada di menu Plan Task.
+              _planTaskBatches.push({
+                divisi: json.divisi || payload.divisi,
+                pic: json.pic || payload.pic,
+                noKendaraan: json.noKendaraan || payload.noKendaraan,
+                rows: json.planTaskRows || []
+              });
+
+              // Setelah submit selesai, halaman Input Task otomatis bersih kembali
+              // (data yang sudah terkirim tidak perlu tampil lagi di sana).
+              clearInputTaskPage();
+              showPage('Plan Task');
+              renderPlanTaskTable();
+            } else {
+              statusEl.textContent = '❌ ' + (json.message || 'Gagal menyimpan Plan Task');
+              statusEl.style.color = '#ef4444';
+            }
+          })
+          .catch(err => {
+            statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+            statusEl.style.color = '#ef4444';
+          });
+      }
+
+      function resetPlanTaskForm() {
+        document.getElementById('pt-divisi').selectedIndex = 0;
+        resetPicSelection();
+        document.getElementById('pt-planDate').value = '';
+        document.getElementById('pt-noVmcJumpstart').value = '';
+        document.getElementById('pt-noKendaraan').value = '';
+        clearPlanTaskFormDraft();
+      }
+
+      // =============================================
+      // PLAN TASK (menampilkan hasil Submit dari Form Plan Task di Input Task)
+      // =============================================
+      const PLAN_TASK_DISPLAY_COLUMNS = [
+        'Plan Date', 'TICKET', 'NO VMC JUMPSTART', 'LOCATION NAME', 'ACTION PLAN',
+        'PROPOSED VM TYPE', 'VM TYPE ON SITE', 'MACHINE SET UP', 'PRICE SETTINGS',
+        'SITE PIC', 'SITE PIC PHONE NO.', 'DELIVERY / PICK UP ADDRESS', 'REMARKS'
+      ];
+      // Satu elemen array = satu batch hasil submit Plan Task (satu team/PIC),
+      // berbentuk { divisi, pic, noKendaraan, rows }. Batch baru ditambahkan
+      // (push), tidak menimpa batch yang sudah ada — lihat submitPlanTask().
+      let _planTaskBatches = [];
+
+      // Render baris tabel Plan Task. Kalau editable=true, kolom "NO VMC JUMPSTART"
+      // ditampilkan sebagai input teks per baris (per TICKET) — perubahannya langsung
+      // disimpan ke sheet "Plan Task" lewat handlePlanTaskNoVmcChange().
+      function _renderPlanTaskRows(rows, editable, batchIndex) {
+        return rows.map((row, i) =>
+          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+          PLAN_TASK_DISPLAY_COLUMNS.map(h => {
+            if (editable && h === 'NO VMC JUMPSTART') {
+              const val = String(row[h] ?? '').replace(/"/g, '&quot;');
+              return '<td class="px-2 py-2 align-top">' +
+                '<input type="text" value="' + val + '" placeholder="NO VMC JUMPSTART" ' +
+                'data-row-number="' + (row.rowNumber || '') + '" data-batch-index="' + batchIndex + '" ' +
+                'onchange="handlePlanTaskNoVmcChange(this)" ' +
+                'class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs">' +
+                '</td>';
+            }
+            return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>';
+          }).join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // Simpan perubahan NO VMC JUMPSTART per-TICKET langsung ke sheet "Plan Task"
+      function handlePlanTaskNoVmcChange(inputEl) {
+        const rowNumber = inputEl.dataset.rowNumber;
+        const batchIndex = Number(inputEl.dataset.batchIndex);
+        const value = inputEl.value.trim();
+        if (!rowNumber) {
+          showAppAlert('⚠️ Baris ini belum punya referensi ke sheet (coba submit ulang Plan Task).', 'warning');
+          return;
+        }
+
+        inputEl.disabled = true;
+        fetch(INVENTORY_JS_GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'updateNoVmcJumpstart', data: { rowNumber: rowNumber, noVmcJumpstart: value } }),
+        })
+          .then(res => res.json())
+          .then(json => {
+            inputEl.disabled = false;
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal menyimpan NO VMC JUMPSTART'), 'error');
+              return;
+            }
+            const batch = _planTaskBatches[batchIndex];
+            const row = batch && batch.rows.find(r => String(r.rowNumber) === String(rowNumber));
+            if (row) { row['NO VMC JUMPSTART'] = value; savePlanTaskResult(); }
+            showToast('NO VMC JUMPSTART tersimpan.', 'success');
+          })
+          .catch(err => {
+            inputEl.disabled = false;
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+          });
+      }
+
+      // Render satu blok (header Divisi/PIC/No. Kendaraan + tabel) untuk satu batch.
+      function _buildPlanTaskBatchBlockHTML(batch, batchIndex) {
+        const n = PLAN_TASK_DISPLAY_COLUMNS.length;
+        const colWidthPct = (100 / n).toFixed(4) + '%';
+        const minWidthPx = n * MIN_COL_WIDTH_PX;
+        const colgroup = PLAN_TASK_DISPLAY_COLUMNS.map(() => '<col style="width:' + colWidthPct + '">').join('');
+        const thead = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          h + '</th>'
+        ).join('') + '</tr>';
+        const tbody = _renderPlanTaskRows(batch.rows, true, batchIndex);
+
+        return (
+          '<div class="bg-white rounded-lg shadow p-4 sm:p-5 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">' +
+            '<div><span class="block text-xs font-semibold text-slate-500 uppercase">Divisi</span>' +
+            '<span class="text-sm text-slate-800 font-medium">' + (batch.divisi || '-') + '</span></div>' +
+            '<div><span class="block text-xs font-semibold text-slate-500 uppercase">PIC</span>' +
+            '<span class="text-sm text-slate-800 font-medium">' + (batch.pic || '-') + '</span></div>' +
+            '<div><span class="block text-xs font-semibold text-slate-500 uppercase">No. Kendaraan</span>' +
+            '<span class="text-sm text-slate-800 font-medium">' + (batch.noKendaraan || '-') + '</span></div>' +
+          '</div>' +
+          '<div class="overflow-x-auto rounded-lg shadow">' +
+            '<table class="table-fixed text-xs sm:text-sm border-collapse" style="min-width:' + minWidthPx + 'px;width:100%;">' +
+              '<colgroup>' + colgroup + '</colgroup>' +
+              '<thead style="background-color:#0b1f3a;color:#ffffff;">' + thead + '</thead>' +
+              '<tbody>' + tbody + '</tbody>' +
+            '</table>' +
+          '</div>'
+        );
+      }
+
+      function renderPlanTaskTable() {
+        // Sama seperti renderInputTaskTable(): titik tunggal ini otomatis
+        // menyimpan _planTaskBatches ke localStorage tiap kali tabel Plan Task
+        // dirender ulang (submit baru maupun restore).
+        savePlanTaskResult();
+        const emptyEl = document.getElementById('plan-task-empty');
+        const wrapEl = document.getElementById('plan-task-result-wrap');
+
+        const totalRows = _planTaskBatches.reduce((sum, b) => sum + (b.rows ? b.rows.length : 0), 0);
+        if (!totalRows) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.classList.add('hidden');
+          wrapEl.innerHTML = '';
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        wrapEl.classList.remove('hidden');
+
+        // Satu blok (header + tabel sendiri) per batch/team — batch baru muncul
+        // di bawah batch yang sudah ada, bukan menimpanya.
+        wrapEl.innerHTML = _planTaskBatches.map((batch, i) => _buildPlanTaskBatchBlockHTML(batch, i)).join('');
+      }
+
+      // =============================================
+      // TASK ON GOING (menu Plan Task > Task on Going)
+      // Menampilkan task sheet "Plan Task" yang Status-nya (kolom R) = "Open".
+      // =============================================
+      const TASK_ONGOING_COLUMNS = ['Divisi', 'PIC', 'No. Kendaraan', 'NO VMC JUMPSTART', 'ACTION PLAN', 'LOCATION NAME'];
+      let _taskOnGoingRows = [];
+
+      async function loadTaskOnGoing(forceRefresh) {
+        const statusEl = document.getElementById('task-ongoing-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _taskOnGoingRows = (json.rows || []).filter(r => String(r['Status'] || '').trim().toLowerCase() === 'open');
+          saveTaskOnGoingRows();
+          statusEl.textContent = _taskOnGoingRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderTaskOnGoingTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderTaskOnGoingTable() {
+        const emptyEl = document.getElementById('task-ongoing-empty');
+        const wrapEl = document.getElementById('task-ongoing-table-wrap');
+        const thead = document.getElementById('task-ongoing-thead');
+        const tbody = document.getElementById('task-ongoing-tbody');
+
+        if (!_taskOnGoingRows.length) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.classList.add('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        wrapEl.classList.remove('hidden');
+
+        applyEqualColumns('task-ongoing-table', 'task-ongoing-colgroup', TASK_ONGOING_COLUMNS, false);
+
+        thead.innerHTML = '<tr>' + TASK_ONGOING_COLUMNS.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          h + '</th>'
+        ).join('') + '</tr>';
+
+        tbody.innerHTML = _taskOnGoingRows.map((row, i) =>
+          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+          TASK_ONGOING_COLUMNS.map(h =>
+            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
+          ).join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // =============================================
+      // TASK TEAM DISPATCH (Cardview: Start / Cancel / Delivered)
+      // Menampilkan task sheet "Plan Task" yang Status-nya BUKAN "Closed"
+      // (Open & On Delivery). Status "Open": hanya tombol Start yang tampil.
+      // Klik Start -> Open jadi On Delivery, tombol Start diganti Cancel +
+      // Delivered. Cancel: batalkan proses delivery, On Delivery -> Open lagi
+      // (tombol Delivered ikut hilang lagi). Delivered: membuka popup
+      // konfirmasi (lihat openDispatchDeliveredModal) — baru setelah "Simpan"
+      // di popup, task ini di-set Closed (task otomatis hilang dari Task On
+      // Going & Task Team Dispatch di refresh berikutnya).
+      // =============================================
+      let _teamDispatchRows = [];
+
+      async function loadTeamDispatchTasks(forceRefresh) {
+        const statusEl = document.getElementById('team-dispatch-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _teamDispatchRows = json.rows || []; // "Closed" sudah difilter di server
+          saveTeamDispatchRows();
+          statusEl.textContent = _teamDispatchRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderTeamDispatchCards();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderTeamDispatchCards() {
+        const emptyEl = document.getElementById('team-dispatch-empty');
+        const wrapEl = document.getElementById('team-dispatch-cards');
+
+        if (!_teamDispatchRows.length) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.innerHTML = '';
+          return;
+        }
+        emptyEl.classList.add('hidden');
+
+        // Kelompokkan per Team (Divisi + PIC + No. Kendaraan) — sama seperti
+        // pengelompokan batch di Plan Task — supaya user Dispatch tidak
+        // bingung/salah Start Task milik Team lain saat banyak Task tampil
+        // bersamaan.
+        const groups = [];
+        const groupIndexByKey = {};
+        _teamDispatchRows.forEach(row => {
+          const divisi = row['Divisi'] || '-';
+          const pic = row['PIC'] || '-';
+          const noKendaraan = row['No. Kendaraan'] || '-';
+          const key = divisi + '||' + pic + '||' + noKendaraan;
+          if (!(key in groupIndexByKey)) {
+            groupIndexByKey[key] = groups.length;
+            groups.push({ divisi: divisi, pic: pic, noKendaraan: noKendaraan, rows: [] });
+          }
+          groups[groupIndexByKey[key]].rows.push(row);
+        });
+
+        wrapEl.innerHTML = groups.map(group => {
+          const cardsHtml = group.rows.map(row => _buildTeamDispatchCardHTML(row)).join('');
+          return (
+            '<div class="mb-5">' +
+              '<div class="bg-slate-800 text-white rounded-lg px-4 py-2 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">' +
+                '<span class="text-xs font-bold uppercase tracking-wide">Team:</span>' +
+                '<span class="text-sm font-semibold">' + group.divisi + '</span>' +
+                '<span class="text-xs text-slate-300">•</span>' +
+                '<span class="text-xs text-slate-300">PIC:</span>' +
+                '<span class="text-sm font-semibold">' + group.pic + '</span>' +
+                '<span class="text-xs text-slate-300">•</span>' +
+                '<span class="text-xs text-slate-300">No. Kendaraan:</span>' +
+                '<span class="text-sm font-semibold">' + group.noKendaraan + '</span>' +
+                '<span class="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full">' + group.rows.length + ' task</span>' +
+              '</div>' +
+              '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">' + cardsHtml + '</div>' +
+            '</div>'
+          );
+        }).join('');
+      }
+
+      // Render satu Task Card (dipakai di dalam tiap kelompok Team pada
+      // renderTeamDispatchCards()).
+      function _buildTeamDispatchCardHTML(row) {
+        const status = (String(row['Status'] || '').trim()) || 'Open';
+        const isOnDelivery = status.toLowerCase() === 'on delivery';
+        const badgeClass = isOnDelivery ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
+
+        // Status "Open": hanya tombol Start yang tampil.
+        // Status "On Delivery" (setelah Start diklik): tombol berganti jadi Cancel + Delivered.
+        const actionButtons = isOnDelivery
+          ? (
+            '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\')" ' +
+              'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
+            '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ')" ' +
+              'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Delivered</button>'
+          )
+          : (
+            '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'On Delivery\')" ' +
+              'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>'
+          );
+
+        return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2">' +
+          '<div class="flex items-start justify-between gap-2">' +
+            '<span class="text-sm font-bold text-slate-800 break-words">' + (row['LOCATION NAME'] || '-') + '</span>' +
+            '<span class="text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
+          '</div>' +
+          '<div class="text-xs text-slate-600 space-y-1">' +
+            '<div><span class="font-semibold text-slate-500">Ticket:</span> ' + (row['TICKET'] || '-') + '</div>' +
+            '<div><span class="font-semibold text-slate-500">Action Plan:</span> ' + (row['ACTION PLAN'] || '-') + '</div>' +
+            '<div><span class="font-semibold text-slate-500">No. VMC Jumpstart:</span> ' + (row['NO VMC JUMPSTART'] || '-') + '</div>' +
+            '<div><span class="font-semibold text-slate-500">Site PIC:</span> ' + (row['SITE PIC'] || '-') + '</div>' +
+            '<div><span class="font-semibold text-slate-500">Site PIC Phone:</span> ' + (row['SITE PIC PHONE NO.'] || '-') + '</div>' +
+          '</div>' +
+          '<div class="flex gap-2 mt-2">' + actionButtons + '</div>' +
+        '</div>';
+      }
+
+      // Kirim perubahan status ke sheet "Plan Task" (kolom R = Status) lewat action
+      // 'updatePlanTaskStatus', lalu refresh Cardview Team Dispatch. Pakai GET
+      // (bukan POST) karena lebih konsisten berhasil di beberapa jaringan/browser
+      // yang memblokir CORS untuk request POST ke Apps Script Web App.
+      function handleDispatchAction(rowNumber, newStatus) {
+        _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: newStatus })
+          .then(json => {
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal memperbarui status'), 'error');
+              return;
+            }
+            loadTeamDispatchTasks(true);
+          })
+          .catch(err => {
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+          });
+      }
+
+      // Cek status trigger antrian "Dispatch Queue" (action GET
+      // 'checkDispatchQueue') — dipakai buat mastiin trigger
+      // processDispatchQueueOnce_ beneran terpasang & lihat berapa baris
+      // yang masih "pending" (macet, belum kecatat ke sheet Jabodetabek).
+      async function checkDispatchQueueStatus() {
+        const el = document.getElementById('team-dispatch-queue-status');
+        el.className = 'text-xs mb-3 text-slate-500';
+        el.textContent = 'Mengecek status antrian...';
+        try {
+          const json = await _getFromGasWithRetry_('checkDispatchQueue', {}, 1);
+          if (!json.success) {
+            el.className = 'text-xs mb-3 text-red-600';
+            el.textContent = '❌ ' + (json.message || 'Gagal cek antrian');
+            return;
+          }
+          el.className = 'text-xs mb-3 ' + (json.triggerInstalled ? 'text-emerald-600' : 'text-red-600');
+          el.textContent = (json.triggerInstalled ? '✅ ' : '⚠️ ') + json.message;
+        } catch (err) {
+          el.className = 'text-xs mb-3 text-red-600';
+          el.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      // =============================================
+      // POPUP "DELIVERED" — Team Dispatch
+      // Dibuka saat tombol "Delivered" diklik. Field Loading Plan Date, NO VMC
+      // JUMPSTART, dan MACHINE TYPE (sent from WH) otomatis terisi dari data
+      // task (row Plan Task + lookup Jabodetabek by TICKET). Sisanya diisi
+      // user. Foto yang dipilih (bisa lebih dari satu) dikonversi ke base64
+      // di browser lalu dikirim ke server untuk diunggah ke Drive.
+      // Klik "Simpan" -> action 'saveDispatchDelivered': server mencatat data
+      // ke sheet "Jabodetabek" (spreadsheet "Logistic Request 2026", baris
+      // dicari lewat TICKET) kolom X/Z/AA/AB("Done")/AC/AD/AE/AF, LALU
+      // men-set Status task Plan Task ini jadi "Closed" (sama seperti alur
+      // Delivered sebelumnya) supaya hilang dari Task On Going & Team
+      // Dispatch. Klik "Batal" cukup menutup popup tanpa perubahan apa pun.
+      // =============================================
+      let _ddContext = null; // { rowNumber, ticket }
+      let _ddPhotos = []; // [{ name, mimeType, base64 }]
+
+      function openDispatchDeliveredModal(rowNumber) {
+        const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
+        if (!row) {
+          showAppAlert('❌ Data task tidak ditemukan, silakan refresh dulu.', 'error');
+          return;
+        }
+
+        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '' };
+        _ddPhotos = [];
+
+        document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
+        document.getElementById('dd-no-vmc').value = row['NO VMC JUMPSTART'] || '';
+        document.getElementById('dd-remark').value = '';
+        document.getElementById('dd-loading-date-actual').value = '';
+        document.getElementById('dd-pic-dispatch').value = '';
+        document.getElementById('dd-photo-input').value = '';
+        document.getElementById('dd-status').textContent = '';
+        renderDispatchDeliveredPhotoPreview();
+        populateDispatchPicSelect();
+        populateDispatchMachineTypeSelect(row['MACHINE TYPE (sent from WH)'] || '');
+
+        document.getElementById('dispatch-delivered-modal').classList.remove('hidden');
+      }
+
+      // Isi dropdown "MACHINE TYPE (sent from WH)" di popup Delivered dari daftar
+      // pilihan yang diambil langsung dari data validation (dropdown) yang sudah
+      // ada pada kolom AA sheet "Jabodetabek" (action 'getJabodetabekMachineTypeOptions'),
+      // supaya pilihan di popup ini selalu mengikuti format dropdown kolom AA yang
+      // sebenarnya. Diambil sekali lalu di-cache (_dispatchMachineTypeOptions) supaya
+      // buka popup berikutnya tidak perlu fetch ulang. Kalau nilai yang sudah tersimpan
+      // pada task ini (auto-fill dari lookup Jabodetabek) belum ada di daftar pilihan,
+      // tetap ditambahkan sebagai opsi supaya tidak hilang dari tampilan.
+      let _dispatchMachineTypeOptions = null;
+      async function populateDispatchMachineTypeSelect(selectedValue) {
+        const selectEl = document.getElementById('dd-machine-type');
+        if (!_dispatchMachineTypeOptions) {
+          try {
+            const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabekMachineTypeOptions');
+            const json = await res.json();
+            _dispatchMachineTypeOptions = (json.success && Array.isArray(json.options)) ? json.options : [];
+          } catch (err) {
+            _dispatchMachineTypeOptions = [];
+          }
+        }
+
+        let options = _dispatchMachineTypeOptions.slice();
+        if (selectedValue && !options.includes(selectedValue)) {
+          options = [selectedValue].concat(options);
+        }
+
+        selectEl.innerHTML = '<option value="">-- Pilih Machine Type --</option>' +
+          options.map(v =>
+            '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>'
+          ).join('');
+        selectEl.value = selectedValue || '';
+      }
+
+      // Daftar nama PIC Dispatch khusus untuk popup "Delivered" (Task Team
+      // Dispatch) — daftar tetap (hardcoded), TERPISAH dari _planTaskPicList
+      // yang dipakai dropdown PIC di Form Plan Task (sheet "Source"). Kalau
+      // daftar nama PIC Dispatch berubah, cukup ubah array ini saja. Daftar
+      // yang sama juga dipakai di GAS backend (lihat JABODETABEK_PIC_DISPATCH_OPTIONS
+      // di Code.gs) supaya dropdown di popup ini & dropdown di sel kolom AE
+      // sheet "Jabodetabek" tetap konsisten.
+      const DISPATCH_PIC_DISPATCH_NAMES = [
+        'Abdul Fatah', 'Adam', 'Adang', 'Ade Fajar', 'Adi', 'Aditya', 'Andy F',
+        'Angga', 'Avidan', 'Dandi', 'Dani', 'Dedi', 'Egi', 'Fahri', 'Faisal',
+        'Fajar', 'Fajry', 'Farhan', 'Febri', 'Febri (Ygy)', 'Fihruz Kahfi',
+        'Gufron', 'Idham', 'Imam', 'Imron', 'Ismail', 'Iwan', 'Jhonris',
+        'Juanda', 'Kholik', 'Kusaeri', 'Mahmud', 'Maulana (Ygy)', 'Muhidin',
+        'Naufal', 'Nico', 'Rahman', 'Rangga', 'Rendi', 'Ressa', 'Risnaldi',
+        'Riyan (Ygy)', 'Rizal', 'Saifan', 'Sandi', 'Suhandy', 'THL Dede',
+        'THL Sendi', 'Wahyu', 'Wisnu', 'Yudha', 'Yudha Firmanda'
+      ];
+
+      // Isi dropdown "Pilih dari daftar PIC" di popup Delivered dari daftar
+      // tetap DISPATCH_PIC_DISPATCH_NAMES di atas (BUKAN lagi dari
+      // _planTaskPicList/sheet "Source"). Dropdown ini hanya alat bantu pilih
+      // cepat — field PIC Dispatch tetap free text, jadi user masih bisa
+      // ketik manual atau menggabungkan beberapa nama dipisah koma.
+      function populateDispatchPicSelect() {
+        const selectEl = document.getElementById('dd-pic-select');
+        selectEl.innerHTML = '<option value="">-- Pilih dari daftar PIC (opsional) --</option>' +
+          DISPATCH_PIC_DISPATCH_NAMES.map(v =>
+            '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>'
+          ).join('');
+      }
+
+      // Saat user pilih nama dari dropdown, tambahkan ke field free text PIC
+      // Dispatch (gabung dengan koma, tidak duplikat), lalu dropdown direset
+      // supaya bisa dipakai pilih nama berikutnya.
+      function handleDispatchPicSelect(selectEl) {
+        const val = selectEl.value;
+        selectEl.value = '';
+        if (!val) return;
+
+        const inputEl = document.getElementById('dd-pic-dispatch');
+        const existing = inputEl.value.split(',').map(s => s.trim()).filter(Boolean);
+        if (!existing.includes(val)) existing.push(val);
+        inputEl.value = existing.join(', ');
+      }
+
+      function closeDispatchDeliveredModal() {
+        document.getElementById('dispatch-delivered-modal').classList.add('hidden');
+        _ddContext = null;
+        _ddPhotos = [];
+      }
+
+      // Kompres/resize foto di browser sebelum dikirim ke server, supaya
+      // ukuran payload (base64) tidak terlalu besar dan tidak gagal terkirim
+      // ("Failed to fetch") — terutama untuk foto langsung dari kamera Hp yang
+      // biasanya berukuran beberapa MB. Foto di-resize maksimal 1600px pada
+      // sisi terpanjang & dikompres sebagai JPEG kualitas 70%.
+      function _compressDispatchPhoto_(file, maxDim, quality) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              let width = img.width;
+              let height = img.height;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round(height * (maxDim / width));
+                  width = maxDim;
+                } else {
+                  width = Math.round(width * (maxDim / height));
+                  height = maxDim;
+                }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              const dataUrl = canvas.toDataURL('image/jpeg', quality);
+              resolve({ base64: dataUrl.split(',')[1] || '', mimeType: 'image/jpeg' });
+            };
+            img.onerror = () => reject(new Error('Gagal memuat gambar'));
+            img.src = e.target.result;
+          };
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Baca file gambar yang dipilih (dari galeri Hp / file picker), kompres
+      // dulu (lihat _compressDispatchPhoto_), baru disimpan sebagai base64 di
+      // memori (_ddPhotos) untuk dikirim ke GAS lewat fetch (JSON).
+      function handleDispatchDeliveredPhotoInput(inputEl) {
+        const files = Array.from(inputEl.files || []);
+        if (!files.length) return;
+
+        const statusEl = document.getElementById('dd-status');
+        statusEl.textContent = 'Memproses foto...';
+
+        const tasks = files.map(file =>
+          _compressDispatchPhoto_(file, 1600, 0.7).then(result => ({
+            name: file.name,
+            mimeType: result.mimeType,
+            base64: result.base64
+          }))
+        );
+
+        Promise.all(tasks).then(results => {
+          _ddPhotos = _ddPhotos.concat(results);
+          renderDispatchDeliveredPhotoPreview();
+          statusEl.textContent = '';
+        }).catch(err => {
+          statusEl.textContent = '';
+          showAppAlert('❌ Gagal memproses foto: ' + err.message, 'error');
+        });
+
+        inputEl.value = ''; // reset supaya file yang sama bisa dipilih lagi kalau perlu
+      }
+
+      function removeDispatchDeliveredPhoto(idx) {
+        _ddPhotos.splice(idx, 1);
+        renderDispatchDeliveredPhotoPreview();
+      }
+
+      function renderDispatchDeliveredPhotoPreview() {
+        const wrap = document.getElementById('dd-photo-preview');
+        wrap.innerHTML = _ddPhotos.map((p, idx) =>
+          '<div class="relative">' +
+            '<img src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200">' +
+            '<button type="button" onclick="removeDispatchDeliveredPhoto(' + idx + ')" ' +
+              'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">&times;</button>' +
+          '</div>'
+        ).join('');
+      }
+
+      // Upload foto ke Drive SATU-PER-SATU (bukan digabung jadi satu request
+      // besar dengan semua data teks) supaya masing-masing request tetap kecil
+      // dan tidak gampang gagal ("Failed to fetch") di jaringan yang kurang
+      // stabil. Baru setelah semua foto berhasil diunggah & dapat URL-nya,
+      // request terakhir (saveDispatchDelivered) mengirim data teks + daftar
+      // URL foto saja — ukurannya kecil, jadi jauh lebih tahan koneksi.
+      /**
+       * GET ke GAS dengan data dikirim lewat query string (bukan POST body).
+       * Dipakai untuk action "tulis" yang datanya kecil (tanpa foto), sebagai
+       * jalur cadangan karena di beberapa jaringan/browser, request POST ke
+       * Apps Script Web App diblokir CORS ("Failed to fetch") padahal GET
+       * selalu berhasil normal. TIDAK cocok untuk payload besar (mis. foto
+       * base64) karena URL punya batas panjang — tetap pakai POST untuk itu.
+       */
+      async function _getFromGasWithRetry_(actionName, data, maxRetries) {
+        if (maxRetries === undefined) maxRetries = 2;
+        const url = INVENTORY_JS_GAS_URL +
+          '?action=' + encodeURIComponent(actionName) +
+          '&data=' + encodeURIComponent(JSON.stringify(data));
+        let lastErr = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const res = await fetch(url);
+            return await res.json();
+          } catch (err) {
+            lastErr = err;
+            if (attempt < maxRetries) {
+              await new Promise(r => setTimeout(r, 700));
+              continue;
+            }
+          }
+        }
+        throw lastErr || new Error('Gagal terhubung ke server setelah beberapa percobaan.');
+      }
+
+      /**
+       * POST ke GAS dengan retry otomatis. Kadang request POST PERTAMA ke URL
+       * Apps Script dalam satu sesi browser di-redirect oleh Google sedemikian
+       * rupa sehingga body-nya hilang di jalan (server menerima seolah tidak ada
+       * data / action kosong) — atau bahkan gagal total di level network
+       * ("Failed to fetch"). Kejadian ini biasanya hanya terjadi pada percobaan
+       * pertama; percobaan berikutnya ke URL yang sama umumnya berhasil normal.
+       * Jadi daripada langsung dianggap gagal, coba ulang beberapa kali dulu.
+       */
+      async function _postToGasWithRetry_(actionName, data, maxRetries) {
+        if (maxRetries === undefined) maxRetries = 2;
+        let lastErr = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const res = await fetch(INVENTORY_JS_GAS_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: actionName, data: data }),
+            });
+            const json = await res.json();
+            const isEmptyActionQuirk = json && json.success === false &&
+              /Action tidak dikenal/i.test(json.message || '') &&
+              !new RegExp(actionName).test(json.message || '');
+            if (isEmptyActionQuirk && attempt < maxRetries) {
+              await new Promise(r => setTimeout(r, 700));
+              continue;
+            }
+            return json;
+          } catch (err) {
+            lastErr = err;
+            if (attempt < maxRetries) {
+              await new Promise(r => setTimeout(r, 700));
+              continue;
+            }
+          }
+        }
+        throw lastErr || new Error('Gagal terhubung ke server setelah beberapa percobaan.');
+      }
+
+      // Minta browser TIDAK mematikan/mengunci layar selama proses Simpan
+      // (upload foto + simpan data) berjalan. Kalau layar Hp terkunci di
+      // tengah proses, iOS Safari / Chrome Android sering menghentikan
+      // koneksi jaringan yang sedang berjalan -> muncul "Failed to fetch"
+      // walau sebenarnya tidak ada masalah jaringan/server. Screen Wake Lock
+      // API tidak didukung semua browser, jadi dibungkus try/catch dan boleh
+      // gagal diam-diam (tidak menghalangi proses Simpan tetap jalan).
+      let _ddWakeLock = null;
+      async function _acquireDispatchWakeLock_() {
+        try {
+          if ('wakeLock' in navigator) {
+            _ddWakeLock = await navigator.wakeLock.request('screen');
+          }
+        } catch (err) { _ddWakeLock = null; }
+      }
+      function _releaseDispatchWakeLock_() {
+        try { if (_ddWakeLock) { _ddWakeLock.release(); } } catch (err) { /* abaikan */ }
+        _ddWakeLock = null;
+      }
+
+      async function submitDispatchDelivered() {
+        if (!_ddContext || !_ddContext.ticket) {
+          showAppAlert('❌ TICKET tidak ditemukan pada task ini, tidak bisa disimpan.', 'error');
+          return;
+        }
+
+        const statusEl = document.getElementById('dd-status');
+        const saveBtn = document.getElementById('dd-save-btn');
+        saveBtn.disabled = true;
+        await _acquireDispatchWakeLock_();
+
+        try {
+          // Kalau ada foto yang mau diunggah, cek dulu akses Drive-nya SEBELUM
+          // mulai upload. Ini memisahkan dua penyebab paling umum "Failed to
+          // fetch" di flow ini: (1) izin Google Drive script belum di-approve
+          // ulang setelah fitur foto ditambahkan -> pesan jelas & solusinya,
+          // vs (2) benar-benar putus koneksi saat itu -> retry seperti biasa.
+          if (_ddPhotos.length > 0) {
+            statusEl.textContent = 'Memeriksa akses penyimpanan foto...';
+            let driveCheck;
+            try {
+              driveCheck = await _getFromGasWithRetry_('checkDriveAccess', {}, 1);
+            } catch (err) {
+              throw new Error('Tidak bisa terhubung ke server (Failed to fetch). Cek koneksi internet Hp/PC, lalu coba lagi.');
+            }
+            if (!driveCheck.success) {
+              throw new Error(driveCheck.message || 'Akses penyimpanan foto (Google Drive) bermasalah.');
+            }
+          }
+
+          const photoUrls = [];
+          for (let i = 0; i < _ddPhotos.length; i++) {
+            statusEl.textContent = 'Mengunggah foto ' + (i + 1) + ' dari ' + _ddPhotos.length + '...';
+            let uploadJson;
+            try {
+              uploadJson = await _postToGasWithRetry_(
+                'uploadDispatchPhoto',
+                { ticket: _ddContext.ticket, photo: _ddPhotos[i] },
+                3
+              );
+            } catch (err) {
+              throw new Error('Gagal mengunggah foto ke-' + (i + 1) + ': koneksi terputus (Failed to fetch). Pastikan layar Hp tidak terkunci selama proses Simpan, lalu coba lagi.');
+            }
+
+            if (!uploadJson.success) {
+              throw new Error(uploadJson.message || ('Gagal mengunggah foto ke-' + (i + 1)));
+            }
+            photoUrls.push(uploadJson.url);
+          }
+
+          statusEl.textContent = 'Menyimpan data...';
+          const payload = {
+            rowNumber: _ddContext.rowNumber,
+            ticket: _ddContext.ticket,
+            loadingDatePlan: document.getElementById('dd-loading-plan-date').value,
+            noVmcJumpstart: document.getElementById('dd-no-vmc').value,
+            machineType: document.getElementById('dd-machine-type').value,
+            logisticsDetailRemark: document.getElementById('dd-remark').value,
+            loadingDateActual: document.getElementById('dd-loading-date-actual').value,
+            picDispatch: document.getElementById('dd-pic-dispatch').value,
+            photoUrls: photoUrls
+          };
+
+          let saveJson;
+          try {
+            saveJson = await _getFromGasWithRetry_('saveDispatchDelivered', payload, 3);
+          } catch (err) {
+            throw new Error('Foto berhasil diunggah, tapi gagal menyimpan data (Failed to fetch). Koneksi sempat terputus — coba klik Simpan sekali lagi (foto tidak perlu dipilih ulang).');
+          }
+
+          if (!saveJson.success) {
+            throw new Error(saveJson.message || 'Gagal menyimpan data');
+          }
+
+          closeDispatchDeliveredModal();
+          loadTeamDispatchTasks(true);
+          // Data diproses lewat antrian di server (lihat catatan saveDispatchDelivered_
+          // di Code.gs) — tidak instan, biasanya tercatat di sheet Jabodetabek dalam
+          // waktu kurang dari 1 menit. Task masih akan terlihat di daftar Team Dispatch
+          // sampai proses antrian itu selesai memberi status "Closed".
+          showToast('Data diterima, sedang diproses (biasanya < 1 menit sampai tercatat).', 'success');
+        } catch (err) {
+          statusEl.textContent = '❌ ' + err.message;
+        } finally {
+          saveBtn.disabled = false;
+          _releaseDispatchWakeLock_();
+        }
+      }
+
+      // =============================================
+      // PREVIEW & SHARE TO WHATSAPP — Plan Task per PIC
+      // =============================================
+      let _planTaskPicModalMode = 'preview'; // 'preview' | 'share'
+
+      // Daftar TEAM untuk dropdown pemilihan di modal Preview & Share to WhatsApp.
+      // Satu TEAM = nilai PIC persis seperti tersimpan per-batch (bisa berisi lebih
+      // dari satu nama sekaligus, mis. "Imam, Fajar, Ismail") — dropdown ini TIDAK
+      // memecah nama-nama itu jadi opsi terpisah, karena satu team dianggap satu
+      // kesatuan: dipilih, di-preview, dan di-capture sekaligus semua namanya, bukan
+      // salah satu nama saja. Kalau ada lebih dari satu batch dengan team yang persis
+      // sama, baris dari batch-batch itu digabung jadi satu saat dipilih.
+      let _planTaskActualPicList = [];
+
+      function loadPlanTaskActualPicList() {
+        const teams = _planTaskBatches
+          .map(b => String(b.pic || '').trim())
+          .filter(Boolean);
+        _planTaskActualPicList = Array.from(new Set(teams));
+      }
+
+      function openPlanTaskPicModal(mode) {
+        _planTaskPicModalMode = mode;
+        const statusEl = document.getElementById('plan-task-pic-modal-status');
+        document.getElementById('plan-task-pic-modal-title').textContent =
+          mode === 'share' ? 'Share to WhatsApp — Pilih Team' : 'Preview Plan Task — Pilih Team';
+        document.getElementById('plan-task-pic-modal-confirm').textContent = mode === 'share' ? 'Share' : 'Preview';
+        document.getElementById('plan-task-pic-modal').classList.remove('hidden');
+
+        // Selalu bangun ulang dari _planTaskBatches (seluruh batch/team Plan Task
+        // yang sedang tampil di menu) supaya selalu sesuai dengan data terbaru.
+        loadPlanTaskActualPicList();
+        const selectEl = document.getElementById('plan-task-pic-select');
+        selectEl.innerHTML = '<option value="">-- Pilih Team --</option>' +
+          _planTaskActualPicList.map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+
+        if (_planTaskActualPicList.length) {
+          statusEl.textContent = '';
+        } else {
+          statusEl.textContent = '⚠️ Belum ada team pada task yang sedang tampil di menu Plan Task.';
+          statusEl.style.color = '#ef4444';
+        }
+      }
+
+      function closePlanTaskPicModal() {
+        document.getElementById('plan-task-pic-modal').classList.add('hidden');
+      }
+
+      function confirmPlanTaskPicModal() {
+        const statusEl = document.getElementById('plan-task-pic-modal-status');
+        const team = document.getElementById('plan-task-pic-select').value;
+        if (!team) {
+          statusEl.textContent = '⚠️ Pilih team terlebih dahulu.';
+          statusEl.style.color = '#ef4444';
+          return;
+        }
+
+        // Gabungkan baris dari SEMUA batch yang team-nya (PIC) persis sama dengan
+        // yang dipilih — satu team = satu kesatuan nama, jadi seluruh anggotanya
+        // ikut ditampilkan/dicapture, bukan cuma salah satu nama.
+        const rows = _planTaskBatches
+          .filter(b => String(b.pic || '').trim() === team)
+          .reduce((acc, b) => acc.concat(b.rows || []), []);
+
+        closePlanTaskPicModal();
+        if (_planTaskPicModalMode === 'preview') {
+          showPlanTaskPreview(team, rows);
+        } else {
+          sharePlanTaskToWhatsApp(team, rows);
+        }
+      }
+
+      function showPlanTaskPreview(pic, rows) {
+        document.getElementById('plan-task-preview-pic').textContent = pic;
+        const thead = document.getElementById('plan-task-preview-thead');
+        const tbody = document.getElementById('plan-task-preview-tbody');
+
+        applyEqualColumns('plan-task-preview-table', 'plan-task-preview-colgroup', PLAN_TASK_DISPLAY_COLUMNS, false);
+
+        thead.innerHTML = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          h + '</th>'
+        ).join('') + '</tr>';
+
+        tbody.innerHTML = rows.length
+          ? _renderPlanTaskRows(rows, false)
+          : '<tr><td colspan="' + PLAN_TASK_DISPLAY_COLUMNS.length + '" class="px-3 py-8 text-center text-slate-400">Tidak ada data untuk PIC ini.</td></tr>';
+
+        document.getElementById('plan-task-preview-modal').classList.remove('hidden');
+      }
+
+      function closePlanTaskPreviewModal() {
+        document.getElementById('plan-task-preview-modal').classList.add('hidden');
+      }
+
+      // Susun ringkasan Plan Task milik satu PIC jadi teks, lalu buka wa.me supaya
+      // user tinggal pilih kontak/grup tujuan untuk membagikan.
+      function _buildPlanTaskShareText(pic, rows) {
+        if (!rows.length) {
+          return 'Plan Task — ' + pic + '\nTidak ada data.';
+        }
+        let text = '*Plan Task — ' + pic + '*\n\n';
+        rows.forEach((row, i) => {
+          text += (i + 1) + '. TICKET: ' + (row['TICKET'] || '-') + '\n';
+          text += '   Plan Date: ' + (row['Plan Date'] || '-') + '\n';
+          text += '   NO VMC JUMPSTART: ' + (row['NO VMC JUMPSTART'] || '-') + '\n';
+          text += '   Lokasi: ' + (row['LOCATION NAME'] || '-') + '\n';
+          text += '   Action Plan: ' + (row['ACTION PLAN'] || '-') + '\n';
+          text += '   Alamat: ' + (row['DELIVERY / PICK UP ADDRESS'] || '-') + '\n\n';
+        });
+        return text.trim();
+      }
+
+      // Helper generik: race sebuah promise dengan batas waktu, TANPA membatalkan
+      // promise aslinya (pola sama seperti withTimeout() di web dashboard NOD utama).
+      function withTimeout(promise, ms, timeoutMessage) {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error(timeoutMessage || 'Waktu habis')), ms);
+          promise.then(
+            (val) => { clearTimeout(timer); resolve(val); },
+            (err) => { clearTimeout(timer); reject(err); }
+          );
+        });
+      }
+
+      // Bangun elemen tabel di luar layar (bukan display:none, supaya tetap bisa
+      // dirender html2canvas) untuk di-screenshot lalu dibagikan.
+      function _buildPlanTaskCaptureArea(pic, rows) {
+        const wrap = document.createElement('div');
+        wrap.id = 'plan-task-share-capture';
+        // PENTING: TIDAK diberi width tetap (mis. 1100px) — dibiarkan "inline-block"
+        // supaya lebar wrap otomatis mengikuti lebar asli tabel. Sel sekarang wrap
+        // (max-width 160px per kolom) supaya tabel tidak memanjang ke samping saat
+        // isi kolom panjang; kolom di sisi kanan tetap tidak terpotong saat di-screenshot
+        // html2canvas karena tinggi baris menyesuaikan otomatis.
+        wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#ffffff;padding:16px;font-family:Roboto,Arial,sans-serif;display:inline-block;';
+
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:10px;color:#0b1f3a;white-space:nowrap;';
+        title.textContent = 'Plan Task — ' + pic;
+        wrap.appendChild(title);
+
+        const table = document.createElement('table');
+        // table-layout:fixed + max-width per kolom supaya teks panjang (alamat,
+        // remarks, action plan, dll.) wrap ke bawah, bukan memanjangkan tabel ke
+        // samping saat di-screenshot html2canvas.
+        table.style.cssText = 'border-collapse:collapse;font-size:11px;table-layout:fixed;';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
+          '<th style="background:#0b1f3a;color:#ffffff;padding:6px 8px;text-align:left;border:1px solid #cbd5e1;white-space:normal;word-wrap:break-word;max-width:160px;">' + h + '</th>'
+        ).join('') + '</tr>';
+        const tbody = document.createElement('tbody');
+        tbody.innerHTML = rows.length
+          ? rows.map((row, i) => '<tr style="background:' + (i % 2 === 0 ? '#ffffff' : '#f8fafc') + ';">' +
+              PLAN_TASK_DISPLAY_COLUMNS.map(h => '<td style="padding:6px 8px;border:1px solid #e2e8f0;white-space:normal;word-wrap:break-word;max-width:160px;vertical-align:top;">' + (row[h] ?? '') + '</td>').join('') +
+            '</tr>').join('')
+          : '<tr><td colspan="' + PLAN_TASK_DISPLAY_COLUMNS.length + '" style="padding:16px;text-align:center;color:#94a3b8;white-space:nowrap;">Tidak ada data untuk PIC ini.</td></tr>';
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+
+        document.body.appendChild(wrap);
+        return wrap;
+      }
+
+      function _downloadPlanTaskImage(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+
+      // Share to WhatsApp Plan Task — disamakan dengan pola web dashboard NOD:
+      // screenshot area (html2canvas, timeout 20 detik) lalu navigator.share()
+      // dengan file gambar (timeout 10 detik); kalau gagal/tidak didukung,
+      // fallback unduh gambar otomatis + pesan "Bagikan Manual". Guard
+      // _isSharingPlanTask mencegah tombol terpanggil dobel selagi diproses.
+      let _isSharingPlanTask = false;
+
+      async function sharePlanTaskToWhatsApp(pic, rows) {
+        if (_isSharingPlanTask) return;
+        _isSharingPlanTask = true;
+
+        const mainBtn = document.querySelector('#content-PlanTask button.bg-emerald-600');
+        const originalText = mainBtn ? mainBtn.textContent : '';
+        if (mainBtn) { mainBtn.disabled = true; mainBtn.textContent = 'Memproses...'; }
+        const resetBtn = () => {
+          _isSharingPlanTask = false;
+          if (mainBtn) { mainBtn.disabled = false; mainBtn.textContent = originalText; }
+        };
+
+        let captureArea = null;
+        try {
+          if (typeof html2canvas !== 'function') {
+            throw new Error('Library html2canvas belum termuat.');
+          }
+          captureArea = _buildPlanTaskCaptureArea(pic, rows);
+
+          // width/height & windowWidth/windowHeight diisi eksplisit dari scrollWidth/
+          // scrollHeight elemen aslinya, supaya SELURUH kolom (termasuk yang melebar
+          // ke kanan karena banyak kolom + isi nowrap) ikut ter-capture, bukan cuma
+          // yang kebetulan pas di lebar viewport/jendela browser saat ini.
+          const canvas = await withTimeout(
+            html2canvas(captureArea, {
+              scale: 2,
+              backgroundColor: '#ffffff',
+              width: captureArea.scrollWidth,
+              height: captureArea.scrollHeight,
+              windowWidth: captureArea.scrollWidth,
+              windowHeight: captureArea.scrollHeight
+            }),
+            20000,
+            'html2canvas timeout'
+          );
+
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+          if (!blob) throw new Error('Gagal membuat gambar preview.');
+
+          const fileName = 'PlanTask_' + String(pic).replace(/[^a-z0-9]+/gi, '_') + '.png';
+          const file = new File([blob], fileName, { type: 'image/png' });
+          const captionText = _buildPlanTaskShareText(pic, rows);
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await withTimeout(
+                navigator.share({ files: [file], title: 'Plan Task — ' + pic, text: captionText }),
+                10000,
+                'navigator.share timeout'
+              );
+            } catch (shareErr) {
+              if (shareErr && shareErr.name === 'AbortError') {
+                // Dibatalkan user sendiri, bukan error — tidak perlu fallback.
+              } else {
+                _downloadPlanTaskImage(blob, fileName);
+                showAppAlert('⚠️ Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
+              }
+            }
+          } else {
+            // Desktop / browser tanpa dukungan Web Share API file — fallback unduh + Bagikan Manual.
+            _downloadPlanTaskImage(blob, fileName);
+            showAppAlert('📥 Gambar Plan Task sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan Bagikan Manual lewat WhatsApp.', 'success');
+          }
+        } catch (err) {
+          showAppAlert('❌ Gagal menyiapkan Plan Task untuk dibagikan: ' + err.message, 'error');
+        } finally {
+          if (captureArea) captureArea.remove();
+          resetBtn();
+        }
       }
 
       // =============================================
@@ -1216,15 +3084,29 @@
         });
       }
 
-      // Tombol "Add": proses baris yang dicentang lalu kembali ke tampilan semula
+      // Tombol "Add": proses baris yang dicentang, kirim ke Input Task (sama seperti
+      // Jabodetabek) — baris yang sudah ada di Input Task tidak ditimpa, baris baru
+      // ditambahkan setelahnya.
       function confirmEventAddTask() {
         if (_eventSelectedRows.size === 0) {
-          alert('Pilih minimal satu baris data terlebih dahulu.');
+          showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
           return;
         }
-        // TODO: sambungkan ke logika/endpoint "Add Task" sesungguhnya di sini
-        alert(_eventSelectedRows.size + ' baris data dipilih untuk ditambahkan sebagai task.');
+        const keyword = (document.getElementById('event-search').value || '').toLowerCase().trim();
+        const filtered = !keyword ? _eventData : _eventData.filter(row =>
+          _eventHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
+        );
+
+        const newRows = Array.from(_eventSelectedRows)
+          .sort((a, b) => a - b)
+          .map(i => filtered[i])
+          .filter(Boolean)
+          .map(row => _mapRowToInputTaskColumns(row, _eventHeaders));
+        _inputTaskRows = _inputTaskRows.concat(newRows);
+
         cancelEventAddTask();
+        showPage('Input Task');
+        renderInputTaskTable();
       }
 
       function showEvent() {
@@ -1532,6 +3414,7 @@
                 resetStockOpnameForm();
                 _pendingStockOpnamePayload = null;
                 closeStockOpnameTargetModal();
+                showToast('Data Stock Opname berhasil disimpan.', 'success');
               } else {
                 statusEl.textContent = '❌ ' + (json.message || 'Gagal menyimpan data');
                 statusEl.style.color = '#ef4444';
