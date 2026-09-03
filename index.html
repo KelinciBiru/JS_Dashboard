@@ -467,7 +467,7 @@
           <span class="text-amber-600 font-semibold text-xs">Pulogadung</span>
         </div>
 
-        <button onclick="showPage('Dashboard')"
+        <button onclick="showDashboard()"
           class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm">Menu
           Utama</button>
 
@@ -569,8 +569,66 @@
     <main>
       <!-- DASHBOARD -->
       <div id="content-Dashboard" class="page-content active-page">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Dashboard</h1>
-        <div class="placeholder-box">Konten Dashboard — placeholder, akan dibangun ulang.</div>
+        <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
+          <button onclick="loadDashboardSummary(true)"
+            class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
+            🔄 Refresh
+          </button>
+        </div>
+        <div id="dashboard-status" class="text-xs text-slate-500 mb-1">Memuat data...</div>
+        <div id="dashboard-progress-wrap" class="hidden w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
+          <div id="dashboard-progress-bar" class="h-full rounded-full"
+            style="width:0%; background: linear-gradient(135deg,#f5a623,#e8910d); transition: width 0.2s ease;"></div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <button onclick="openDashboardDetail('Stock')"
+            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            <div id="dash-count-Stock" class="text-3xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs font-semibold text-slate-500 mt-1">Stock</div>
+          </button>
+          <button onclick="openDashboardDetail('Need Teknisi')"
+            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            <div id="dash-count-NeedTeknisi" class="text-3xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs font-semibold text-slate-500 mt-1">Need Teknisi</div>
+          </button>
+          <button onclick="openDashboardDetail('RTD')"
+            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            <div id="dash-count-RTD" class="text-3xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs font-semibold text-slate-500 mt-1">RTD</div>
+          </button>
+          <button onclick="openDashboardDetail('Karantina')"
+            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            <div id="dash-count-Karantina" class="text-3xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs font-semibold text-slate-500 mt-1">Karantina</div>
+          </button>
+          <button onclick="openDashboardDetail('Delivered')"
+            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            <div id="dash-count-Delivered" class="text-3xl font-extrabold text-slate-800">0</div>
+            <div class="text-xs font-semibold text-slate-500 mt-1">Delivered</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- POPUP DETAIL DASHBOARD (klik salah satu cardview Menu Utama) -->
+      <div id="dashboard-detail-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-5 max-h-[85vh] flex flex-col">
+          <div class="flex items-center justify-between mb-1">
+            <h3 id="dashboard-detail-title" class="text-sm font-bold text-slate-800">Detail</h3>
+            <button onclick="closeDashboardDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+          </div>
+          <p id="dashboard-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
+
+          <div id="dashboard-detail-typecounts" class="flex flex-wrap gap-2 mb-3"></div>
+
+          <div class="overflow-auto border border-slate-100 rounded-lg flex-1">
+            <table class="min-w-full text-xs">
+              <thead id="dashboard-detail-thead" class="bg-slate-50 sticky top-0"></thead>
+              <tbody id="dashboard-detail-tbody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- INPUT TASK -->
@@ -1259,7 +1317,7 @@
 
         if (currentRole === 'ADMIN') {
           [menuInventory, menuSalesStatus, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
-          showPage('Dashboard');
+          showDashboard();
         } else if (currentRole === 'Dispatch') {
           if (menuInventory) menuInventory.style.display = 'none';
           if (menuSalesStatus) menuSalesStatus.style.display = 'none';
@@ -1349,6 +1407,207 @@
       function showJabodetabek() {
         showPage('Request BD Jabodetabek');
         loadJabodetabek(false);
+      }
+
+      // =============================================
+      // MENU UTAMA (DASHBOARD) — Summary Stock/Need Teknisi/RTD/Karantina/Delivered
+      // =============================================
+      const DASHBOARD_STATUS_LIST = ['Stock', 'Need Teknisi', 'RTD', 'Karantina', 'Delivered'];
+      const DASHBOARD_STATUS_EL_ID = {
+        'Stock': 'dash-count-Stock',
+        'Need Teknisi': 'dash-count-NeedTeknisi',
+        'RTD': 'dash-count-RTD',
+        'Karantina': 'dash-count-Karantina',
+        'Delivered': 'dash-count-Delivered'
+      };
+      let _dashboardLoaded = false;
+      let _dashboardSummary = { counts: {}, details: {} };
+      let _dashboardDetailCurrentStatus = null;
+      let _dashboardDetailSelectedType = null;
+
+      function showDashboard() {
+        showPage('Dashboard');
+        loadDashboardSummary(false);
+      }
+
+      // =============================================
+      // PROGRESS BAR SIMULASI SAAT MEMUAT DATA MENU UTAMA
+      // (satu request getDashboardSummary membaca 5 sheet sekaligus di GAS,
+      // jadi progress tidak bisa dilaporkan real dari server — persentase
+      // disimulasikan naik halus sampai 90% sambil menunggu respons,
+      // lalu loncat ke 100% begitu respons diterima, sama seperti pola
+      // progress bar di popup Simpan Stock Opname)
+      // =============================================
+      let _dashboardProgressInterval = null;
+      let _dashboardProgressValue = 0;
+
+      function _startDashboardProgressSim() {
+        const wrap = document.getElementById('dashboard-progress-wrap');
+        const bar = document.getElementById('dashboard-progress-bar');
+        if (!wrap || !bar) return;
+        _dashboardProgressValue = 0;
+        bar.style.width = '0%';
+        wrap.classList.remove('hidden');
+        clearInterval(_dashboardProgressInterval);
+        _dashboardProgressInterval = setInterval(() => {
+          const remaining = 90 - _dashboardProgressValue;
+          const step = Math.max(0.5, remaining * 0.12);
+          _dashboardProgressValue = Math.min(90, _dashboardProgressValue + step);
+          bar.style.width = _dashboardProgressValue.toFixed(0) + '%';
+        }, 150);
+      }
+
+      function _finishDashboardProgressSim() {
+        clearInterval(_dashboardProgressInterval);
+        const bar = document.getElementById('dashboard-progress-bar');
+        _dashboardProgressValue = 100;
+        if (bar) bar.style.width = '100%';
+        setTimeout(_stopDashboardProgressSim, 350);
+      }
+
+      function _stopDashboardProgressSim() {
+        clearInterval(_dashboardProgressInterval);
+        _dashboardProgressInterval = null;
+        _dashboardProgressValue = 0;
+        const wrap = document.getElementById('dashboard-progress-wrap');
+        const bar = document.getElementById('dashboard-progress-bar');
+        if (wrap) wrap.classList.add('hidden');
+        if (bar) bar.style.width = '0%';
+      }
+
+      async function loadDashboardSummary(forceRefresh) {
+        const statusEl = document.getElementById('dashboard-status');
+        if (_dashboardLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        _startDashboardProgressSim();
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getDashboardSummary');
+          const json = await res.json();
+          if (!json.success) {
+            _stopDashboardProgressSim();
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _dashboardSummary = { counts: json.counts || {}, details: json.details || {} };
+          _dashboardLoaded = true;
+          DASHBOARD_STATUS_LIST.forEach(st => {
+            const el = document.getElementById(DASHBOARD_STATUS_EL_ID[st]);
+            if (el) el.textContent = _dashboardSummary.counts[st] || 0;
+          });
+          _finishDashboardProgressSim();
+          statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
+            ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+        } catch (err) {
+          _stopDashboardProgressSim();
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      // Kolom tabel detail: ASSETS menggantikan Asal Sheet (kolom L = ASSETS di
+      // masing-masing sheet, sudah dikirim GAS sebagai field "assets"). Kolom
+      // lokasi bersifat dinamis: EX LOCATION untuk semua status, KECUALI status
+      // "Delivered" yang menampilkan DESTINATION (field "locationName") sebagai
+      // gantinya.
+      function _dashboardDetailColumns(status) {
+        const isDelivered = status === 'Delivered';
+        return [
+          { key: 'assets', label: 'Assets' },
+          { key: 'noVMC', label: 'No. VMC' },
+          { key: 'serialNumber', label: 'Serial Number' },
+          { key: 'machineDetail', label: 'Machine Detail' },
+          { key: 'machineType', label: 'Machine Type' },
+          isDelivered
+            ? { key: 'locationName', label: 'Destination' }
+            : { key: 'exLocation', label: 'Ex Location' },
+          { key: 'warehouse', label: 'Warehouse' }
+        ];
+      }
+
+      function _escJsStr(s) {
+        return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      }
+
+      // Render ulang cardview tipe mesin (bisa diklik) + tabel di bawahnya,
+      // berdasarkan status yang sedang dibuka (_dashboardDetailCurrentStatus)
+      // dan filter tipe mesin yang sedang dipilih (_dashboardDetailSelectedType).
+      function renderDashboardDetailTable() {
+        const status = _dashboardDetailCurrentStatus;
+        const allRows = (_dashboardSummary.details && _dashboardSummary.details[status]) || [];
+        const typeFilter = _dashboardDetailSelectedType;
+        const rows = typeFilter
+          ? allRows.filter(r => (r.machineType || '(Tanpa Tipe)') === typeFilter)
+          : allRows;
+
+        document.getElementById('dashboard-detail-subtitle').textContent =
+          rows.length + ' mesin' + (typeFilter ? ' — tipe "' + typeFilter + '"' : '') +
+          ' — dari 5 sheet inventory, tahun berjalan';
+
+        // Ringkasan jumlah per tipe mesin — tiap cardview bisa diklik untuk
+        // memfilter tabel di bawahnya supaya hanya menampilkan tipe tersebut.
+        // Klik ulang tipe yang sama (atau chip "Semua") untuk membatalkan filter.
+        const typeCounts = {};
+        allRows.forEach(r => {
+          const t = r.machineType || '(Tanpa Tipe)';
+          typeCounts[t] = (typeCounts[t] || 0) + 1;
+        });
+        const typeWrap = document.getElementById('dashboard-detail-typecounts');
+        const typeEntries = Object.keys(typeCounts).sort();
+        const allChip =
+          '<button type="button" onclick="filterDashboardDetailByType(null)" class="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-semibold ' +
+          (!typeFilter ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-slate-200 text-slate-600') +
+          '">Semua <span class="rounded-full px-1.5 ' + (!typeFilter ? 'bg-white/25' : 'bg-slate-100') + '">' + allRows.length + '</span></button>';
+        const typeChips = typeEntries.map(t => {
+          const active = t === typeFilter;
+          return '<button type="button" onclick="filterDashboardDetailByType(\'' + _escJsStr(t) + '\')" class="btn-press inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-semibold ' +
+            (active ? 'bg-amber-500 border-amber-500 text-white' : 'bg-amber-50 border-amber-200 text-amber-700') +
+            '">' + t + ' <span class="rounded-full px-1.5 ' + (active ? 'bg-white/25' : 'bg-amber-500 text-white') + '">' + typeCounts[t] + '</span></button>';
+        }).join('');
+        typeWrap.innerHTML = typeEntries.length === 0 ? '' : (allChip + typeChips);
+
+        const cols = _dashboardDetailColumns(status);
+        document.getElementById('dashboard-detail-thead').innerHTML = '<tr>' +
+          cols.map(c => '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">' + c.label + '</th>').join('') +
+          '</tr>';
+
+        const tbody = document.getElementById('dashboard-detail-tbody');
+        tbody.innerHTML = rows.length === 0
+          ? '<tr><td colspan="' + cols.length + '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
+          : rows.map(r => '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+              cols.map(c => '<td class="px-3 py-2">' + (r[c.key] ?? '') + '</td>').join('') +
+              '</tr>').join('');
+      }
+
+      // Diklik dari cardview tipe mesin di dalam popup. Klik tipe yang sedang
+      // aktif (atau chip "Semua") untuk membatalkan filter dan tampilkan semua lagi.
+      function filterDashboardDetailByType(type) {
+        _dashboardDetailSelectedType = (_dashboardDetailSelectedType === type) ? null : type;
+        renderDashboardDetailTable();
+      }
+
+      function openDashboardDetail(status) {
+        const modal = document.getElementById('dashboard-detail-modal');
+        _dashboardDetailCurrentStatus = status;
+        _dashboardDetailSelectedType = null;
+
+        document.getElementById('dashboard-detail-title').textContent = status;
+        renderDashboardDetailTable();
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      function closeDashboardDetail() {
+        const modal = document.getElementById('dashboard-detail-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        _dashboardDetailCurrentStatus = null;
+        _dashboardDetailSelectedType = null;
       }
 
       // =============================================
