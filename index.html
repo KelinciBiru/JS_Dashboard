@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *,
     *::before,
@@ -2079,6 +2080,10 @@
             }
             return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>';
           }).join('') +
+          '<td class="px-2 py-2 align-top text-center">' +
+            '<button onclick="printPlanTaskNote(' + batchIndex + ',' + i + ')" ' +
+              'class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-white whitespace-nowrap">🖨️ Cetak</button>' +
+          '</td>' +
           '</tr>'
         ).join('');
       }
@@ -2119,13 +2124,17 @@
       // Render satu blok (header Divisi/PIC/No. Kendaraan + tabel) untuk satu batch.
       function _buildPlanTaskBatchBlockHTML(batch, batchIndex) {
         const n = PLAN_TASK_DISPLAY_COLUMNS.length;
+        const ACTION_COL_WIDTH_PX = 92;
         const colWidthPct = (100 / n).toFixed(4) + '%';
-        const minWidthPx = n * MIN_COL_WIDTH_PX;
-        const colgroup = PLAN_TASK_DISPLAY_COLUMNS.map(() => '<col style="width:' + colWidthPct + '">').join('');
+        const minWidthPx = n * MIN_COL_WIDTH_PX + ACTION_COL_WIDTH_PX;
+        const colgroup = PLAN_TASK_DISPLAY_COLUMNS.map(() => '<col style="width:' + colWidthPct + '">').join('') +
+          '<col style="width:' + ACTION_COL_WIDTH_PX + 'px">';
         const thead = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
           h + '</th>'
-        ).join('') + '</tr>';
+        ).join('') +
+          '<th class="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal align-bottom">Aksi</th>' +
+        '</tr>';
         const tbody = _renderPlanTaskRows(batch.rows, true, batchIndex);
 
         return (
@@ -2168,6 +2177,243 @@
         // Satu blok (header + tabel sendiri) per batch/team — batch baru muncul
         // di bawah batch yang sudah ada, bukan menimpanya.
         wrapEl.innerHTML = _planTaskBatches.map((batch, i) => _buildPlanTaskBatchBlockHTML(batch, i)).join('');
+      }
+
+      // =============================================
+      // CETAK / SIMPAN PDF — Delivery Note / Return Note / Relocation Note
+      // (menu Plan Task, tombol "🖨️ Cetak" per baris)
+      // Jenis dokumen ditentukan otomatis dari kolom ACTION PLAN:
+      //   Delivery Approval, Machine Exchange -> Delivery Note
+      //   Withdrawal                          -> Return Note
+      //   Relocation                          -> Relocation Note
+      // =============================================
+      // Logo asli Jumpstart (PNG, wordmark "JUMP/START") — di-embed sebagai
+      // base64 supaya PDF Delivery/Return/Relocation Note tidak bergantung file
+      // eksternal. Rasio asli gambar ~935x266 (crop otomatis dari file logo).
+      const JUMPSTART_LOGO_BASE64 = 'data:image/png;base64,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';
+      const JUMPSTART_LOGO_ASPECT = 935 / 266;
+
+      function _resolvePlanTaskNoteType(actionPlanRaw) {
+        const actionPlan = String(actionPlanRaw || '').toLowerCase();
+        if (actionPlan.indexOf('withdrawal') !== -1) {
+          return {
+            code: 'RN',
+            title: 'RETURN NOTE',
+            subtitle: 'Surat Jalan Pengembalian Unit',
+            statement: 'Dengan ini kami menyatakan telah menerima kembali (retur) Vending Machine sesuai rincian di bawah ini dari lokasi yang tercantum, dalam kondisi baik dan lengkap.'
+          };
+        }
+        if (actionPlan.indexOf('relocation') !== -1) {
+          return {
+            code: 'RLN',
+            title: 'RELOCATION NOTE',
+            subtitle: 'Surat Jalan Pemindahan Lokasi Unit',
+            statement: 'Dengan ini kami menyatakan telah melakukan pemindahan (relokasi) Vending Machine sesuai rincian di bawah ini dari dan ke lokasi yang tercantum, dalam kondisi baik dan berfungsi normal.'
+          };
+        }
+        // Default: Delivery Approval, Machine Exchange, dan action plan lain
+        // yang belum dikenali dianggap Delivery Note.
+        return {
+          code: 'DN',
+          title: 'DELIVERY NOTE',
+          subtitle: 'Surat Jalan Pengiriman Unit',
+          statement: 'Dengan ini kami menyatakan telah mengirimkan Vending Machine sesuai rincian di bawah ini ke lokasi yang tercantum, dalam kondisi baik dan berfungsi normal.'
+        };
+      }
+
+      // Gambar kop surat Jumpstart: logo asli (PNG "JUMP/START" ter-embed base64)
+      // + "Warehouse Pulogadung" di bawahnya, dan alamat perusahaan di sebelah
+      // kanan logo (rata tengah horizontal & vertikal terhadap tinggi logo).
+      function _drawJumpstartLetterhead(doc, pageWidth) {
+        const marginX = 14;
+        const imgTop = 12;
+        const imgW = 32;
+        const imgH = imgW / JUMPSTART_LOGO_ASPECT;
+        doc.addImage(JUMPSTART_LOGO_BASE64, 'PNG', marginX, imgTop, imgW, imgH);
+        const wordmarkEndX = marginX + imgW;
+
+        // Subteks "Warehouse" (biru) / "Pulogadung" (oranye), tersusun di
+        // bawah logo, rata tengah terhadap lebar logo
+        const centerX = (marginX + wordmarkEndX) / 2;
+        let y = imgTop + imgH + 5.5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(37, 99, 235); // blue-600
+        doc.text('Warehouse', centerX, y, { align: 'center' });
+        y += 5;
+        doc.setTextColor(249, 115, 22); // orange-500
+        doc.text('Pulogadung', centerX, y, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+
+        // Alamat perusahaan — diposisikan di sebelah kanan logo, rata tengah
+        // (center) baik secara horizontal maupun vertikal terhadap tinggi logo
+        const rightX1 = wordmarkEndX + 10;
+        const rightX2 = pageWidth - marginX;
+        const rightCenterX = (rightX1 + rightX2) / 2;
+        const rightWidth = rightX2 - rightX1;
+        const companyName = 'PT. Muara Juara Kreasi Indonesia.';
+        const companyAddress = 'Jl. Rw. Bulak 1 No.Kav. T.10. VI, RW.9, Jatinegara, Kec. Cakung, Kota Jakarta Timur, Daerah Khusus Ibukota Jakarta 13930';
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.8);
+        const addrLines = doc.splitTextToSize(companyAddress, rightWidth);
+        const lineH = 3.6;
+        const blockH = (1 + addrLines.length) * lineH;
+        const logoCenterY = imgTop + (y - imgTop) / 2; // titik tengah vertikal blok logo (gambar + subteks)
+        let ay = logoCenterY - blockH / 2 + lineH;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(companyName, rightCenterX, ay, { align: 'center' });
+        ay += lineH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.8);
+        doc.setTextColor(80, 80, 80);
+        addrLines.forEach(line => { doc.text(line, rightCenterX, ay, { align: 'center' }); ay += lineH; });
+        doc.setTextColor(0, 0, 0);
+
+        y += 8;
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.line(marginX, y, pageWidth - marginX, y);
+        y += 8;
+        return y; // posisi Y untuk konten berikutnya
+      }
+
+      function printPlanTaskNote(batchIndex, rowIndex) {
+        if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+          showAppAlert('❌ Library PDF belum termuat, coba refresh halaman.', 'error');
+          return;
+        }
+        const batch = _planTaskBatches[batchIndex];
+        const row = batch && batch.rows[rowIndex];
+        if (!row) {
+          showAppAlert('❌ Data baris tidak ditemukan.', 'error');
+          return;
+        }
+
+        const note = _resolvePlanTaskNoteType(row['ACTION PLAN']);
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const marginX = 14;
+        let y = _drawJumpstartLetterhead(doc, pageWidth);
+
+        // Judul dokumen
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text(note.title, pageWidth / 2, y, { align: 'center' });
+        y += 5.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(90, 90, 90);
+        doc.text(note.subtitle, pageWidth / 2, y, { align: 'center' });
+        doc.setTextColor(0, 0, 0);
+        y += 3;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(marginX, y, pageWidth - marginX, y);
+        y += 7;
+
+        // No. Dokumen & Tanggal
+        const todayStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+        const docNumber = note.code + '/' + String(row['TICKET'] || '-').replace(/\s+/g, '');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('No. Dokumen:', marginX, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(docNumber, marginX + 26, y);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Tanggal:', pageWidth - marginX - 55, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(todayStr, pageWidth - marginX - 35, y);
+        y += 8;
+
+        // Rincian data (key-value, 2 kolom)
+        const fields = [
+          ['No. Tiket', row['TICKET']],
+          ['Lokasi', row['LOCATION NAME']],
+          ['Action Plan', row['ACTION PLAN']],
+          ['No. VMC Jumpstart', row['NO VMC JUMPSTART']],
+          ['Proposed VM Type', row['PROPOSED VM TYPE']],
+          ['VM Type On Site', row['VM TYPE ON SITE']],
+          ['Machine Set Up', row['MACHINE SET UP']],
+          ['Price Settings', row['PRICE SETTINGS']],
+          ['Alamat Pengiriman/Pengambilan', row['DELIVERY / PICK UP ADDRESS']],
+          ['Site PIC', row['SITE PIC']],
+          ['No. HP Site PIC', row['SITE PIC PHONE NO.']],
+          ['Divisi / Team Dispatch', batch.divisi],
+          ['PIC Dispatch', batch.pic],
+          ['No. Kendaraan', batch.noKendaraan],
+          ['Catatan', row['REMARKS']]
+        ];
+
+        doc.setFontSize(9.5);
+        const labelW = 52;
+        fields.forEach(([label, value]) => {
+          const valText = String(value ?? '-').trim() || '-';
+          doc.setFont('helvetica', 'bold');
+          doc.text(label, marginX, y);
+          doc.setFont('helvetica', 'normal');
+          const lines = doc.splitTextToSize(': ' + valText, pageWidth - marginX * 2 - labelW);
+          doc.text(lines, marginX + labelW, y);
+          y += Math.max(5.5, lines.length * 4.6);
+          if (y > 255) { doc.addPage(); y = 20; }
+        });
+
+        y += 4;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(marginX, y, pageWidth - marginX, y);
+        y += 7;
+
+        // Pernyataan
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9.5);
+        const statementLines = doc.splitTextToSize(note.statement, pageWidth - marginX * 2);
+        doc.text(statementLines, marginX, y);
+        y += statementLines.length * 4.6 + 12;
+
+        if (y > 220) { doc.addPage(); y = 20; }
+
+        // Blok tanda tangan
+        const colW = (pageWidth - marginX * 2) / 2;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9.5);
+        doc.text('Diserahkan oleh,', marginX, y);
+        doc.text('Diterima oleh,', marginX + colW, y);
+        y += 3;
+        doc.setFontSize(8.5);
+        doc.setTextColor(110, 110, 110);
+        doc.text('(Team Dispatch — Jumpstart)', marginX, y);
+        doc.text('(Site PIC)', marginX + colW, y);
+        doc.setTextColor(0, 0, 0);
+        y += 22;
+        doc.line(marginX, y, marginX + 55, y);
+        doc.line(marginX + colW, y, marginX + colW + 55, y);
+        y += 5;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.text(String(batch.pic || '-'), marginX, y);
+        doc.text(String(row['SITE PIC'] || '-'), marginX + colW, y);
+
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let p = 1; p <= pageCount; p++) {
+          doc.setPage(p);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(150, 150, 150);
+          doc.text('Dokumen dibuat otomatis oleh NOD Dashboard — Jumpstart Indonesia', marginX, 290);
+          doc.text('Hal. ' + p + ' / ' + pageCount, pageWidth - marginX, 290, { align: 'right' });
+          doc.setTextColor(0, 0, 0);
+        }
+
+        const fileName = note.code + '_' + String(row['TICKET'] || 'task').replace(/[\\/:*?"<>|]+/g, '-') + '.pdf';
+        try {
+          const blobUrl = doc.output('bloburl');
+          const win = window.open(blobUrl, '_blank');
+          if (!win) { doc.save(fileName); }
+        } catch (err) {
+          doc.save(fileName);
+        }
       }
 
       // =============================================
@@ -2301,16 +2547,16 @@
           const cardsHtml = group.rows.map(row => _buildTeamDispatchCardHTML(row)).join('');
           return (
             '<div class="mb-5">' +
-              '<div class="bg-slate-800 text-white rounded-lg px-4 py-2 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">' +
-                '<span class="text-xs font-bold uppercase tracking-wide">Team:</span>' +
-                '<span class="text-sm font-semibold">' + group.divisi + '</span>' +
-                '<span class="text-xs text-slate-300">•</span>' +
-                '<span class="text-xs text-slate-300">PIC:</span>' +
-                '<span class="text-sm font-semibold">' + group.pic + '</span>' +
-                '<span class="text-xs text-slate-300">•</span>' +
-                '<span class="text-xs text-slate-300">No. Kendaraan:</span>' +
-                '<span class="text-sm font-semibold">' + group.noKendaraan + '</span>' +
-                '<span class="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full">' + group.rows.length + ' task</span>' +
+              '<div class="bg-slate-800 text-white rounded-lg px-4 py-2.5 mb-3 overflow-hidden flex flex-wrap items-center gap-x-4 gap-y-1.5">' +
+                '<span class="inline-flex items-center gap-1.5 min-w-0"><span class="text-xs font-bold uppercase tracking-wide shrink-0">Team:</span>' +
+                '<span class="text-sm font-semibold break-words">' + group.divisi + '</span></span>' +
+                '<span class="text-xs text-slate-300 shrink-0">•</span>' +
+                '<span class="inline-flex items-center gap-1.5 min-w-0"><span class="text-xs text-slate-300 shrink-0">PIC:</span>' +
+                '<span class="text-sm font-semibold break-words">' + group.pic + '</span></span>' +
+                '<span class="text-xs text-slate-300 shrink-0">•</span>' +
+                '<span class="inline-flex items-center gap-1.5 min-w-0"><span class="text-xs text-slate-300 shrink-0">No. Kendaraan:</span>' +
+                '<span class="text-sm font-semibold break-words">' + group.noKendaraan + '</span></span>' +
+                '<span class="ml-auto shrink-0 text-[10px] bg-white/10 px-2 py-1 rounded-full whitespace-nowrap">' + group.rows.length + ' task</span>' +
               '</div>' +
               '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">' + cardsHtml + '</div>' +
             '</div>'
@@ -2339,17 +2585,17 @@
               'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>'
           );
 
-        return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2">' +
+        return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
           '<div class="flex items-start justify-between gap-2">' +
-            '<span class="text-sm font-bold text-slate-800 break-words">' + (row['LOCATION NAME'] || '-') + '</span>' +
-            '<span class="text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
+            '<span class="text-sm font-bold text-slate-800 break-words min-w-0">' + (row['LOCATION NAME'] || '-') + '</span>' +
+            '<span class="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
           '</div>' +
-          '<div class="text-xs text-slate-600 space-y-1">' +
-            '<div><span class="font-semibold text-slate-500">Ticket:</span> ' + (row['TICKET'] || '-') + '</div>' +
-            '<div><span class="font-semibold text-slate-500">Action Plan:</span> ' + (row['ACTION PLAN'] || '-') + '</div>' +
-            '<div><span class="font-semibold text-slate-500">No. VMC Jumpstart:</span> ' + (row['NO VMC JUMPSTART'] || '-') + '</div>' +
-            '<div><span class="font-semibold text-slate-500">Site PIC:</span> ' + (row['SITE PIC'] || '-') + '</div>' +
-            '<div><span class="font-semibold text-slate-500">Site PIC Phone:</span> ' + (row['SITE PIC PHONE NO.'] || '-') + '</div>' +
+          '<div class="text-xs text-slate-600 space-y-1 min-w-0">' +
+            '<div class="break-all"><span class="font-semibold text-slate-500">Ticket:</span> ' + (row['TICKET'] || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Action Plan:</span> ' + (row['ACTION PLAN'] || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">No. VMC Jumpstart:</span> ' + (row['NO VMC JUMPSTART'] || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Site PIC:</span> ' + (row['SITE PIC'] || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Site PIC Phone:</span> ' + (row['SITE PIC PHONE NO.'] || '-') + '</div>' +
           '</div>' +
           '<div class="flex gap-2 mt-2">' + actionButtons + '</div>' +
         '</div>';
