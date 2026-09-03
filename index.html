@@ -229,6 +229,18 @@
       display: block;
     }
 
+    /* ============================================================
+       ISI TABEL — RATA TENGAH (global, berlaku di SEMUA tabel
+       di seluruh dashboard: header maupun isi baris). !important
+       dipakai supaya menang dari class Tailwind (text-left, dsb)
+       dan inline style text-align yang mungkin sudah ditulis
+       langsung di beberapa <th>/<td>.
+    ============================================================ */
+    table th,
+    table td {
+      text-align: center !important;
+    }
+
     .placeholder-box {
       border: none;
       border-radius: var(--neu-radius-md);
@@ -2951,31 +2963,42 @@
 
         // Status "Open": hanya tombol Start yang tampil.
         // Status "On Delivery" (setelah Start diklik): tombol berganti jadi Cancel + Delivered.
+        // Ditumpuk vertikal (full-width) bukan berdampingan, supaya label
+        // "Delivered" selalu muat dalam satu baris dan tidak pernah
+        // terpotong oleh overflow-hidden pada card, walau card sedang sempit
+        // (mode 2-3 kolom di layar kecil/menengah).
         const actionButtons = isOnDelivery
           ? (
-            '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\')" ' +
-              'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
-            '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ')" ' +
-              'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Delivered</button>'
+            '<div class="flex flex-col gap-2 mt-2">' +
+              '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ')" ' +
+                'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Delivered</button>' +
+              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\')" ' +
+                'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
+            '</div>'
           )
           : (
-            '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'On Delivery\')" ' +
-              'class="flex-1 px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>'
+            '<div class="mt-2">' +
+              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'On Delivery\')" ' +
+                'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>' +
+            '</div>'
           );
 
+        // Nama lokasi diberi baris PENUH sendiri (tidak berbagi baris dengan
+        // badge status) supaya tidak terpaksa menyempit dan pecah per-suku-kata.
+        // Badge status ditaruh di bawahnya, rata kiri.
         return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
-          '<div class="flex items-start justify-between gap-2">' +
-            '<span class="text-sm font-bold text-slate-800 break-words min-w-0">' + (row['LOCATION NAME'] || '-') + '</span>' +
-            '<span class="shrink-0 text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
+          '<div class="flex flex-col gap-1.5">' +
+            '<span class="text-sm font-bold text-slate-800 break-words leading-snug">' + (row['LOCATION NAME'] || '-') + '</span>' +
+            '<span class="self-start text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
           '</div>' +
-          '<div class="text-xs text-slate-600 space-y-1 min-w-0">' +
-            '<div class="break-all"><span class="font-semibold text-slate-500">Ticket:</span> ' + (row['TICKET'] || '-') + '</div>' +
+          '<div class="text-xs text-slate-600 space-y-1.5 min-w-0">' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Ticket:</span> ' + (row['TICKET'] || '-') + '</div>' +
             '<div class="break-words"><span class="font-semibold text-slate-500">Action Plan:</span> ' + (row['ACTION PLAN'] || '-') + '</div>' +
             '<div class="break-words"><span class="font-semibold text-slate-500">No. VMC Jumpstart:</span> ' + (row['NO VMC JUMPSTART'] || '-') + '</div>' +
             '<div class="break-words"><span class="font-semibold text-slate-500">Site PIC:</span> ' + (row['SITE PIC'] || '-') + '</div>' +
             '<div class="break-words"><span class="font-semibold text-slate-500">Site PIC Phone:</span> ' + (row['SITE PIC PHONE NO.'] || '-') + '</div>' +
           '</div>' +
-          '<div class="flex gap-2 mt-2">' + actionButtons + '</div>' +
+          actionButtons +
         '</div>';
       }
 
