@@ -571,7 +571,7 @@
       <div id="content-Dashboard" class="page-content active-page">
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
-          <button onclick="loadDashboardSummary(true)"
+          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true);"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
             🔄 Refresh
           </button>
@@ -582,6 +582,7 @@
             style="width:0%; background: linear-gradient(135deg,#f5a623,#e8910d); transition: width 0.2s ease;"></div>
         </div>
 
+        <h2 class="text-sm font-bold text-slate-700 mb-2">Machine</h2>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <button onclick="openDashboardDetail('Stock')"
             class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
@@ -609,6 +610,10 @@
             <div class="text-xs font-semibold text-slate-500 mt-1">Delivered</div>
           </button>
         </div>
+
+        <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Status Order from BD</h2>
+        <div id="bd-status-status" class="text-xs text-slate-500 mb-2"></div>
+        <div id="bd-status-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3"></div>
       </div>
 
       <!-- POPUP DETAIL DASHBOARD (klik salah satu cardview Menu Utama) -->
@@ -626,6 +631,24 @@
             <table class="min-w-full text-xs">
               <thead id="dashboard-detail-thead" class="bg-slate-50 sticky top-0"></thead>
               <tbody id="dashboard-detail-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- POPUP DETAIL "Status Order from BD" (klik salah satu cardview status) -->
+      <div id="bd-status-detail-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-5 max-h-[85vh] flex flex-col">
+          <div class="flex items-center justify-between mb-1">
+            <h3 id="bd-status-detail-title" class="text-sm font-bold text-slate-800">Detail</h3>
+            <button onclick="closeBDStatusDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+          </div>
+          <p id="bd-status-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
+
+          <div class="overflow-auto border border-slate-100 rounded-lg flex-1">
+            <table class="min-w-full text-xs">
+              <thead id="bd-status-detail-thead" class="bg-slate-50 sticky top-0"></thead>
+              <tbody id="bd-status-detail-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -1428,6 +1451,7 @@
       function showDashboard() {
         showPage('Dashboard');
         loadDashboardSummary(false);
+        loadBDStatusSummary(false);
       }
 
       // =============================================
@@ -1600,6 +1624,101 @@
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+      }
+
+      // =============================================
+      // MENU UTAMA (DASHBOARD) — "Status Order from BD"
+      // Cardview jumlah per status kolom AB (LOGISTIC UPDATE) sheet
+      // "Jabodetabek" (spreadsheet "Logistic Request 2026"), tahun berjalan.
+      // =============================================
+      const BD_STATUS_LIST = [
+        'Open', 'Done', 'VM Not Ready', 'Waiting Event Finish', 'Waiting Pick Up',
+        'Waiting List Delivery', 'Waiting for Relocation', 'In Progress',
+        'Pending by PIC', 'Pending by Sales', 'Pending Sparepart', 'Pending Outstanding',
+        'Pending Access', 'Pending by Partner (Otsuka/Nutrifood)', 'Hold', 'Cancel',
+        'Done Take Out - Waiting for Exchange', 'Delivered - Pending Activation'
+      ];
+      let _bdStatusLoaded = false;
+      let _bdStatusSummary = { counts: {}, details: {} };
+
+      function _bdStatusSlug(status) {
+        return status.replace(/[^a-zA-Z0-9]/g, '');
+      }
+
+      function _renderBDStatusCardGrid() {
+        const grid = document.getElementById('bd-status-cardgrid');
+        if (!grid) return;
+        grid.innerHTML = BD_STATUS_LIST.map(st =>
+          '<button onclick="openBDStatusDetail(\'' + _escJsStr(st) + '\')" ' +
+          'class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">' +
+          '<div id="bd-status-count-' + _bdStatusSlug(st) + '" class="text-3xl font-extrabold text-slate-800">0</div>' +
+          '<div class="text-xs font-semibold text-slate-500 mt-1">' + st + '</div>' +
+          '</button>'
+        ).join('');
+      }
+
+      async function loadBDStatusSummary(forceRefresh) {
+        const statusEl = document.getElementById('bd-status-status');
+        if (!document.getElementById('bd-status-cardgrid').innerHTML) _renderBDStatusCardGrid();
+        if (_bdStatusLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getBDStatusSummary');
+          const json = await res.json();
+          if (!json.success) {
+            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _bdStatusSummary = { counts: json.counts || {}, details: json.details || {} };
+          _bdStatusLoaded = true;
+          (json.statusList || BD_STATUS_LIST).forEach(st => {
+            const el = document.getElementById('bd-status-count-' + _bdStatusSlug(st));
+            if (el) el.textContent = _bdStatusSummary.counts[st] || 0;
+          });
+          if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
+            ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+        } catch (err) {
+          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function openBDStatusDetail(status) {
+        const modal = document.getElementById('bd-status-detail-modal');
+        const rows = (_bdStatusSummary.details && _bdStatusSummary.details[status]) || [];
+
+        document.getElementById('bd-status-detail-title').textContent = status;
+        document.getElementById('bd-status-detail-subtitle').textContent =
+          rows.length + ' data — tahun berjalan, diurut TIMESTAMP terbaru';
+
+        document.getElementById('bd-status-detail-thead').innerHTML = '<tr>' +
+          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">BD PIC</th>' +
+          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">Action Plan / VM Type On Site</th>' +
+          '<th class="px-3 py-2 text-left font-semibold border-b border-slate-200 bg-slate-50">Location Name</th>' +
+          '</tr>';
+
+        const tbody = document.getElementById('bd-status-detail-tbody');
+        tbody.innerHTML = rows.length === 0
+          ? '<tr><td colspan="3" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
+          : rows.map(r => '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+              '<td class="px-3 py-2">' + (r.bdPic || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.actionPlan || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.locationName || '-') + '</td>' +
+              '</tr>').join('');
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      function closeBDStatusDetail() {
+        const modal = document.getElementById('bd-status-detail-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
       }
 
       function closeDashboardDetail() {
