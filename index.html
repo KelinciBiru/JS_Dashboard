@@ -583,7 +583,7 @@
       <div id="content-Dashboard" class="page-content active-page">
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
-          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true);"
+          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true);"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
             🔄 Refresh
           </button>
@@ -626,6 +626,10 @@
         <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Status Order from BD</h2>
         <div id="bd-status-status" class="text-xs text-slate-500 mb-2"></div>
         <div id="bd-status-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3"></div>
+
+        <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Action Plan</h2>
+        <div id="action-plan-status" class="text-xs text-slate-500 mb-2"></div>
+        <div id="action-plan-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
       </div>
 
       <!-- POPUP DETAIL DASHBOARD (klik salah satu cardview Menu Utama) -->
@@ -668,6 +672,31 @@
             <table class="min-w-full text-xs">
               <thead id="bd-status-detail-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
               <tbody id="bd-status-detail-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- POPUP DETAIL "Action Plan" (klik salah satu badge Action Plan) -->
+      <div id="action-plan-detail-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-5 max-h-[85vh] flex flex-col">
+          <div class="flex items-center justify-between mb-1">
+            <h3 id="action-plan-detail-title" class="text-sm font-bold text-slate-800">Detail</h3>
+            <button onclick="closeActionPlanDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+          </div>
+          <p id="action-plan-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
+
+          <div class="mb-3">
+            <input type="text" id="action-plan-search-input" oninput="_filterActionPlanDetailRows()"
+              placeholder="Cari Location Name..."
+              class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" />
+            <div id="action-plan-search-count" class="text-xs text-slate-500 mt-1"></div>
+          </div>
+
+          <div class="overflow-auto border border-slate-100 rounded-lg flex-1">
+            <table class="min-w-full text-xs">
+              <thead id="action-plan-detail-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+              <tbody id="action-plan-detail-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -1471,6 +1500,7 @@
         showPage('Dashboard');
         loadDashboardSummary(false);
         loadBDStatusSummary(false);
+        loadActionPlanSummary(false);
       }
 
       // =============================================
@@ -1765,6 +1795,127 @@
         if (countEl) {
           countEl.textContent = query
             ? filtered.length + ' dari ' + _bdStatusDetailTotal + ' data ditemukan untuk "' + searchInput.value.trim() + '"'
+            : '';
+        }
+      }
+
+      // =============================================
+      // MENU UTAMA (DASHBOARD) — "Action Plan"
+      // Cardview badge jumlah per tipe ACTION PLAN (kolom ACTION PLAN sheet
+      // "Jabodetabek"), sumber & filter tahun berjalan sama persis dengan
+      // "Status Order from BD" di atas.
+      // =============================================
+      const ACTION_PLAN_LIST = ['Delivery Approval', 'Withdrawal', 'Machine Exchange', 'Relocation'];
+      let _actionPlanLoaded = false;
+      let _actionPlanSummary = { counts: {}, details: {} };
+
+      function _renderActionPlanCardGrid() {
+        const grid = document.getElementById('action-plan-cardgrid');
+        if (!grid) return;
+        grid.innerHTML = ACTION_PLAN_LIST.map(ap =>
+          '<button onclick="openActionPlanDetail(\'' + _escJsStr(ap) + '\')" ' +
+          'class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">' +
+          '<div id="action-plan-count-' + _bdStatusSlug(ap) + '" class="text-3xl font-extrabold text-slate-800">0</div>' +
+          '<div class="text-xs font-semibold text-slate-500 mt-1">' + ap + '</div>' +
+          '</button>'
+        ).join('');
+      }
+
+      async function loadActionPlanSummary(forceRefresh) {
+        const statusEl = document.getElementById('action-plan-status');
+        if (!document.getElementById('action-plan-cardgrid').innerHTML) _renderActionPlanCardGrid();
+        if (_actionPlanLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getActionPlanSummary');
+          const json = await res.json();
+          if (!json.success) {
+            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _actionPlanSummary = { counts: json.counts || {}, details: json.details || {} };
+          _actionPlanLoaded = true;
+          (json.actionPlanList || ACTION_PLAN_LIST).forEach(ap => {
+            const el = document.getElementById('action-plan-count-' + _bdStatusSlug(ap));
+            if (el) el.textContent = _actionPlanSummary.counts[ap] || 0;
+          });
+          if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
+            ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+        } catch (err) {
+          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      let _actionPlanDetailRows = [];
+      let _actionPlanDetailTotal = 0;
+
+      function openActionPlanDetail(actionPlan) {
+        const modal = document.getElementById('action-plan-detail-modal');
+        const rows = (_actionPlanSummary.details && _actionPlanSummary.details[actionPlan]) || [];
+
+        _actionPlanDetailRows = rows;
+        _actionPlanDetailTotal = rows.length;
+
+        document.getElementById('action-plan-detail-title').textContent = actionPlan;
+        document.getElementById('action-plan-detail-subtitle').textContent =
+          rows.length + ' data — tahun berjalan, status Open, diurut TIMESTAMP terbaru';
+
+        document.getElementById('action-plan-detail-thead').innerHTML = '<tr>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">BD PIC</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Status</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">VM Type On Site</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Proposed VM Type</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Location Name</th>' +
+          '</tr>';
+
+        const searchInput = document.getElementById('action-plan-search-input');
+        if (searchInput) searchInput.value = '';
+
+        _renderActionPlanDetailRows(rows);
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      function closeActionPlanDetail() {
+        const modal = document.getElementById('action-plan-detail-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+
+      function _renderActionPlanDetailRows(rows) {
+        const tbody = document.getElementById('action-plan-detail-tbody');
+        tbody.innerHTML = rows.length === 0
+          ? '<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
+          : rows.map(r => '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+              '<td class="px-3 py-2">' + (r.bdPic || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.status || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.vmTypeOnSite || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.proposedVmType || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.locationName || '-') + '</td>' +
+              '</tr>').join('');
+      }
+
+      function _filterActionPlanDetailRows() {
+        const searchInput = document.getElementById('action-plan-search-input');
+        const countEl = document.getElementById('action-plan-search-count');
+        const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+        const filtered = query
+          ? _actionPlanDetailRows.filter(r => String(r.locationName || '').toLowerCase().indexOf(query) !== -1)
+          : _actionPlanDetailRows;
+
+        _renderActionPlanDetailRows(filtered);
+
+        if (countEl) {
+          countEl.textContent = query
+            ? filtered.length + ' dari ' + _actionPlanDetailTotal + ' data ditemukan untuk "' + searchInput.value.trim() + '"'
             : '';
         }
       }
