@@ -657,6 +657,13 @@
           </div>
           <p id="bd-status-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
 
+          <div class="mb-3">
+            <input type="text" id="bd-status-search-input" oninput="_filterBDStatusDetailRows()"
+              placeholder="Cari Action Plan..."
+              class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" />
+            <div id="bd-status-search-count" class="text-xs text-slate-500 mt-1"></div>
+          </div>
+
           <div class="overflow-auto border border-slate-100 rounded-lg flex-1">
             <table class="min-w-full text-xs">
               <thead id="bd-status-detail-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
@@ -1700,9 +1707,15 @@
         }
       }
 
+      let _bdStatusDetailRows = [];
+      let _bdStatusDetailTotal = 0;
+
       function openBDStatusDetail(status) {
         const modal = document.getElementById('bd-status-detail-modal');
         const rows = (_bdStatusSummary.details && _bdStatusSummary.details[status]) || [];
+
+        _bdStatusDetailRows = rows;
+        _bdStatusDetailTotal = rows.length;
 
         document.getElementById('bd-status-detail-title').textContent = status;
         document.getElementById('bd-status-detail-subtitle').textContent =
@@ -1710,21 +1723,50 @@
 
         document.getElementById('bd-status-detail-thead').innerHTML = '<tr>' +
           '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">BD PIC</th>' +
-          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Action Plan / VM Type On Site</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Action Plan</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">VM Type On Site</th>' +
+          '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Proposed VM Type</th>' +
           '<th class="px-3 py-2 text-left font-semibold" style="background-color:#0b1f3a;color:#ffffff;">Location Name</th>' +
           '</tr>';
 
-        const tbody = document.getElementById('bd-status-detail-tbody');
-        tbody.innerHTML = rows.length === 0
-          ? '<tr><td colspan="3" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
-          : rows.map(r => '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
-              '<td class="px-3 py-2">' + (r.bdPic || '-') + '</td>' +
-              '<td class="px-3 py-2">' + (r.actionPlan || '-') + '</td>' +
-              '<td class="px-3 py-2">' + (r.locationName || '-') + '</td>' +
-              '</tr>').join('');
+        const searchInput = document.getElementById('bd-status-search-input');
+        if (searchInput) searchInput.value = '';
+
+        _renderBDStatusDetailRows(rows);
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+      }
+
+      function _renderBDStatusDetailRows(rows) {
+        const tbody = document.getElementById('bd-status-detail-tbody');
+        tbody.innerHTML = rows.length === 0
+          ? '<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
+          : rows.map(r => '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+              '<td class="px-3 py-2">' + (r.bdPic || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.actionPlan || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.vmTypeOnSite || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.proposedVmType || '-') + '</td>' +
+              '<td class="px-3 py-2">' + (r.locationName || '-') + '</td>' +
+              '</tr>').join('');
+      }
+
+      function _filterBDStatusDetailRows() {
+        const searchInput = document.getElementById('bd-status-search-input');
+        const countEl = document.getElementById('bd-status-search-count');
+        const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+        const filtered = query
+          ? _bdStatusDetailRows.filter(r => String(r.actionPlan || '').toLowerCase().indexOf(query) !== -1)
+          : _bdStatusDetailRows;
+
+        _renderBDStatusDetailRows(filtered);
+
+        if (countEl) {
+          countEl.textContent = query
+            ? filtered.length + ' dari ' + _bdStatusDetailTotal + ' data ditemukan untuk "' + searchInput.value.trim() + '"'
+            : '';
+        }
       }
 
       function closeBDStatusDetail() {
