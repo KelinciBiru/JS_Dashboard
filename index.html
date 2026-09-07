@@ -515,6 +515,20 @@
           </div>
         </div>
 
+        <!-- Machine Preparation (ADMIN only) -->
+        <div id="menu-machineprep-wrap" class="space-y-1 mt-1">
+          <button onclick="toggleSubMenu('machineprep-sub','arrow-machineprep')"
+            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
+            <span>Machine Preparation</span><span id="arrow-machineprep" class="text-xs">▼</span>
+          </button>
+          <div id="machineprep-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
+            <button onclick="showInventory('Machine Preparation')"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Machine Preparation</button>
+            <button onclick="showInventory('List Machine Preparation')"
+              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">List Machine Preparation</button>
+          </div>
+        </div>
+
         <!-- Plan Task (ADMIN only) -->
         <div id="menu-plantask-wrap" class="space-y-1 mt-1">
           <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
@@ -923,8 +937,203 @@
 
       <!-- TEAM PREPARE -->
       <div id="content-TeamPrepare" class="page-content">
-        <h1 class="text-lg font-bold text-slate-800 mb-4">Team Prepare</h1>
-        <div class="placeholder-box">Konten Team Prepare — placeholder, akan dibangun ulang.</div>
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Task Team Prepare</h1>
+          <button onclick="loadTeamPrepareCards(true)"
+            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
+        </div>
+        <div id="team-prepare-status" class="text-xs text-slate-500 mb-3"></div>
+        <div id="team-prepare-empty" class="placeholder-box">Belum ada Task Machine Preparation yang perlu dikerjakan.</div>
+        <div id="team-prepare-cards" class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));"></div>
+      </div>
+
+      <!-- MODAL: Popup Pengerjaan Task — Task Team Prepare -->
+      <div id="team-prepare-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-5 max-h-[90vh] overflow-y-auto">
+          <h3 class="text-sm font-bold text-slate-800 mb-1">Pengerjaan Task</h3>
+          <div id="tp-modal-subtitle" class="text-xs text-slate-500 mb-3"></div>
+
+          <div id="tp-modal-loading" class="text-xs text-slate-500 py-4 text-center">Memuat data mesin...</div>
+
+          <div id="tp-modal-body" class="hidden space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">VMC NO</label>
+                <input id="tp-f-novmc" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">SERIAL NUMBER</label>
+                <input id="tp-f-serial" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">EX. LOCATION</label>
+                <input id="tp-f-exlocation" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">MACHINE DETAIL</label>
+                <input id="tp-f-machinedetail" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">INBOUND DATE</label>
+                <input id="tp-f-inbounddate" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">ASSETS</label>
+                <input id="tp-f-assets" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">ALOKASI</label>
+                <input id="tp-f-alokasi" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">FINAL STATUS</label>
+                <select id="tp-f-finalstatus"
+                  class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                  <option value="">-- Pilih Final Status --</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">KETERANGAN</label>
+              <textarea id="tp-f-keterangan" rows="4"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm"
+                placeholder="Catatan pengerjaan, boleh diisi beberapa paragraf..."></textarea>
+            </div>
+
+            <div id="tp-checklist-wrap" class="space-y-4"></div>
+
+            <div id="tp-modal-status" class="text-xs"></div>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <button onclick="closeTeamPrepareModal()"
+              class="px-3 py-1.5 text-xs font-semibold text-slate-600">Batal</button>
+            <button id="tp-save-btn" onclick="submitTeamPrepareTask()"
+              class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md">Simpan</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TASK MACHINE PREPARATION (data dikirim dari List Machine Preparation) -->
+      <div id="content-MachinePreparation" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">Task Machine Preparation</h1>
+          <div class="flex items-center gap-2">
+            <input id="taskmprep-search" type="text" placeholder="Cari data..."
+              oninput="renderTaskMachinePrepTable()"
+              class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            <button onclick="loadTaskMachinePrepList(true)"
+              class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+              ⟳ Refresh
+            </button>
+          </div>
+        </div>
+        <div id="taskmprep-status" class="text-xs text-slate-400 mb-2"></div>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full text-xs sm:text-sm">
+            <thead style="background-color:#0b1f3a;color:#ffffff;">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">TIMESTAMP</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">VMC NO</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">SERIAL NUMBER</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">EX. LOCATION</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">MACHINE TYPE</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">WAREHOUSE</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">ASSETS</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">ALOKASI</th>
+              </tr>
+            </thead>
+            <tbody id="taskmprep-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LIST MACHINE PREPARATION -->
+      <div id="content-ListMachinePreparation" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">List Machine Preparation</h1>
+          <div class="flex items-center gap-2 flex-wrap">
+            <input id="mprep-search" type="text" placeholder="Cari data..."
+              oninput="renderMachinePrepTable()"
+              class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            <button onclick="loadMachinePrepList(true)"
+              class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+              ⟳ Refresh
+            </button>
+            <button id="mprep-addtask-btn" onclick="toggleMachinePrepAddTask()"
+              class="btn-press px-3 py-2 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 whitespace-nowrap">
+              + Add Task
+            </button>
+            <button id="mprep-add-btn" onclick="confirmMachinePrepAddTask()"
+              class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 whitespace-nowrap">
+              ✓ Add (<span id="mprep-selected-count">0</span>)
+            </button>
+            <button id="mprep-cancel-btn" onclick="cancelMachinePrepAddTask()"
+              class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600 whitespace-nowrap">
+              Batal
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-center py-4 mb-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="text-center">
+            <div id="mprep-count" class="text-4xl sm:text-5xl font-extrabold text-amber-600 leading-none">0/0</div>
+            <div class="text-xs text-slate-500 mt-1 tracking-wide">STOCK&nbsp;/&nbsp;RTD</div>
+          </div>
+        </div>
+
+        <!-- Pengelompokan: dropdown Machine Type & Assets -->
+        <div class="flex flex-col sm:flex-row gap-2 mb-3">
+          <div class="flex-1">
+            <label class="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Machine Type</label>
+            <select id="mprep-filter-machinetype" onchange="renderMachinePrepTable()"
+              class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+              <option value="">Semua Machine Type</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <label class="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Assets</label>
+            <select id="mprep-filter-assets" onchange="renderMachinePrepTable()"
+              class="w-full px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+              <option value="">Semua Assets</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="mprep-status" class="text-xs text-slate-400 mb-2"></div>
+        <div id="mprep-progress-wrap" class="hidden mb-3">
+          <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div id="mprep-progress-bar" class="h-full bg-amber-500 rounded-full transition-all duration-200 ease-out" style="width:0%"></div>
+          </div>
+          <div class="text-right text-[10px] text-slate-400 mt-0.5"><span id="mprep-progress-pct">0</span>%</div>
+        </div>
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="min-w-full text-xs sm:text-sm">
+            <thead style="background-color:#0b1f3a;color:#ffffff;">
+              <tr id="mprep-thead-row">
+                <th id="mprep-th-checkbox" class="hidden px-2 py-2 text-center font-semibold border-b border-slate-200">
+                  <input type="checkbox" onchange="handleMachinePrepSelectAll(this)">
+                </th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">VMC NO</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">SERIAL NUMBER</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">EX. LOCATION</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">MACHINE TYPE</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">WAREHOUSE</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">ASSETS</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">ALOKASI</th>
+              </tr>
+            </thead>
+            <tbody id="mprep-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- REPORT INVENTORY JS -->
@@ -1382,16 +1591,18 @@
       function applyRoleAccess() {
         const menuInventory = document.getElementById('menu-inventory-wrap');
         const menuSalesStatus = document.getElementById('menu-salesstatus-wrap');
+        const menuMachinePrep = document.getElementById('menu-machineprep-wrap');
         const menuPlanTask = document.getElementById('menu-plantask-wrap');
         const menuDispatch = document.getElementById('menu-dispatch-wrap');
         const menuPrepare = document.getElementById('menu-prepare-wrap');
 
         if (currentRole === 'ADMIN') {
-          [menuInventory, menuSalesStatus, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
+          [menuInventory, menuSalesStatus, menuMachinePrep, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
           showDashboard();
         } else if (currentRole === 'Dispatch') {
           if (menuInventory) menuInventory.style.display = 'none';
           if (menuSalesStatus) menuSalesStatus.style.display = 'none';
+          if (menuMachinePrep) menuMachinePrep.style.display = 'none';
           if (menuPlanTask) menuPlanTask.style.display = 'none';
           if (menuDispatch) menuDispatch.style.display = '';
           if (menuPrepare) menuPrepare.style.display = 'none';
@@ -1400,11 +1611,12 @@
         } else if (currentRole === 'Prepare') {
           if (menuInventory) menuInventory.style.display = 'none';
           if (menuSalesStatus) menuSalesStatus.style.display = 'none';
+          if (menuMachinePrep) menuMachinePrep.style.display = 'none';
           if (menuPlanTask) menuPlanTask.style.display = 'none';
           if (menuDispatch) menuDispatch.style.display = 'none';
           if (menuPrepare) menuPrepare.style.display = '';
           document.getElementById('po-sub').classList.remove('hidden');
-          showPage('Team Prepare');
+          showInventory('Team Prepare');
         }
       }
 
@@ -1468,11 +1680,14 @@
         showPage(n);
         if (n === 'Report Inventory JS') loadInventoryJS(false);
         if (n === 'Report Inventory CIMB') loadInventoryCIMB(false);
+        if (n === 'List Machine Preparation') loadMachinePrepList(false);
+        if (n === 'Machine Preparation') loadTaskMachinePrepList(false);
         if (n === 'Stock Opname') loadStockOpnameSource(false);
         if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); }
         if (n === 'Plan Task') { renderPlanTaskTable(); }
         if (n === 'Status Task') { loadTaskOnGoing(false); }
         if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); }
+        if (n === 'Team Prepare') { loadTeamPrepareCards(false); }
       }
 
       function showJabodetabek() {
@@ -2050,6 +2265,332 @@
         tbody.innerHTML = filtered.map(row =>
           '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
           _invCIMBHeaders.map(h => '<td class="px-3 py-2">' + (row[h] ?? '') + '</td>').join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // =============================================
+      // LIST MACHINE PREPARATION (Final Status = Stock)
+      // =============================================
+      const MACHINE_PREP_COLUMNS = [
+        { key: 'noVMC', label: 'VMC NO' },
+        { key: 'serialNumber', label: 'SERIAL NUMBER' },
+        { key: 'exLocation', label: 'EX. LOCATION' },
+        { key: 'machineType', label: 'MACHINE TYPE' },
+        { key: 'warehouse', label: 'WAREHOUSE' },
+        { key: 'assets', label: 'ASSETS' },
+        { key: 'alokasi', label: 'ALOKASI' }
+      ];
+      let _mprepData = [];
+      let _mprepStockCount = 0;
+      let _mprepRtdCount = 0;
+      let _mprepLoaded = false;
+      let _mprepProgressTimer = null;
+
+      // Mode "+ Add Task" (checkbox) + seleksi. Seleksi disimpan sebagai Map
+      // key -> row (BUKAN berdasarkan indeks baris hasil filter), supaya baris
+      // yang sudah dicentang TIDAK HILANG saat user berpindah filter Machine
+      // Type / Assets atau mengubah kata kunci pencarian — sesuai permintaan.
+      let _mprepAddTaskMode = false;
+      let _mprepSelectedMap = new Map();
+
+      // Kunci unik per baris: kombinasi sheet asal + VMC NO + Serial Number,
+      // supaya baris yang sama tetap dikenali sebagai baris yang sama walau
+      // tabel dirender ulang dengan filter/kata kunci berbeda.
+      function _mprepRowKey(row) {
+        return [row.sheet, row.noVMC, row.serialNumber].map(v => String(v ?? '').trim()).join('||');
+      }
+
+      // Isi ulang opsi dropdown Machine Type & Assets dari data yang sedang
+      // dimuat (nilai unik, diurutkan), sambil mempertahankan pilihan yang
+      // sedang aktif kalau nilainya masih ada di data terbaru.
+      function _mprepPopulateFilterDropdowns() {
+        const mtSel = document.getElementById('mprep-filter-machinetype');
+        const asSel = document.getElementById('mprep-filter-assets');
+        const prevMt = mtSel.value;
+        const prevAs = asSel.value;
+
+        const machineTypes = Array.from(new Set(_mprepData.map(r => String(r.machineType ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+        const assetsList = Array.from(new Set(_mprepData.map(r => String(r.assets ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+        mtSel.innerHTML = '<option value="">Semua Machine Type</option>' +
+          machineTypes.map(v => '<option value="' + v.replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+        asSel.innerHTML = '<option value="">Semua Assets</option>' +
+          assetsList.map(v => '<option value="' + v.replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+
+        if (machineTypes.includes(prevMt)) mtSel.value = prevMt;
+        if (assetsList.includes(prevAs)) asSel.value = prevAs;
+      }
+
+      // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
+      function toggleMachinePrepAddTask() {
+        _mprepAddTaskMode = true;
+        _mprepSelectedMap.clear();
+        document.getElementById('mprep-addtask-btn').classList.add('hidden');
+        document.getElementById('mprep-add-btn').classList.remove('hidden');
+        document.getElementById('mprep-cancel-btn').classList.remove('hidden');
+        document.getElementById('mprep-th-checkbox').classList.remove('hidden');
+        renderMachinePrepTable();
+      }
+
+      // Tombol "Batal": kembali ke tampilan semula tanpa checkbox, seleksi dibuang
+      function cancelMachinePrepAddTask() {
+        _mprepAddTaskMode = false;
+        _mprepSelectedMap.clear();
+        document.getElementById('mprep-addtask-btn').classList.remove('hidden');
+        document.getElementById('mprep-add-btn').classList.add('hidden');
+        document.getElementById('mprep-cancel-btn').classList.add('hidden');
+        document.getElementById('mprep-th-checkbox').classList.add('hidden');
+        renderMachinePrepTable();
+      }
+
+      function handleMachinePrepRowCheck(checkbox, key, row) {
+        if (checkbox.checked) _mprepSelectedMap.set(key, row);
+        else _mprepSelectedMap.delete(key);
+        _mprepUpdateSelectedCount();
+      }
+
+      // "Pilih semua" hanya berlaku untuk baris yang SEDANG TAMPIL (hasil filter
+      // saat ini) — baris lain yang sudah dicentang sebelumnya (di filter lain)
+      // tetap tersimpan di _mprepSelectedMap dan tidak ikut berubah.
+      function handleMachinePrepSelectAll(checkbox) {
+        document.querySelectorAll('.mprep-row-checkbox').forEach(cb => {
+          cb.checked = checkbox.checked;
+          const key = cb.dataset.rowKey;
+          const row = _mprepVisibleRowsByKey[key];
+          if (!row) return;
+          if (checkbox.checked) _mprepSelectedMap.set(key, row);
+          else _mprepSelectedMap.delete(key);
+        });
+        _mprepUpdateSelectedCount();
+      }
+
+      function _mprepUpdateSelectedCount() {
+        const el = document.getElementById('mprep-selected-count');
+        if (el) el.textContent = _mprepSelectedMap.size;
+      }
+
+      // Tombol "Add": kirim seluruh baris yang sudah dicentang (dari SEMUA filter,
+      // bukan cuma yang sedang tampil) ke sheet "Task Machine Preparation" lewat GAS.
+      function confirmMachinePrepAddTask() {
+        if (_mprepSelectedMap.size === 0) {
+          showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
+          return;
+        }
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          showAppAlert('GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.', 'error');
+          return;
+        }
+
+        const tasks = Array.from(_mprepSelectedMap.values());
+        const addBtn = document.getElementById('mprep-add-btn');
+        const addBtnOriginalHtml = addBtn.innerHTML;
+        addBtn.disabled = true;
+        addBtn.textContent = 'Menyimpan...';
+
+        fetch(INVENTORY_JS_GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'submitTaskMachinePrep', data: { tasks: tasks } }),
+        })
+          .then(res => res.json())
+          .then(json => {
+            addBtn.disabled = false;
+            addBtn.innerHTML = addBtnOriginalHtml;
+            if (json.success) {
+              showAppAlert(json.message || ('Berhasil menambahkan ' + tasks.length + ' data ke Task Machine Preparation.'), 'success');
+              cancelMachinePrepAddTask();
+              showInventory('Machine Preparation');
+            } else {
+              showAppAlert(json.message || 'Gagal menyimpan Task Machine Preparation', 'error');
+            }
+          })
+          .catch(err => {
+            addBtn.disabled = false;
+            addBtn.innerHTML = addBtnOriginalHtml;
+            showAppAlert('Gagal terhubung ke server: ' + err.message, 'error');
+          });
+      }
+
+      // Progress bar persen (creep otomatis ke 90% selagi fetch berjalan,
+      // lompat ke 100% saat data selesai dimuat — request GET biasa tidak
+      // punya event progress asli, jadi ini estimasi visual supaya user
+      // tahu proses sedang berjalan, bukan macet).
+      function _mprepStartProgress() {
+        const wrap = document.getElementById('mprep-progress-wrap');
+        const bar = document.getElementById('mprep-progress-bar');
+        const pct = document.getElementById('mprep-progress-pct');
+        clearInterval(_mprepProgressTimer);
+        wrap.classList.remove('hidden');
+        let current = 0;
+        bar.style.width = '0%';
+        pct.textContent = '0';
+        _mprepProgressTimer = setInterval(() => {
+          const remaining = 90 - current;
+          current += Math.max(0.5, remaining * 0.08);
+          if (current >= 90) current = 90;
+          bar.style.width = current.toFixed(0) + '%';
+          pct.textContent = current.toFixed(0);
+        }, 150);
+      }
+
+      function _mprepFinishProgress(success) {
+        clearInterval(_mprepProgressTimer);
+        const wrap = document.getElementById('mprep-progress-wrap');
+        const bar = document.getElementById('mprep-progress-bar');
+        const pct = document.getElementById('mprep-progress-pct');
+        if (success) {
+          bar.style.width = '100%';
+          pct.textContent = '100';
+        }
+        setTimeout(() => {
+          wrap.classList.add('hidden');
+          bar.style.width = '0%';
+          pct.textContent = '0';
+        }, success ? 400 : 200);
+      }
+
+      async function loadMachinePrepList(forceRefresh) {
+        const statusEl = document.getElementById('mprep-status');
+        if (_mprepLoaded && !forceRefresh) return;
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        _mprepStartProgress();
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getMachinePreparationList');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _mprepFinishProgress(false);
+            return;
+          }
+          _mprepData = json.data || [];
+          _mprepStockCount = json.stockCount || 0;
+          _mprepRtdCount = json.rtdCount || 0;
+          _mprepLoaded = true;
+          statusEl.textContent = _mprepData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          document.getElementById('mprep-count').textContent = _mprepStockCount + '/' + _mprepRtdCount;
+          _mprepPopulateFilterDropdowns();
+          renderMachinePrepTable();
+          _mprepFinishProgress(true);
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _mprepFinishProgress(false);
+        }
+      }
+
+      // Peta key -> row untuk baris yang SEDANG TAMPIL di tabel (hasil filter saat
+      // ini) — dipakai oleh handleMachinePrepSelectAll supaya tahu row lengkap dari
+      // key checkbox tanpa harus filter ulang data.
+      let _mprepVisibleRowsByKey = {};
+
+      function renderMachinePrepTable() {
+        const tbody = document.getElementById('mprep-tbody');
+        const keyword = (document.getElementById('mprep-search').value || '').toLowerCase().trim();
+        const machineTypeFilter = document.getElementById('mprep-filter-machinetype').value;
+        const assetsFilter = document.getElementById('mprep-filter-assets').value;
+
+        let filtered = _mprepData;
+        if (machineTypeFilter) filtered = filtered.filter(row => String(row.machineType ?? '').trim() === machineTypeFilter);
+        if (assetsFilter) filtered = filtered.filter(row => String(row.assets ?? '').trim() === assetsFilter);
+        if (keyword) filtered = filtered.filter(row =>
+          MACHINE_PREP_COLUMNS.some(c => String(row[c.key] ?? '').toLowerCase().includes(keyword))
+        );
+
+        _mprepVisibleRowsByKey = {};
+        filtered.forEach(row => { _mprepVisibleRowsByKey[_mprepRowKey(row)] = row; });
+
+        const colCount = MACHINE_PREP_COLUMNS.length + (_mprepAddTaskMode ? 1 : 0);
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + colCount +
+            '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>';
+          _mprepUpdateSelectedCount();
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(row => {
+          const key = _mprepRowKey(row);
+          const checkboxTd = _mprepAddTaskMode
+            ? '<td class="px-2 py-2 text-center">' +
+              '<input type="checkbox" class="mprep-row-checkbox" data-row-key="' + key.replace(/"/g, '&quot;') + '" ' +
+              (_mprepSelectedMap.has(key) ? 'checked ' : '') +
+              'onchange="handleMachinePrepRowCheck(this, \'' + key.replace(/'/g, "\\'") + '\', _mprepVisibleRowsByKey[\'' + key.replace(/'/g, "\\'") + '\'])"></td>'
+            : '';
+          return '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+            checkboxTd +
+            MACHINE_PREP_COLUMNS.map(c => '<td class="px-3 py-2">' + (row[c.key] ?? '') + '</td>').join('') +
+            '</tr>';
+        }).join('');
+
+        _mprepUpdateSelectedCount();
+      }
+
+      // =============================================
+      // TASK MACHINE PREPARATION (hasil "+ Add Task" dari List Machine Preparation,
+      // disimpan di sheet "Task Machine Preparation" pada spreadsheet "Dashboard
+      // Dispatch V2")
+      // =============================================
+      const TASK_MACHINE_PREP_COLUMNS = [
+        { key: 'timestamp', label: 'TIMESTAMP' },
+        { key: 'noVMC', label: 'VMC NO' },
+        { key: 'serialNumber', label: 'SERIAL NUMBER' },
+        { key: 'exLocation', label: 'EX. LOCATION' },
+        { key: 'machineType', label: 'MACHINE TYPE' },
+        { key: 'warehouse', label: 'WAREHOUSE' },
+        { key: 'assets', label: 'ASSETS' },
+        { key: 'alokasi', label: 'ALOKASI' }
+      ];
+      let _taskMprepData = [];
+      let _taskMprepLoaded = false;
+
+      async function loadTaskMachinePrepList(forceRefresh) {
+        const statusEl = document.getElementById('taskmprep-status');
+        if (_taskMprepLoaded && !forceRefresh) { renderTaskMachinePrepTable(); return; }
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTaskMachinePrepList');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _taskMprepData = json.data || [];
+          _taskMprepLoaded = true;
+          statusEl.textContent = _taskMprepData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderTaskMachinePrepTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderTaskMachinePrepTable() {
+        const tbody = document.getElementById('taskmprep-tbody');
+        const keyword = (document.getElementById('taskmprep-search').value || '').toLowerCase().trim();
+
+        const filtered = !keyword ? _taskMprepData : _taskMprepData.filter(row =>
+          TASK_MACHINE_PREP_COLUMNS.some(c => String(row[c.key] ?? '').toLowerCase().includes(keyword))
+        );
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + TASK_MACHINE_PREP_COLUMNS.length +
+            '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(row =>
+          '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+          TASK_MACHINE_PREP_COLUMNS.map(c => '<td class="px-3 py-2">' + (row[c.key] ?? '') + '</td>').join('') +
           '</tr>'
         ).join('');
       }
@@ -3634,6 +4175,279 @@
           _releaseDispatchWakeLock_();
         }
       }
+
+
+      // =============================================
+      // TASK TEAM PREPARE (Cardview + Popup pengerjaan)
+      // =============================================
+      let _teamPrepareCards = [];
+      let _tpFinalStatusOptions = [];
+      let _tpFinalStatusLoaded = false;
+      let _tpContext = null; // { rowNumberSource, noVMC, serialNumber, machineType, exLocation, alokasi, assets, sheetAsal }
+
+      async function loadTeamPrepareCards(forceRefresh) {
+        const statusEl = document.getElementById('team-prepare-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamPrepareCards');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _teamPrepareCards = json.data || [];
+          statusEl.textContent = _teamPrepareCards.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderTeamPrepareCards();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderTeamPrepareCards() {
+        const emptyEl = document.getElementById('team-prepare-empty');
+        const wrapEl = document.getElementById('team-prepare-cards');
+
+        if (!_teamPrepareCards.length) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.innerHTML = '';
+          return;
+        }
+        emptyEl.classList.add('hidden');
+
+        wrapEl.innerHTML = _teamPrepareCards.map(row => _buildTeamPrepareCardHTML(row)).join('');
+      }
+
+      function _buildTeamPrepareCardHTML(row) {
+        return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
+          '<div class="text-sm font-bold text-slate-800 break-words leading-snug">' + (row.noVMC || '-') + '</div>' +
+          '<div class="text-xs text-slate-600 space-y-1.5 min-w-0">' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Serial Number:</span> ' + (row.serialNumber || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Machine Type:</span> ' + (row.machineType || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Ex. Location:</span> ' + (row.exLocation || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Alokasi:</span> ' + (row.alokasi || '-') + '</div>' +
+            '<div class="break-words"><span class="font-semibold text-slate-500">Assets:</span> ' + (row.assets || '-') + '</div>' +
+          '</div>' +
+          '<div class="flex flex-col gap-2 mt-2">' +
+            '<button onclick=\'openTeamPrepareModal(' + JSON.stringify(row).replace(/&/g, '&amp;').replace(/'/g, '&#39;') + ')\' ' +
+              'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>' +
+            '<button onclick="handleTeamPrepareCancel(' + row.rowNumber + ')" ' +
+              'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      // Tombol "Cancel" di card — langsung tandai STATUS "Cancelled" di sheet
+      // "Task Machine Preparation" (tanpa membuka Popup), lalu refresh Cardview.
+      function handleTeamPrepareCancel(rowNumber) {
+        if (!confirm('Batalkan task ini? Task akan hilang dari daftar Task Team Prepare.')) return;
+        _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' })
+          .then(json => {
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal membatalkan task'), 'error');
+              return;
+            }
+            loadTeamPrepareCards(true);
+          })
+          .catch(err => {
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+          });
+      }
+
+      async function _ensureTpFinalStatusOptions() {
+        const selectEl = document.getElementById('tp-f-finalstatus');
+        if (_tpFinalStatusLoaded) return;
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSourceDropdowns');
+          const json = await res.json();
+          if (json.success) {
+            _tpFinalStatusOptions = json.finalStatus || [];
+            _tpFinalStatusLoaded = true;
+            _tpFinalStatusOptions.forEach(opt => {
+              const optEl = document.createElement('option');
+              optEl.value = opt;
+              optEl.textContent = opt;
+              selectEl.appendChild(optEl);
+            });
+          }
+        } catch (err) { /* dropdown opsional, abaikan kalau gagal dimuat */ }
+      }
+
+      // Tombol "Start" di card — buka Popup pengerjaan Task, ambil detail
+      // lengkap mesin (termasuk blok checklist tambahan kalau ada) lewat
+      // action 'getTeamPrepareTaskDetail', dicocokkan lewat SHEET ASAL + VMC NO.
+      async function openTeamPrepareModal(row) {
+        _tpContext = row;
+
+        document.getElementById('team-prepare-modal').classList.remove('hidden');
+        document.getElementById('tp-modal-subtitle').textContent = row.noVMC + ' — ' + (row.sheet || '-');
+        document.getElementById('tp-modal-loading').classList.remove('hidden');
+        document.getElementById('tp-modal-body').classList.add('hidden');
+        document.getElementById('tp-modal-status').textContent = '';
+        document.getElementById('tp-checklist-wrap').innerHTML = '';
+        document.getElementById('tp-f-keterangan').value = '';
+
+        await _ensureTpFinalStatusOptions();
+
+        try {
+          const url = INVENTORY_JS_GAS_URL + '?action=getTeamPrepareTaskDetail' +
+            '&sheetAsal=' + encodeURIComponent(row.sheet || '') +
+            '&noVMC=' + encodeURIComponent(row.noVMC || '') +
+            '&serialNumber=' + encodeURIComponent(row.serialNumber || '');
+          const res = await fetch(url);
+          const json = await res.json();
+
+          if (!json.success) {
+            document.getElementById('tp-modal-loading').textContent = '❌ ' + (json.message || 'Gagal memuat detail mesin');
+            return;
+          }
+
+          _tpContext.detailRowNumber = json.rowNumber;
+          const base = json.base || {};
+          document.getElementById('tp-f-novmc').value = base.noVMC || row.noVMC || '';
+          document.getElementById('tp-f-serial').value = base.serialNumber || row.serialNumber || '';
+          document.getElementById('tp-f-exlocation').value = base.exLocation || row.exLocation || '';
+          document.getElementById('tp-f-machinedetail').value = base.machineDetail || '';
+          document.getElementById('tp-f-inbounddate').value = base.inboundDate || '';
+          document.getElementById('tp-f-assets').value = base.assets || row.assets || '';
+          document.getElementById('tp-f-alokasi').value = base.alokasi || row.alokasi || '';
+          document.getElementById('tp-f-finalstatus').value = base.finalStatus || '';
+
+          renderTeamPrepareChecklist(json.checklist || []);
+
+          document.getElementById('tp-modal-loading').classList.add('hidden');
+          document.getElementById('tp-modal-body').classList.remove('hidden');
+        } catch (err) {
+          document.getElementById('tp-modal-loading').textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      // Render blok checklist dinamis (SPAREPART / PRE-RTD CHECK / LCD & Touchscreen
+      // / dst) sesuai sheet asal. inputType 'chip' -> tombol toggle slide (DONE),
+      // inputType 'dropdown' -> <select> OK/NOT OK/AVAIL/NOT AVAIL.
+      function renderTeamPrepareChecklist(checklist) {
+        _tpLastChecklist = checklist || [];
+        const wrap = document.getElementById('tp-checklist-wrap');
+        if (!checklist.length) { wrap.innerHTML = ''; return; }
+
+        wrap.innerHTML = checklist.map((block, blockIdx) => {
+          const itemsHtml = block.items.map((item, itemIdx) => {
+            const fieldId = 'tp-chk-' + blockIdx + '-' + itemIdx;
+            if (block.inputType === 'chip') {
+              const isDone = String(item.value || '').trim().toUpperCase() === 'DONE';
+              return '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">' +
+                '<span class="text-xs text-slate-600 break-words">' + item.label + '</span>' +
+                '<button type="button" id="' + fieldId + '" data-value="' + (isDone ? 'DONE' : '') + '" ' +
+                  'onclick="_toggleTpChip(this)" ' +
+                  'class="shrink-0 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap ' +
+                  (isDone ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500') + '">' +
+                  (isDone ? 'DONE' : 'Slide = Done') +
+                '</button>' +
+              '</div>';
+            }
+            const currentVal = String(item.value || '').trim().toUpperCase();
+            const optionsHtml = ['', ].concat(TEAM_PREPARE_DROPDOWN_OPTIONS_FE).map(opt => {
+              if (opt === '') return '<option value="">-- Pilih --</option>';
+              const selected = currentVal === opt ? ' selected' : '';
+              return '<option value="' + opt + '"' + selected + '>' + opt + '</option>';
+            }).join('');
+            return '<div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">' +
+              '<span class="text-xs text-slate-600 break-words flex-1">' + item.label + '</span>' +
+              '<select id="' + fieldId + '" class="shrink-0 w-32 border border-slate-300 rounded-md px-2 py-1 text-xs">' + optionsHtml + '</select>' +
+            '</div>';
+          }).join('');
+
+          return '<div class="border border-slate-200 rounded-lg p-3">' +
+            '<div class="text-xs font-bold text-slate-700 mb-1">' + block.title + '</div>' +
+            '<div>' + itemsHtml + '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      const TEAM_PREPARE_DROPDOWN_OPTIONS_FE = ['OK', 'NOT OK', 'AVAIL', 'NOT AVAIL'];
+
+      function _toggleTpChip(btnEl) {
+        const isDone = btnEl.getAttribute('data-value') === 'DONE';
+        const newVal = isDone ? '' : 'DONE';
+        btnEl.setAttribute('data-value', newVal);
+        btnEl.textContent = newVal === 'DONE' ? 'DONE' : 'Slide = Done';
+        btnEl.className = 'shrink-0 px-3 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap ' +
+          (newVal === 'DONE' ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500');
+      }
+
+      // Kumpulkan kembali isian checklist dari DOM (label + value tiap item,
+      // dikelompokkan per blok) untuk dikirim & disimpan sebagai JSON di sheet
+      // "Task Team Prepare".
+      function _collectTeamPrepareChecklist(checklist) {
+        return checklist.map((block, blockIdx) => {
+          const items = block.items.map((item, itemIdx) => {
+            const fieldId = 'tp-chk-' + blockIdx + '-' + itemIdx;
+            const el = document.getElementById(fieldId);
+            let value = '';
+            if (el) {
+              value = block.inputType === 'chip' ? (el.getAttribute('data-value') || '') : (el.value || '');
+            }
+            return { label: item.label, value: value };
+          });
+          return { key: block.key, title: block.title, inputType: block.inputType, items: items };
+        });
+      }
+
+      let _tpLastChecklist = [];
+
+      function closeTeamPrepareModal() {
+        document.getElementById('team-prepare-modal').classList.add('hidden');
+        _tpContext = null;
+        _tpLastChecklist = [];
+      }
+
+      async function submitTeamPrepareTask() {
+        if (!_tpContext || !_tpContext.noVMC) {
+          showAppAlert('❌ Data task tidak lengkap, tidak bisa disimpan.', 'error');
+          return;
+        }
+
+        const statusEl = document.getElementById('tp-modal-status');
+        const saveBtn = document.getElementById('tp-save-btn');
+        saveBtn.disabled = true;
+        statusEl.textContent = 'Menyimpan data...';
+
+        try {
+          const payload = {
+            rowNumberSource: _tpContext.rowNumber,
+            noVMC: document.getElementById('tp-f-novmc').value,
+            serialNumber: document.getElementById('tp-f-serial').value,
+            machineType: _tpContext.machineType || '',
+            exLocation: document.getElementById('tp-f-exlocation').value,
+            machineDetail: document.getElementById('tp-f-machinedetail').value,
+            inboundDate: document.getElementById('tp-f-inbounddate').value,
+            assets: document.getElementById('tp-f-assets').value,
+            alokasi: document.getElementById('tp-f-alokasi').value,
+            finalStatus: document.getElementById('tp-f-finalstatus').value,
+            keterangan: document.getElementById('tp-f-keterangan').value,
+            sheetAsal: _tpContext.sheet || '',
+            checklist: _collectTeamPrepareChecklist(_tpLastChecklist)
+          };
+
+          const json = await _getFromGasWithRetry_('saveTeamPrepareTask', payload, 3);
+          if (!json.success) {
+            throw new Error(json.message || 'Gagal menyimpan data');
+          }
+
+          closeTeamPrepareModal();
+          loadTeamPrepareCards(true);
+          showToast(json.message || 'Data pengerjaan berhasil disimpan.', 'success');
+        } catch (err) {
+          statusEl.textContent = '❌ ' + err.message;
+        } finally {
+          saveBtn.disabled = false;
+        }
+      }
+
 
       // =============================================
       // PREVIEW & SHARE TO WHATSAPP — Plan Task per PIC
