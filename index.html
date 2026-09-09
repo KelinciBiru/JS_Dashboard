@@ -4123,10 +4123,14 @@
       // di browser lalu dikirim ke server untuk diunggah ke Drive.
       // Klik "Simpan" -> action 'saveDispatchDelivered': server mencatat data
       // ke sheet "Jabodetabek" (spreadsheet "Logistic Request 2026", baris
-      // dicari lewat TICKET) kolom X/Z/AA/AB("Done")/AC/AD/AE/AF, LALU
-      // men-set Status task Plan Task ini jadi "Closed" (sama seperti alur
-      // Delivered sebelumnya) supaya hilang dari Task On Going & Team
-      // Dispatch. Klik "Batal" cukup menutup popup tanpa perubahan apa pun.
+      // dicari lewat TICKET) kolom X/Z/AA/AB("Done")/AC/AD/AE/AF, men-set
+      // Status task Plan Task ini jadi "Closed" (sama seperti alur Delivered
+      // sebelumnya) supaya hilang dari Task On Going & Team Dispatch, DAN
+      // SEKALIGUS mengupdate sheet Inventory JS: LOCATION NAME (kolom G),
+      // OUTBOUND DATE (kolom I), dan FINAL STATUS (kolom K -> "Delivered")
+      // pada baris VMC NO terkait di salah satu dari 5 sheet Stock Opname
+      // (lihat _updateStockOpnameOnDelivered_ di Code.gs). Klik "Batal"
+      // cukup menutup popup tanpa perubahan apa pun.
       // =============================================
       let _ddContext = null; // { rowNumber, ticket }
       let _ddPhotos = []; // [{ name, mimeType, base64 }]
@@ -4138,7 +4142,7 @@
           return;
         }
 
-        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '' };
+        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '' };
         _ddPhotos = [];
 
         document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
@@ -4475,6 +4479,11 @@
             logisticsDetailRemark: document.getElementById('dd-remark').value,
             loadingDateActual: document.getElementById('dd-loading-date-actual').value,
             picDispatch: document.getElementById('dd-pic-dispatch').value,
+            // LOCATION NAME task ini (dari row Jabodetabek) — dikirim supaya GAS
+            // bisa ikut update kolom G (LOCATION NAME / DESTINATION) di sheet
+            // Stock Opname (Inventory JS) sesuai VMC NO, lihat
+            // _updateStockOpnameOnDelivered_ di Code.gs.
+            locationName: _ddContext.locationName || '',
             photoUrls: photoUrls
           };
 
