@@ -3950,13 +3950,39 @@
       // spasi-strip-tanda kurung) menjadi link chat WhatsApp (wa.me/62xxx).
       // Return null kalau nomor kosong/tidak valid supaya tombol WA bisa
       // disembunyikan.
-      function _buildWhatsAppLink_(phoneRaw) {
+      function _buildWhatsAppLink_(phoneRaw, prefilledText) {
         const digits = String(phoneRaw || '').replace(/\D/g, '');
         if (!digits) return null;
         let normalized = digits;
         if (normalized.indexOf('0') === 0) normalized = '62' + normalized.slice(1);
         else if (normalized.indexOf('62') !== 0) normalized = '62' + normalized;
-        return 'https://wa.me/' + normalized;
+        let link = 'https://wa.me/' + normalized;
+        if (prefilledText) link += '?text=' + encodeURIComponent(prefilledText);
+        return link;
+      }
+
+      // Susun teks otomatis untuk tombol WhatsApp di card Task Team Dispatch,
+      // berdasarkan ACTION PLAN (Delivery Approval / Withdrawal / Machine
+      // Exchange / Relocation), memakai SITE PIC & LOCATION NAME dari row.
+      function _buildTeamDispatchWaText_(row) {
+        const sitePic = String(row['SITE PIC'] || '-').trim();
+        const locationName = String(row['LOCATION NAME'] || '-').trim();
+        const actionPlanLower = String(row['ACTION PLAN'] || '').toLowerCase();
+
+        let action;
+        if (actionPlanLower.indexOf('delivery approval') !== -1) {
+          action = 'mohon izin untuk kirim mesin ke';
+        } else if (actionPlanLower.indexOf('withdrawal') !== -1) {
+          action = 'mohon izin untuk melakukan penarikan mesin yang berlokasi di';
+        } else if (actionPlanLower.indexOf('exchange') !== -1) {
+          action = 'mohon izin untuk melakukan penukaran mesin yang berlokasi di';
+        } else if (actionPlanLower.indexOf('relocation') !== -1) {
+          action = 'mohon izin untuk melakukan relokasi mesin yang berlokasi di';
+        } else {
+          return null;
+        }
+
+        return 'Hallo Bapak/Ibu ' + sitePic + ', kami dari Team Dispatch Jumpstart ' + action + ' ' + locationName + '.';
       }
 
       // Link Google Maps (pencarian) berdasarkan teks alamat.
@@ -3990,7 +4016,7 @@
 
         const alamat = row['DELIVERY / PICK UP ADDRESS'] || '-';
         const gmapsLink = _buildGMapsLink_(row['DELIVERY / PICK UP ADDRESS']);
-        const waLink = _buildWhatsAppLink_(row['SITE PIC PHONE NO.']);
+        const waLink = _buildWhatsAppLink_(row['SITE PIC PHONE NO.'], _buildTeamDispatchWaText_(row));
         const quickLinksHtml =
           '<div class="flex gap-2 mt-2">' +
             (gmapsLink
