@@ -970,6 +970,13 @@
                   <option value="">-- Pilih Final Status --</option>
                 </select>
               </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">PIC</label>
+                <select id="tp-f-pic"
+                  class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                  <option value="">-- Pilih PIC --</option>
+                </select>
+              </div>
             </div>
 
             <div>
@@ -1004,6 +1011,9 @@
             <button onclick="loadTaskMachinePrepList(true)"
               class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
               ⟳ Refresh
+            </button>
+            <button id="taskmprep-share-btn" onclick="shareTaskMprepToWhatsApp()"
+              class="btn-press px-3 py-2 text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white whitespace-nowrap">Share WhatsApp
             </button>
           </div>
         </div>
@@ -2585,6 +2595,15 @@
       let _taskMprepData = [];
       let _taskMprepLoaded = false;
 
+      // Task yang statusnya sudah "Done" (ditandai dari Popup Pengerjaan Task di
+      // menu Task Team Prepare) tidak perlu ditampilkan lagi di sini. Dicek dengan
+      // beberapa kemungkinan penulisan key ('status'/'STATUS'/'Status') karena
+      // key persisnya mengikuti apa yang dikirim GAS action getTaskMachinePrepList.
+      function _isTaskMprepDone(row) {
+        const raw = row.status ?? row.STATUS ?? row.Status ?? row['STATUS'] ?? row['Status'] ?? '';
+        return String(raw).trim().toLowerCase() === 'done';
+      }
+
       async function loadTaskMachinePrepList(forceRefresh) {
         const statusEl = document.getElementById('taskmprep-status');
         if (_taskMprepLoaded && !forceRefresh) { renderTaskMachinePrepTable(); return; }
@@ -2615,7 +2634,8 @@
         const tbody = document.getElementById('taskmprep-tbody');
         const keyword = (document.getElementById('taskmprep-search').value || '').toLowerCase().trim();
 
-        const filtered = !keyword ? _taskMprepData : _taskMprepData.filter(row =>
+        const activeRows = _taskMprepData.filter(row => !_isTaskMprepDone(row));
+        const filtered = !keyword ? activeRows : activeRows.filter(row =>
           TASK_MACHINE_PREP_COLUMNS.some(c => String(row[c.key] ?? '').toLowerCase().includes(keyword))
         );
 
@@ -2630,6 +2650,138 @@
           TASK_MACHINE_PREP_COLUMNS.map(c => '<td class="px-3 py-2">' + (row[c.key] ?? '') + '</td>').join('') +
           '</tr>'
         ).join('');
+      }
+
+      // Ringkasan teks (dipakai sbg caption navigator.share, juga fallback kalau
+      // Web Share API file tidak didukung).
+      function _buildTaskMprepShareText(rows) {
+        if (!rows.length) {
+          return '*Task Machine Preparation*\nTidak ada data.';
+        }
+        let text = '*Task Machine Preparation*\n\n';
+        rows.forEach((row, i) => {
+          text += (i + 1) + '. VMC NO: ' + (row.noVMC || '-') + '\n';
+          text += '   Serial Number: ' + (row.serialNumber || '-') + '\n';
+          text += '   Ex. Location: ' + (row.exLocation || '-') + '\n';
+          text += '   Machine Type: ' + (row.machineType || '-') + '\n';
+          text += '   Warehouse: ' + (row.warehouse || '-') + '\n';
+          text += '   Assets: ' + (row.assets || '-') + '\n';
+          text += '   Alokasi: ' + (row.alokasi || '-') + '\n\n';
+        });
+        return text.trim();
+      }
+
+      // Bangun elemen tabel di luar layar (bukan display:none, supaya tetap bisa
+      // dirender html2canvas) untuk di-screenshot lalu dibagikan — pola sama
+      // seperti _buildPlanTaskCaptureArea di menu Plan Task.
+      function _buildTaskMprepCaptureArea(rows) {
+        const wrap = document.createElement('div');
+        wrap.id = 'taskmprep-share-capture';
+        wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#ffffff;padding:16px;font-family:Roboto,Arial,sans-serif;display:inline-block;';
+
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:10px;color:#0b1f3a;white-space:nowrap;';
+        title.textContent = 'Task Machine Preparation';
+        wrap.appendChild(title);
+
+        const table = document.createElement('table');
+        table.style.cssText = 'border-collapse:collapse;font-size:11px;table-layout:fixed;';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr>' + TASK_MACHINE_PREP_COLUMNS.map(c =>
+          '<th style="background:#0b1f3a;color:#ffffff;padding:6px 8px;text-align:left;border:1px solid #cbd5e1;white-space:normal;word-wrap:break-word;max-width:160px;">' + c.label + '</th>'
+        ).join('') + '</tr>';
+        const tbody = document.createElement('tbody');
+        tbody.innerHTML = rows.length
+          ? rows.map((row, i) => '<tr style="background:' + (i % 2 === 0 ? '#ffffff' : '#f8fafc') + ';">' +
+              TASK_MACHINE_PREP_COLUMNS.map(c => '<td style="padding:6px 8px;border:1px solid #e2e8f0;white-space:normal;word-wrap:break-word;max-width:160px;vertical-align:top;">' + (row[c.key] ?? '') + '</td>').join('') +
+            '</tr>').join('')
+          : '<tr><td colspan="' + TASK_MACHINE_PREP_COLUMNS.length + '" style="padding:16px;text-align:center;color:#94a3b8;white-space:nowrap;">Tidak ada data.</td></tr>';
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+
+        document.body.appendChild(wrap);
+        return wrap;
+      }
+
+      // Share to WhatsApp Task Machine Preparation — pola identik dengan
+      // sharePlanTaskToWhatsApp() di menu Plan Task: screenshot area (html2canvas,
+      // timeout 20 detik) lalu navigator.share() dengan file gambar (timeout 10
+      // detik); kalau gagal/tidak didukung, fallback unduh gambar otomatis +
+      // pesan "Bagikan Manual". Hanya membagikan baris yang sedang tampil
+      // (task belum Done, sesuai filter pencarian aktif).
+      let _isSharingTaskMprep = false;
+
+      async function shareTaskMprepToWhatsApp() {
+        if (_isSharingTaskMprep) return;
+        _isSharingTaskMprep = true;
+
+        const btn = document.getElementById('taskmprep-share-btn');
+        const originalText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+        const resetBtn = () => {
+          _isSharingTaskMprep = false;
+          if (btn) { btn.disabled = false; btn.textContent = originalText; }
+        };
+
+        const keyword = (document.getElementById('taskmprep-search').value || '').toLowerCase().trim();
+        const activeRows = _taskMprepData.filter(row => !_isTaskMprepDone(row));
+        const rows = !keyword ? activeRows : activeRows.filter(row =>
+          TASK_MACHINE_PREP_COLUMNS.some(c => String(row[c.key] ?? '').toLowerCase().includes(keyword))
+        );
+
+        let captureArea = null;
+        try {
+          if (typeof html2canvas !== 'function') {
+            throw new Error('Library html2canvas belum termuat.');
+          }
+          captureArea = _buildTaskMprepCaptureArea(rows);
+
+          const canvas = await withTimeout(
+            html2canvas(captureArea, {
+              scale: 2,
+              backgroundColor: '#ffffff',
+              width: captureArea.scrollWidth,
+              height: captureArea.scrollHeight,
+              windowWidth: captureArea.scrollWidth,
+              windowHeight: captureArea.scrollHeight
+            }),
+            20000,
+            'html2canvas timeout'
+          );
+
+          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+          if (!blob) throw new Error('Gagal membuat gambar preview.');
+
+          const fileName = 'TaskMachinePreparation_' + new Date().toISOString().slice(0, 10) + '.png';
+          const file = new File([blob], fileName, { type: 'image/png' });
+          const captionText = _buildTaskMprepShareText(rows);
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await withTimeout(
+                navigator.share({ files: [file], title: 'Task Machine Preparation', text: captionText }),
+                10000,
+                'navigator.share timeout'
+              );
+            } catch (shareErr) {
+              if (shareErr && shareErr.name === 'AbortError') {
+                // Dibatalkan user sendiri, bukan error — tidak perlu fallback.
+              } else {
+                _downloadPlanTaskImage(blob, fileName);
+                showAppAlert('⚠️ Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
+              }
+            }
+          } else {
+            _downloadPlanTaskImage(blob, fileName);
+            showAppAlert('📥 Gambar Task Machine Preparation sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan bagikan manual lewat WhatsApp.', 'success');
+          }
+        } catch (err) {
+          showAppAlert('❌ Gagal menyiapkan data untuk dibagikan: ' + err.message, 'error');
+        } finally {
+          if (captureArea) captureArea.remove();
+          resetBtn();
+        }
       }
 
       // =============================================
@@ -4314,6 +4466,22 @@
         } catch (err) { /* dropdown opsional, abaikan kalau gagal dimuat */ }
       }
 
+      // Dropdown PIC di Popup Pengerjaan Task pakai daftar PIC yang sama
+      // dengan Form Plan Task (sheet "Source", kolom B, spreadsheet Dashboard
+      // Dispatch V2) — dimuat lewat loadPlanTaskDropdowns() yang sudah ada,
+      // supaya tidak ada dua sumber daftar PIC yang bisa beda-beda.
+      async function _ensureTpPicOptions() {
+        await loadPlanTaskDropdowns(false);
+        const selectEl = document.getElementById('tp-f-pic');
+        const current = selectEl.value;
+        selectEl.innerHTML = '<option value="">-- Pilih PIC --</option>' +
+          _planTaskPicList.map(v => {
+            const esc = String(v).replace(/"/g, '&quot;');
+            return '<option value="' + esc + '">' + v + '</option>';
+          }).join('');
+        if (current) selectEl.value = current;
+      }
+
       // Tombol "Start" di card — buka Popup pengerjaan Task, ambil detail
       // lengkap mesin (termasuk blok checklist tambahan kalau ada) lewat
       // action 'getTeamPrepareTaskDetail', dicocokkan lewat SHEET ASAL + VMC NO.
@@ -4327,8 +4495,9 @@
         document.getElementById('tp-modal-status').textContent = '';
         document.getElementById('tp-checklist-wrap').innerHTML = '';
         document.getElementById('tp-f-keterangan').value = '';
+        document.getElementById('tp-f-pic').value = '';
 
-        await _ensureTpFinalStatusOptions();
+        await Promise.all([_ensureTpFinalStatusOptions(), _ensureTpPicOptions()]);
 
         try {
           const url = INVENTORY_JS_GAS_URL + '?action=getTeamPrepareTaskDetail' +
@@ -4428,7 +4597,7 @@
             if (el) {
               value = block.inputType === 'chip' ? (el.getAttribute('data-value') || '') : (el.value || '');
             }
-            return { label: item.label, value: value };
+            return { label: item.label, value: value, col: item.col };
           });
           return { key: block.key, title: block.title, inputType: block.inputType, items: items };
         });
@@ -4447,6 +4616,11 @@
           showAppAlert('❌ Data task tidak lengkap, tidak bisa disimpan.', 'error');
           return;
         }
+        const picValue = document.getElementById('tp-f-pic').value;
+        if (!picValue) {
+          showAppAlert('⚠️ PIC wajib dipilih sebelum menyimpan.', 'error');
+          return;
+        }
 
         const statusEl = document.getElementById('tp-modal-status');
         const saveBtn = document.getElementById('tp-save-btn');
@@ -4456,6 +4630,7 @@
         try {
           const payload = {
             rowNumberSource: _tpContext.rowNumber,
+            rowNumberDetail: _tpContext.detailRowNumber || '',
             noVMC: document.getElementById('tp-f-novmc').value,
             serialNumber: document.getElementById('tp-f-serial').value,
             machineType: _tpContext.machineType || '',
@@ -4466,6 +4641,7 @@
             alokasi: document.getElementById('tp-f-alokasi').value,
             finalStatus: document.getElementById('tp-f-finalstatus').value,
             keterangan: document.getElementById('tp-f-keterangan').value,
+            pic: picValue,
             sheetAsal: _tpContext.sheet || '',
             checklist: _collectTeamPrepareChecklist(_tpLastChecklist)
           };
