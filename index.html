@@ -1030,6 +1030,7 @@
                 <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">WAREHOUSE</th>
                 <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">ASSETS</th>
                 <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">ALOKASI</th>
+                <th class="px-3 py-2 text-left font-semibold border-b border-slate-200">AKSI</th>
               </tr>
             </thead>
             <tbody id="taskmprep-tbody"></tbody>
@@ -2596,12 +2597,14 @@
       let _taskMprepLoaded = false;
 
       // Task yang statusnya sudah "Done" (ditandai dari Popup Pengerjaan Task di
-      // menu Task Team Prepare) tidak perlu ditampilkan lagi di sini. Dicek dengan
+      // menu Task Team Prepare) atau "Removed" (dihapus manual lewat tombol
+      // Remove di menu ini) tidak perlu ditampilkan lagi di sini. Dicek dengan
       // beberapa kemungkinan penulisan key ('status'/'STATUS'/'Status') karena
       // key persisnya mengikuti apa yang dikirim GAS action getTaskMachinePrepList.
-      function _isTaskMprepDone(row) {
+      function _isTaskMprepHidden(row) {
         const raw = row.status ?? row.STATUS ?? row.Status ?? row['STATUS'] ?? row['Status'] ?? '';
-        return String(raw).trim().toLowerCase() === 'done';
+        const normalized = String(raw).trim().toLowerCase();
+        return normalized === 'done' || normalized === 'removed';
       }
 
       async function loadTaskMachinePrepList(forceRefresh) {
@@ -2634,13 +2637,13 @@
         const tbody = document.getElementById('taskmprep-tbody');
         const keyword = (document.getElementById('taskmprep-search').value || '').toLowerCase().trim();
 
-        const activeRows = _taskMprepData.filter(row => !_isTaskMprepDone(row));
+        const activeRows = _taskMprepData.filter(row => !_isTaskMprepHidden(row));
         const filtered = !keyword ? activeRows : activeRows.filter(row =>
           TASK_MACHINE_PREP_COLUMNS.some(c => String(row[c.key] ?? '').toLowerCase().includes(keyword))
         );
 
         if (filtered.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="' + TASK_MACHINE_PREP_COLUMNS.length +
+          tbody.innerHTML = '<tr><td colspan="' + (TASK_MACHINE_PREP_COLUMNS.length + 1) +
             '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>';
           return;
         }
@@ -2648,8 +2651,38 @@
         tbody.innerHTML = filtered.map(row =>
           '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
           TASK_MACHINE_PREP_COLUMNS.map(c => '<td class="px-3 py-2">' + (row[c.key] ?? '') + '</td>').join('') +
+          '<td class="px-3 py-2">' +
+            '<button onclick="removeTaskMachinePrep(' + JSON.stringify(String(row.rowNumber ?? '')) + ')" ' +
+              'class="btn-press px-2.5 py-1 text-xs font-semibold rounded-md border border-red-300 text-red-600 hover:bg-red-50 whitespace-nowrap">Remove</button>' +
+          '</td>' +
           '</tr>'
         ).join('');
+      }
+
+      // Hapus task dari menu Task Machine Preparation. Reuse action GAS
+      // 'updateTaskMachinePrepStatus' yang sudah ada (dipakai juga oleh tombol
+      // Cancel di menu Task Team Prepare) dengan status baru 'Removed', supaya
+      // tidak perlu action GAS baru — cukup ditandai di sheet "Task Machine
+      // Preparation", lalu disembunyikan lewat _isTaskMprepHidden().
+      function removeTaskMachinePrep(rowNumber) {
+        if (!rowNumber) {
+          showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
+          return;
+        }
+        if (!confirm('Hapus task ini dari Task Machine Preparation?')) return;
+
+        _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Removed' })
+          .then(json => {
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
+              return;
+            }
+            showAppAlert('✅ Task berhasil dihapus.', 'success');
+            loadTaskMachinePrepList(true);
+          })
+          .catch(err => {
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+          });
       }
 
       // Ringkasan teks (dipakai sbg caption navigator.share, juga fallback kalau
@@ -2725,7 +2758,7 @@
         };
 
         const keyword = (document.getElementById('taskmprep-search').value || '').toLowerCase().trim();
-        const activeRows = _taskMprepData.filter(row => !_isTaskMprepDone(row));
+        const activeRows = _taskMprepData.filter(row => !_isTaskMprepHidden(row));
         const rows = !keyword ? activeRows : activeRows.filter(row =>
           TASK_MACHINE_PREP_COLUMNS.some(c => String(row[c.key] ?? '').toLowerCase().includes(keyword))
         );
@@ -3689,6 +3722,7 @@
       // Menampilkan task sheet "Plan Task" yang Status-nya (kolom R) = "Open".
       // =============================================
       const TASK_ONGOING_COLUMNS = ['Divisi', 'PIC', 'No. Kendaraan', 'NO VMC JUMPSTART', 'ACTION PLAN', 'LOCATION NAME'];
+      const TASK_ONGOING_DISPLAY_COLUMNS = TASK_ONGOING_COLUMNS.concat(['AKSI']);
       let _taskOnGoingRows = [];
 
       async function loadTaskOnGoing(forceRefresh) {
@@ -3729,9 +3763,9 @@
         emptyEl.classList.add('hidden');
         wrapEl.classList.remove('hidden');
 
-        applyEqualColumns('task-ongoing-table', 'task-ongoing-colgroup', TASK_ONGOING_COLUMNS, false);
+        applyEqualColumns('task-ongoing-table', 'task-ongoing-colgroup', TASK_ONGOING_DISPLAY_COLUMNS, false);
 
-        thead.innerHTML = '<tr>' + TASK_ONGOING_COLUMNS.map(h =>
+        thead.innerHTML = '<tr>' + TASK_ONGOING_DISPLAY_COLUMNS.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
           h + '</th>'
         ).join('') + '</tr>';
@@ -3741,8 +3775,44 @@
           TASK_ONGOING_COLUMNS.map(h =>
             '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
           ).join('') +
+          '<td class="px-4 py-2.5 align-top">' +
+            '<button onclick="removeTaskOnGoing(' + JSON.stringify(String(row.rowNumber ?? '')) + ')" ' +
+              'class="btn-press px-2.5 py-1 text-xs font-semibold rounded-md border border-red-300 text-red-600 hover:bg-red-50 whitespace-nowrap">Remove</button>' +
+          '</td>' +
           '</tr>'
         ).join('');
+      }
+
+      // Hapus task dari menu Task on Going. Reuse action GAS 'updatePlanTaskStatus'
+      // yang sudah ada (dipakai juga oleh tombol Start/Cancel di Task Team
+      // Dispatch) dengan status baru 'Removed', supaya tidak perlu action GAS
+      // baru. CATATAN: task on Going hanya menampilkan Status === 'Open' (filter
+      // client-side di loadTaskOnGoing), jadi status apa pun selain 'Open' otomatis
+      // hilang dari sini. Task Team Dispatch sendiri sudah memfilter 'Closed' di
+      // server (getPlanTaskActive) — kalau server BELUM ikut mengecualikan status
+      // 'Removed', task yang dihapus di sini bisa saja masih muncul di Task Team
+      // Dispatch, jadi baiknya backend getPlanTaskActive_ juga diupdate supaya
+      // mengecualikan status 'Removed' selain 'Closed'.
+      function removeTaskOnGoing(rowNumber) {
+        if (!rowNumber) {
+          showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
+          return;
+        }
+        if (!confirm('Hapus task ini dari Task on Going?')) return;
+
+        _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed' })
+          .then(json => {
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
+              return;
+            }
+            showAppAlert('✅ Task berhasil dihapus.', 'success');
+            loadTaskOnGoing(true);
+            if (typeof loadTeamDispatchTasks === 'function') loadTeamDispatchTasks(true);
+          })
+          .catch(err => {
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+          });
       }
 
       // =============================================
