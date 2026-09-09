@@ -360,12 +360,11 @@
       border-radius: var(--neu-radius-sm) !important;
     }
 
-    /* ---- IKON BULAT: panah submenu, toggle PIC ---- */
-    #arrow-inventory,
-    #arrow-requestbd,
-    #arrow-plan,
-    #arrow-maintenance,
-    #arrow-po,
+    /* ---- IKON BULAT: panah submenu, toggle PIC ----
+       Pakai class (bukan daftar ID satu-satu) supaya SETIAP menu sidebar,
+       termasuk menu baru yang ditambahkan lewat SIDEBAR_MENU_GROUPS,
+       otomatis dapat ikon panah bulat yang sama tanpa perlu sentuh CSS ini lagi. */
+    .side-menu-arrow,
     #pt-pic-toggle span.shrink-0 {
       display: inline-flex;
       align-items: center;
@@ -376,6 +375,54 @@
       background: var(--neu-bg);
       color: var(--neu-text);
       box-shadow: 3px 3px 6px var(--neu-shadow-dark), -3px -3px 6px var(--neu-shadow-light);
+    }
+
+    /* ============================================================
+       SIDEBAR MENU — template class terpusat.
+       SEMUA grup menu (termasuk yang baru) dirender lewat JS dari
+       SIDEBAR_MENU_GROUPS memakai class-class ini, jadi tampilannya
+       otomatis seragam dan tidak perlu copy-paste class Tailwind lagi.
+    ============================================================ */
+    .side-menu-group {
+      margin-top: 4px;
+    }
+
+    .side-menu-toggle {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--neu-text);
+      background: transparent;
+      transition: background-color .15s, color .15s;
+    }
+
+    .side-menu-toggle:hover {
+      background-color: #fffbeb;
+      color: #d97706;
+    }
+
+    .side-submenu {
+      padding-left: 1.25rem;
+      margin-left: .75rem;
+      border-left: 2px solid #fde68a;
+    }
+
+    .side-menu-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 4px;
+      font-size: 12px;
+      color: #4b5563;
+    }
+
+    .side-menu-item:hover {
+      color: #d97706;
     }
 
     #plan-task-preview-modal button[onclick="closePlanTaskPreviewModal()"],
@@ -483,91 +530,15 @@
           class="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-all font-medium text-sm">Menu
           Utama</button>
 
-        <!-- Inventory (ADMIN only) -->
-        <div id="menu-inventory-wrap" class="space-y-1 mt-1">
-          <button onclick="toggleSubMenu('inventory-sub','arrow-inventory')"
-            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-            <span>Inventory</span><span id="arrow-inventory" class="text-xs">▼</span>
-          </button>
-          <div id="inventory-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Report Inventory JS')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
-              JS</button>
-            <button onclick="showInventory('Report Inventory CIMB')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Inventory Machine
-              CIMB</button>
-            <button onclick="showInventory('Stock Opname');"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Stock Opname</button>
-          </div>
-        </div>
-
-        <!-- Request BD (ADMIN only) -->
-        <div id="menu-salesstatus-wrap" class="space-y-1 mt-1">
-          <button onclick="toggleSubMenu('requestbd-sub','arrow-requestbd')"
-            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-            <span>Request BD</span><span id="arrow-requestbd" class="text-xs">▼</span>
-          </button>
-          <div id="requestbd-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showJabodetabek()"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Jabodetabek</button>
-            <button onclick="showEvent()"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Event</button>
-          </div>
-        </div>
-
-        <!-- Machine Preparation (ADMIN only) -->
-        <div id="menu-machineprep-wrap" class="space-y-1 mt-1">
-          <button onclick="toggleSubMenu('machineprep-sub','arrow-machineprep')"
-            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-            <span>Machine Preparation</span><span id="arrow-machineprep" class="text-xs">▼</span>
-          </button>
-          <div id="machineprep-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Machine Preparation')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Machine Preparation</button>
-            <button onclick="showInventory('List Machine Preparation')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">List Machine Preparation</button>
-          </div>
-        </div>
-
-        <!-- Plan Task (ADMIN only) -->
-        <div id="menu-plantask-wrap" class="space-y-1 mt-1">
-          <button onclick="toggleSubMenu('plan-task-sub','arrow-plan')"
-            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-            <span>Plan Task</span><span id="arrow-plan" class="text-xs">▼</span>
-          </button>
-          <div id="plan-task-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Input Task')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Input Task</button>
-            <button onclick="showInventory('Plan Task')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Plan Task</button>
-            <button onclick="showInventory('Status Task')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task on Going</button>
-          </div>
-        </div>
-
-        <!-- Team Dispatch (ADMIN + Dispatch) -->
-        <div id="menu-dispatch-wrap" class="space-y-1 mt-1">
-          <button onclick="toggleSubMenu('maintenance-sub','arrow-maintenance')"
-            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-            <span>Team Dispatch</span><span id="arrow-maintenance" class="text-xs">▼</span>
-          </button>
-          <div id="maintenance-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Team Dispatch')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Dispatch</button>
-          </div>
-        </div>
-
-        <!-- Team Prepare (ADMIN + Prepare) -->
-        <div id="menu-prepare-wrap" class="space-y-1 mt-1">
-          <button onclick="toggleSubMenu('po-sub','arrow-po')"
-            class="flex w-full items-center justify-between p-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-600 rounded">
-            <span>Team Prepare</span><span id="arrow-po" class="text-xs">▼</span>
-          </button>
-          <div id="po-sub" class="hidden pl-5 space-y-1 border-l-2 border-amber-200 ml-3">
-            <button onclick="showInventory('Team Prepare')"
-              class="block w-full text-left p-1 text-xs text-gray-600 hover:text-amber-600">Task Team Prepare</button>
-          </div>
-        </div>
+        <!-- ===============================================================
+             SEMUA grup menu di bawah ini di-generate OTOMATIS oleh JS
+             (fungsi renderSidebarMenus, lihat SIDEBAR_MENU_GROUPS di script)
+             dari 1 sumber konfigurasi. Ini memastikan tampilan setiap menu
+             SERAGAM, dan kalau nanti ada penambahan menu baru, cukup tambah
+             1 entry di SIDEBAR_MENU_GROUPS — HTML & style-nya otomatis
+             mengikuti tampilan menu yang sudah ada, tanpa copy-paste markup.
+        =============================================================== -->
+        <div id="sidebar-menu-groups"></div>
 
         <!-- Logout -->
         <div style="margin-top:auto;padding-top:20px;border-top:1px solid #f1f5f9;margin-top:24px;">
@@ -1588,34 +1559,99 @@
        * - Dispatch  → hanya menu Team Dispatch, langsung ke Team Dispatch
        * - Prepare   → hanya menu Team Prepare, langsung ke Team Prepare
        */
+      // =============================================
+      // KONFIGURASI MENU SIDEBAR — SATU-SATUNYA SUMBER KEBENARAN
+      // Untuk menambah menu baru di sidebar: cukup tambah 1 object di
+      // array ini (id, label, roles yang boleh lihat, dan items-nya).
+      // Markup HTML & style-nya otomatis mengikuti tampilan menu yang
+      // sudah ada lewat renderSidebarMenus() — TIDAK perlu edit HTML/CSS.
+      //   id    -> dipakai untuk id="menu-<id>-wrap", "<id>-sub", "arrow-<id>"
+      //   roles -> daftar role yang boleh melihat grup menu ini
+      //   openByDefaultForRoles -> role yang submenunya otomatis terbuka
+      //   items -> [{ label, action }] — action adalah string JS onclick
+      // =============================================
+      const SIDEBAR_MENU_GROUPS = [
+        {
+          id: 'inventory', label: 'Inventory', roles: ['ADMIN'],
+          items: [
+            { label: 'Inventory Machine JS', action: "showInventory('Report Inventory JS')" },
+            { label: 'Inventory Machine CIMB', action: "showInventory('Report Inventory CIMB')" },
+            { label: 'Stock Opname', action: "showInventory('Stock Opname')" },
+          ],
+        },
+        {
+          id: 'requestbd', label: 'Request BD', roles: ['ADMIN'],
+          items: [
+            { label: 'Jabodetabek', action: "showJabodetabek()" },
+            { label: 'Event', action: "showEvent()" },
+          ],
+        },
+        {
+          id: 'machineprep', label: 'Machine Preparation', roles: ['ADMIN'],
+          items: [
+            { label: 'Task Machine Preparation', action: "showInventory('Machine Preparation')" },
+            { label: 'List Machine Preparation', action: "showInventory('List Machine Preparation')" },
+          ],
+        },
+        {
+          id: 'plantask', label: 'Plan Task', roles: ['ADMIN'],
+          items: [
+            { label: 'Input Task', action: "showInventory('Input Task')" },
+            { label: 'Plan Task', action: "showInventory('Plan Task')" },
+            { label: 'Task on Going', action: "showInventory('Status Task')" },
+          ],
+        },
+        {
+          id: 'dispatch', label: 'Team Dispatch', roles: ['ADMIN', 'Dispatch'], openByDefaultForRoles: ['Dispatch'],
+          items: [
+            { label: 'Task Team Dispatch', action: "showInventory('Team Dispatch')" },
+          ],
+        },
+        {
+          id: 'prepare', label: 'Team Prepare', roles: ['ADMIN', 'Prepare'], openByDefaultForRoles: ['Prepare'],
+          items: [
+            { label: 'Task Team Prepare', action: "showInventory('Team Prepare')" },
+          ],
+        },
+      ];
+
+      // Render semua grup menu sidebar dari SIDEBAR_MENU_GROUPS di atas.
+      // Dipanggil sekali saat halaman dimuat (lihat DOMContentLoaded).
+      function renderSidebarMenus() {
+        const container = document.getElementById('sidebar-menu-groups');
+        if (!container) return;
+
+        container.innerHTML = SIDEBAR_MENU_GROUPS.map(function (g) {
+          const arrowId = 'arrow-' + g.id;
+          const subId = g.id + '-sub';
+          const itemsHtml = g.items.map(function (it) {
+            return '<button onclick="' + it.action + '" class="side-menu-item">' + it.label + '</button>';
+          }).join('');
+
+          return (
+            '<div id="menu-' + g.id + '-wrap" class="side-menu-group">' +
+              '<button onclick="toggleSubMenu(\'' + subId + '\',\'' + arrowId + '\')" class="side-menu-toggle">' +
+                '<span>' + g.label + '</span><span id="' + arrowId + '" class="side-menu-arrow">▼</span>' +
+              '</button>' +
+              '<div id="' + subId + '" class="hidden side-submenu">' + itemsHtml + '</div>' +
+            '</div>'
+          );
+        }).join('');
+      }
+
       function applyRoleAccess() {
-        const menuInventory = document.getElementById('menu-inventory-wrap');
-        const menuSalesStatus = document.getElementById('menu-salesstatus-wrap');
-        const menuMachinePrep = document.getElementById('menu-machineprep-wrap');
-        const menuPlanTask = document.getElementById('menu-plantask-wrap');
-        const menuDispatch = document.getElementById('menu-dispatch-wrap');
-        const menuPrepare = document.getElementById('menu-prepare-wrap');
+        SIDEBAR_MENU_GROUPS.forEach(function (g) {
+          const wrap = document.getElementById('menu-' + g.id + '-wrap');
+          if (wrap) wrap.style.display = g.roles.includes(currentRole) ? '' : 'none';
+        });
 
         if (currentRole === 'ADMIN') {
-          [menuInventory, menuSalesStatus, menuMachinePrep, menuPlanTask, menuDispatch, menuPrepare].forEach(m => { if (m) m.style.display = ''; });
           showDashboard();
         } else if (currentRole === 'Dispatch') {
-          if (menuInventory) menuInventory.style.display = 'none';
-          if (menuSalesStatus) menuSalesStatus.style.display = 'none';
-          if (menuMachinePrep) menuMachinePrep.style.display = 'none';
-          if (menuPlanTask) menuPlanTask.style.display = 'none';
-          if (menuDispatch) menuDispatch.style.display = '';
-          if (menuPrepare) menuPrepare.style.display = 'none';
-          document.getElementById('maintenance-sub').classList.remove('hidden');
+          document.getElementById('dispatch-sub').classList.remove('hidden');
           showInventory('Team Dispatch');
         } else if (currentRole === 'Prepare') {
-          if (menuInventory) menuInventory.style.display = 'none';
-          if (menuSalesStatus) menuSalesStatus.style.display = 'none';
-          if (menuMachinePrep) menuMachinePrep.style.display = 'none';
-          if (menuPlanTask) menuPlanTask.style.display = 'none';
-          if (menuDispatch) menuDispatch.style.display = 'none';
-          if (menuPrepare) menuPrepare.style.display = '';
-          document.getElementById('po-sub').classList.remove('hidden');
+          document.getElementById('prepare-sub').classList.remove('hidden');
           showInventory('Team Prepare');
         }
       }
@@ -1624,6 +1660,7 @@
       // SIDEBAR TOGGLE + INIT
       // =============================================
       document.addEventListener('DOMContentLoaded', () => {
+        renderSidebarMenus();
         restoreInputTaskRows();
         restoreSession();
 
