@@ -3416,12 +3416,30 @@
       // (push), tidak menimpa batch yang sudah ada — lihat submitPlanTask().
       let _planTaskBatches = [];
 
+      // Cek apakah "Plan Date" satu baris Plan Task sudah lewat hari H (kemarin
+      // atau sebelumnya). Dipakai untuk menyembunyikan task yang sudah lewat dari
+      // menu "Plan Task" — task dengan Plan Date = hari ini TETAP ditampilkan,
+      // hanya yang benar-benar sudah lewat yang disembunyikan. Kalau Plan Date
+      // kosong/tidak valid, baris tetap ditampilkan (tidak dianggap sudah lewat).
+      function _isPlanTaskDateExpired(planDateStr) {
+        if (!planDateStr) return false;
+        const d = new Date(String(planDateStr) + 'T00:00:00');
+        if (isNaN(d.getTime())) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return d.getTime() < today.getTime();
+      }
+
       // Render baris tabel Plan Task. Kalau editable=true, kolom "NO VMC JUMPSTART"
       // ditampilkan sebagai input teks per baris (per TICKET) — perubahannya langsung
       // disimpan ke sheet "Plan Task" lewat handlePlanTaskNoVmcChange().
-      function _renderPlanTaskRows(rows, editable, batchIndex) {
-        return rows.map((row, i) =>
-          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+      // originalIndices (opsional): index asli tiap "rows[i]" di dalam batch.rows yang
+      // sebenarnya (dipakai kalau "rows" sudah difilter/lewat proses lain) — supaya
+      // tombol Cetak (printPlanTaskNote) tetap merujuk ke baris yang benar.
+      function _renderPlanTaskRows(rows, editable, batchIndex, originalIndices) {
+        return rows.map((row, i) => {
+          const realIdx = originalIndices ? originalIndices[i] : i;
+          return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
           PLAN_TASK_DISPLAY_COLUMNS.map(h => {
             if (editable && h === 'NO VMC JUMPSTART') {
               const val = String(row[h] ?? '').replace(/"/g, '&quot;');
@@ -3435,11 +3453,11 @@
             return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>';
           }).join('') +
           '<td class="px-2 py-2 align-top text-center">' +
-            '<button onclick="printPlanTaskNote(' + batchIndex + ',' + i + ')" ' +
+            '<button onclick="printPlanTaskNote(' + batchIndex + ',' + realIdx + ')" ' +
               'class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-white whitespace-nowrap">🖨️ Cetak</button>' +
           '</td>' +
-          '</tr>'
-        ).join('');
+          '</tr>';
+        }).join('');
       }
 
       // Simpan perubahan NO VMC JUMPSTART per-TICKET langsung ke sheet "Plan Task"
@@ -3476,7 +3494,18 @@
       }
 
       // Render satu blok (header Divisi/PIC/No. Kendaraan + tabel) untuk satu batch.
+      // Task yang "Plan Date"-nya sudah lewat hari H disaring di sini — kalau
+      // setelah disaring batch ini tidak punya baris tersisa, blok tidak dirender
+      // sama sekali (kembalikan string kosong).
       function _buildPlanTaskBatchBlockHTML(batch, batchIndex) {
+        const allRows = batch.rows || [];
+        const keptIndices = [];
+        allRows.forEach((row, idx) => {
+          if (!_isPlanTaskDateExpired(row['Plan Date'])) keptIndices.push(idx);
+        });
+        if (!keptIndices.length) return '';
+        const visibleRows = keptIndices.map(idx => allRows[idx]);
+
         const n = PLAN_TASK_DISPLAY_COLUMNS.length;
         const ACTION_COL_WIDTH_PX = 92;
         const colWidthPct = (100 / n).toFixed(4) + '%';
@@ -3489,7 +3518,7 @@
         ).join('') +
           '<th class="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal align-bottom">Aksi</th>' +
         '</tr>';
-        const tbody = _renderPlanTaskRows(batch.rows, true, batchIndex);
+        const tbody = _renderPlanTaskRows(visibleRows, true, batchIndex, keptIndices);
 
         return (
           '<div class="bg-white rounded-lg shadow p-4 sm:p-5 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">' +
@@ -3518,7 +3547,12 @@
         const emptyEl = document.getElementById('plan-task-empty');
         const wrapEl = document.getElementById('plan-task-result-wrap');
 
-        const totalRows = _planTaskBatches.reduce((sum, b) => sum + (b.rows ? b.rows.length : 0), 0);
+        // Task yang "Plan Date"-nya sudah lewat hari H tidak dihitung/ditampilkan
+        // lagi di menu ini — lihat _isPlanTaskDateExpired().
+        const totalRows = _planTaskBatches.reduce((sum, b) => {
+          const rows = b.rows || [];
+          return sum + rows.filter(r => !_isPlanTaskDateExpired(r['Plan Date'])).length;
+        }, 0);
         if (!totalRows) {
           emptyEl.classList.remove('hidden');
           wrapEl.classList.add('hidden');
@@ -3529,7 +3563,9 @@
         wrapEl.classList.remove('hidden');
 
         // Satu blok (header + tabel sendiri) per batch/team — batch baru muncul
-        // di bawah batch yang sudah ada, bukan menimpanya.
+        // di bawah batch yang sudah ada, bukan menimpanya. Batch yang seluruh
+        // baris di dalamnya sudah lewat Plan Date akan mengembalikan string
+        // kosong (lihat _buildPlanTaskBatchBlockHTML) sehingga otomatis hilang.
         wrapEl.innerHTML = _planTaskBatches.map((batch, i) => _buildPlanTaskBatchBlockHTML(batch, i)).join('');
       }
 
