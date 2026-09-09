@@ -4094,10 +4094,9 @@
       }
 
       // Isi dropdown "MACHINE TYPE (sent from WH)" di popup Delivered dari daftar
-      // pilihan yang diambil langsung dari data validation (dropdown) yang sudah
-      // ada pada kolom AA sheet "Jabodetabek" (action 'getJabodetabekMachineTypeOptions'),
-      // supaya pilihan di popup ini selalu mengikuti format dropdown kolom AA yang
-      // sebenarnya. Diambil sekali lalu di-cache (_dispatchMachineTypeOptions) supaya
+      // pilihan yang diambil dari sheet "Source" (kolom D2:D) pada spreadsheet
+      // "Logistic Request 2026" (action 'getJabodetabekMachineTypeOptions').
+      // Diambil sekali lalu di-cache (_dispatchMachineTypeOptions) supaya
       // buka popup berikutnya tidak perlu fetch ulang. Kalau nilai yang sudah tersimpan
       // pada task ini (auto-fill dari lookup Jabodetabek) belum ada di daftar pilihan,
       // tetap ditambahkan sebagai opsi supaya tidak hilang dari tampilan.
