@@ -775,6 +775,8 @@
           </div>
         </div>
 
+        <div id="plan-task-sync-status" class="text-xs text-slate-400 mb-2"></div>
+
         <div id="plan-task-empty" class="placeholder-box">Belum ada Plan Task yang disubmit. Isi Form Plan Task di menu Input Task lalu klik Submit.</div>
 
         <!-- Diisi dinamis oleh renderPlanTaskTable(): satu blok (header Divisi/PIC/No.
@@ -1678,6 +1680,84 @@
       }
 
       // =============================================
+      // AUTO-REFRESH DATA ANTAR DEVICE
+      // Sebelumnya, data tiap menu hanya di-refresh saat menu itu DIBUKA
+      // (showInventory/showJabodetabek/showEvent/showDashboard). Kalau menu
+      // sedang dibiarkan terbuka lama sementara device LAIN mengubah data yang
+      // sama (submit/edit/update status), tampilan yang sedang dibuka jadi basi
+      // sampai user pindah menu lalu kembali lagi. AUTO_REFRESH_LOADERS di
+      // bawah memetakan setiap id halaman (content-XXX, tanpa prefix "content-")
+      // ke fungsi loader yang harus dipanggil ulang (forceRefresh=true) setiap
+      // AUTO_REFRESH_INTERVAL_MS SELAMA halaman itu sedang aktif/tampil.
+      // Refresh dilewati (di-skip, dicoba lagi di tick berikutnya) selama:
+      //   - ada modal/popup yang sedang terbuka (form input/preview/konfirmasi
+      //     yang sedang dikerjakan user tidak boleh keganggu re-render), atau
+      //   - mode centang "+ Add Task" sedang aktif di Jabodetabek/Event/List
+      //     Machine Preparation (user sedang memilih baris — data yang berubah
+      //     di bawahnya bisa membuat pilihan checkbox meleset), atau
+      //   - tab/browser sedang tidak aktif (document.hidden), supaya kuota
+      //     request ke GAS tidak terbuang sia-sia saat tab diminimize.
+      // =============================================
+      const AUTO_REFRESH_INTERVAL_MS = 20000;
+
+      const AUTO_REFRESH_LOADERS = {
+        'Dashboard': () => { loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); },
+        'ReportInventoryJS': () => loadInventoryJS(true),
+        'ReportInventoryCIMB': () => loadInventoryCIMB(true),
+        'ListMachinePreparation': () => loadMachinePrepList(true),
+        'MachinePreparation': () => loadTaskMachinePrepList(true),
+        'StockOpname': () => loadStockOpnameSource(true),
+        'RequestBDJabodetabek': () => loadJabodetabek(true),
+        'RequestBDEvent': () => loadEvent(true),
+        'InputTask': () => loadPlanTaskDropdowns(true),
+        'PlanTask': () => loadPlanTaskBatches(true),
+        'StatusTask': () => loadTaskOnGoing(true),
+        'TeamDispatch': () => loadTeamDispatchTasks(true),
+        'TeamPrepare': () => loadTeamPrepareCards(true)
+      };
+
+      function _isAnyModalOpen_() {
+        return !!document.querySelector('.fixed.inset-0:not(.hidden)');
+      }
+
+      function _isAutoRefreshBlocked_() {
+        if (_isAnyModalOpen_()) return true;
+        if (typeof _jabodetabekAddTaskMode !== 'undefined' && _jabodetabekAddTaskMode) return true;
+        if (typeof _eventAddTaskMode !== 'undefined' && _eventAddTaskMode) return true;
+        if (typeof _mprepAddTaskMode !== 'undefined' && _mprepAddTaskMode) return true;
+        return false;
+      }
+
+      function _getActivePageKey_() {
+        const activeEl = document.querySelector('.page-content.active-page');
+        if (!activeEl || !activeEl.id) return null;
+        return activeEl.id.replace(/^content-/, '');
+      }
+
+      let _autoRefreshTimer = null;
+
+      function _runAutoRefreshTick_() {
+        if (document.hidden) return;
+        if (_isAutoRefreshBlocked_()) return;
+        const key = _getActivePageKey_();
+        if (!key) return;
+        const loader = AUTO_REFRESH_LOADERS[key];
+        if (!loader) return;
+        try { loader(); } catch (e) { /* abaikan error auto-refresh diam-diam, tidak perlu ganggu user */ }
+      }
+
+      function startAutoRefresh() {
+        if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+        _autoRefreshTimer = setInterval(_runAutoRefreshTick_, AUTO_REFRESH_INTERVAL_MS);
+        // Begitu tab kembali aktif (habis diminimize/pindah tab), langsung
+        // refresh sekali di luar jadwal supaya user tidak perlu menunggu
+        // sampai tick berikutnya untuk melihat data terbaru.
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) _runAutoRefreshTick_();
+        });
+      }
+
+      // =============================================
       // SIDEBAR TOGGLE + INIT
       // =============================================
       document.addEventListener('DOMContentLoaded', () => {
@@ -1705,6 +1785,8 @@
           btn.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.toggle('active'); });
           document.addEventListener('click', e => { if (!sidebar.contains(e.target) && e.target !== btn) sidebar.classList.remove('active'); });
         }
+
+        startAutoRefresh();
       });
 
       // =============================================
@@ -1775,7 +1857,7 @@
         if (n === 'Machine Preparation') loadTaskMachinePrepList(false);
         if (n === 'Stock Opname') loadStockOpnameSource(false);
         if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); }
-        if (n === 'Plan Task') { renderPlanTaskTable(); }
+        if (n === 'Plan Task') { renderPlanTaskTable(); loadPlanTaskBatches(false); }
         if (n === 'Status Task') { loadTaskOnGoing(false); }
         if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); }
         if (n === 'Team Prepare') { loadTeamPrepareCards(false); }
@@ -3498,6 +3580,7 @@
           _planTaskDropdownsRetrying = false;
 
           const divisiEl = document.getElementById('pt-divisi');
+          const _divisiPrevVal = divisiEl.value; // simpan pilihan user saat ini (penting untuk auto-refresh)
           divisiEl.innerHTML = '<option value="">-- Pilih Divisi --</option>' +
             divisiList.map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
 
@@ -3507,6 +3590,11 @@
           if (_planTaskFormDraftDivisi) {
             divisiEl.value = _planTaskFormDraftDivisi;
             _planTaskFormDraftDivisi = '';
+          } else if (_divisiPrevVal && divisiList.includes(_divisiPrevVal)) {
+            // Dropdown ini bisa di-refresh diam-diam di background (lihat
+            // AUTO_REFRESH_LOADERS) sementara user sedang mengisi Form Plan
+            // Task — pilihan Divisi yang sudah dipilih jangan sampai hilang.
+            divisiEl.value = _divisiPrevVal;
           }
 
           _planTaskPicList = picList;
@@ -3631,7 +3719,60 @@
       // Satu elemen array = satu batch hasil submit Plan Task (satu team/PIC),
       // berbentuk { divisi, pic, noKendaraan, rows }. Batch baru ditambahkan
       // (push), tidak menimpa batch yang sudah ada — lihat submitPlanTask().
+      // SUMBER DATA: sejak loadPlanTaskBatches() ditambahkan, array ini selalu
+      // ditimpa ulang dari server (action 'getPlanTaskBatches', dibaca langsung
+      // dari sheet "Plan Task") setiap menu ini dibuka atau di-auto-refresh —
+      // supaya task yang disubmit dari DEVICE LAIN ikut tampil di sini, bukan
+      // cuma task yang disubmit dari device ini sendiri (localStorage hanya
+      // dipakai sebagai cache instan sebelum data terbaru dari server datang).
       let _planTaskBatches = [];
+      let _planTaskLoaded = false;
+      let _planTaskFetching = false;
+      let _planTaskLastFetch = null;
+
+      // Ambil seluruh batch Plan Task dari server (lintas device) lalu render.
+      // Pola sama seperti loadInventoryJS/loadJabodetabek dkk: render instan dari
+      // cache localStorage dulu (stale-while-revalidate) kalau belum pernah
+      // dimuat sejak halaman dibuka, baru fetch ke server di background.
+      async function loadPlanTaskBatches(forceRefresh) {
+        const statusEl = document.getElementById('plan-task-sync-status');
+
+        if (!_planTaskLoaded) {
+          const cached = loadDataCache('planTaskBatches');
+          if (cached && Array.isArray(cached.payload)) {
+            _planTaskBatches = cached.payload;
+            _planTaskLoaded = true;
+            renderPlanTaskTable();
+            if (statusEl) statusEl.textContent = 'Menampilkan data cache — memuat data terbaru dari semua device...';
+          }
+        }
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) return;
+
+        if (_planTaskFetching) return;
+        if (_planTaskLoaded && !forceRefresh && _planTaskLastFetch && (Date.now() - _planTaskLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _planTaskFetching = true;
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskBatches');
+          const json = await res.json();
+          if (!json.success) {
+            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data Plan Task dari server');
+            return;
+          }
+          _planTaskBatches = json.batches || [];
+          _planTaskLoaded = true;
+          _planTaskLastFetch = Date.now();
+          saveDataCache('planTaskBatches', _planTaskBatches);
+          savePlanTaskResult(); // tetap simpan ke key localStorage lama supaya backward-compatible
+          renderPlanTaskTable();
+          if (statusEl) statusEl.textContent = 'Tersinkron dengan semua device — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+        } catch (err) {
+          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _planTaskFetching = false;
+        }
+      }
 
       // Cek apakah "Plan Date" satu baris Plan Task sudah lewat hari H (kemarin
       // atau sebelumnya). Dipakai untuk menyembunyikan task yang sudah lewat dari
