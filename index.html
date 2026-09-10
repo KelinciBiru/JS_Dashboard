@@ -4558,7 +4558,12 @@
           return;
         }
 
-        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '' };
+        // actionPlan ikut disimpan di context supaya bisa dikirim ke server saat
+        // Simpan — dipakai GAS untuk menentukan apakah & bagaimana update balik ke
+        // sheet Inventory JS (Withdrawal -> EX. LOCATION/INBOUND DATE/FINAL STATUS
+        // "Stock"; Machine Exchange/Relocation -> diabaikan sama sekali; selain itu
+        // -> perilaku lama seperti sebelumnya). Lihat _saveDispatchDeliveredNow_ di Code.gs.
+        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '' };
         _ddPhotos = [];
 
         document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
@@ -4900,6 +4905,10 @@
             // Stock Opname (Inventory JS) sesuai VMC NO, lihat
             // _updateStockOpnameOnDelivered_ di Code.gs.
             locationName: _ddContext.locationName || '',
+            // Dikirim supaya GAS tahu ACTION PLAN task ini saat memutuskan update
+            // balik ke sheet Inventory JS (lihat catatan di openDispatchDeliveredModal
+            // & _saveDispatchDeliveredNow_ di Code.gs).
+            actionPlan: _ddContext.actionPlan || '',
             photoUrls: photoUrls
           };
 
