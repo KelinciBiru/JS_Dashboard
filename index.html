@@ -766,6 +766,8 @@
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Plan Task</h1>
           <div class="flex items-center gap-2">
+            <button id="plan-task-cleanup-btn" onclick="bersihkanPlanTaskTerhapus()"
+              class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-md whitespace-nowrap">Bersihkan Task Terhapus</button>
             <button onclick="openPlanTaskPicModal('preview')"
               class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Preview</button>
             <button onclick="openPlanTaskPicModal('share')"
@@ -1706,6 +1708,39 @@
       });
 
       // =============================================
+      // CACHE DATA GENERIK (pola "Server-Side Rendering" / stale-while-revalidate)
+      // Setiap kali sebuah menu data (Dashboard, Inventory JS, Machine
+      // Preparation, Jabodetabek, dll) berhasil memuat data dari server,
+      // snapshot-nya disimpan di localStorage lewat saveDataCache(key, payload).
+      // Saat menu itu dibuka lagi — baik pertama kali sejak halaman
+      // dimuat/refresh (F5) maupun setelah user berpindah-pindah menu — data
+      // cache tersebut langsung dipakai untuk merender tabel/cardview SEBELUM
+      // fetch ke server selesai, jadi user tidak perlu menunggu diam di satu
+      // halaman untuk melihat sesuatu. Fetch ke server tetap berjalan di latar
+      // belakang untuk memperbarui data; begitu selesai, tampilan diperbarui
+      // otomatis (dan cache disimpan ulang) supaya kalau user kembali lagi ke
+      // menu tersebut nanti, data yang tampil sudah yang paling lengkap/utuh.
+      // REVALIDATE_THROTTLE_MS mencegah fetch berulang-ulang ke server kalau
+      // user bolak-balik membuka menu yang sama dalam waktu singkat.
+      // =============================================
+      const DATA_CACHE_PREFIX = 'nod_datacache_';
+      const REVALIDATE_THROTTLE_MS = 20000;
+
+      function saveDataCache(key, payload) {
+        try {
+          localStorage.setItem(DATA_CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), payload: payload }));
+        } catch (e) { /* storage penuh/diblokir, abaikan — tidak fatal */ }
+      }
+
+      function loadDataCache(key) {
+        try {
+          const raw = localStorage.getItem(DATA_CACHE_PREFIX + key);
+          if (!raw) return null;
+          return JSON.parse(raw);
+        } catch (e) { return null; }
+      }
+
+      // =============================================
       // NAVIGASI
       // =============================================
       function showPage(pageName) {
@@ -1766,6 +1801,15 @@
       let _dashboardSummary = { counts: {}, details: {} };
       let _dashboardDetailCurrentStatus = null;
       let _dashboardDetailSelectedType = null;
+      let _dashboardFetching = false;
+      let _dashboardLastFetch = null;
+
+      function _renderDashboardCounts() {
+        DASHBOARD_STATUS_LIST.forEach(st => {
+          const el = document.getElementById(DASHBOARD_STATUS_EL_ID[st]);
+          if (el) el.textContent = _dashboardSummary.counts[st] || 0;
+        });
+      }
 
       function showDashboard() {
         showPage('Dashboard');
@@ -1821,35 +1865,53 @@
 
       async function loadDashboardSummary(forceRefresh) {
         const statusEl = document.getElementById('dashboard-status');
-        if (_dashboardLoaded && !forceRefresh) return;
+
+        // Render instan dari cache localStorage (SSR-style) kalau menu ini
+        // belum pernah dimuat di memori sejak halaman dibuka/refresh.
+        if (!_dashboardLoaded) {
+          const cached = loadDataCache('dashboardSummary');
+          if (cached) {
+            _dashboardSummary = { counts: cached.payload.counts || {}, details: cached.payload.details || {} };
+            _dashboardLoaded = true;
+            _renderDashboardCounts();
+            if (statusEl) statusEl.textContent = 'Data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        // Hindari fetch dobel yang berjalan bersamaan, dan hindari fetch ulang
+        // terlalu sering kalau data di memori masih segar (kecuali forceRefresh).
+        if (_dashboardFetching) return;
+        if (_dashboardLoaded && !forceRefresh && _dashboardLastFetch && (Date.now() - _dashboardLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _dashboardFetching = true;
+        if (statusEl && !_dashboardLoaded) statusEl.textContent = 'Memuat data...';
         _startDashboardProgressSim();
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getDashboardSummary');
           const json = await res.json();
           if (!json.success) {
             _stopDashboardProgressSim();
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
             return;
           }
           _dashboardSummary = { counts: json.counts || {}, details: json.details || {} };
           _dashboardLoaded = true;
-          DASHBOARD_STATUS_LIST.forEach(st => {
-            const el = document.getElementById(DASHBOARD_STATUS_EL_ID[st]);
-            if (el) el.textContent = _dashboardSummary.counts[st] || 0;
-          });
+          _dashboardLastFetch = Date.now();
+          saveDataCache('dashboardSummary', { counts: _dashboardSummary.counts, details: _dashboardSummary.details });
+          _renderDashboardCounts();
           _finishDashboardProgressSim();
-          statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
+          if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
           _stopDashboardProgressSim();
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _dashboardFetching = false;
         }
       }
 
@@ -1960,6 +2022,8 @@
       ];
       let _bdStatusLoaded = false;
       let _bdStatusSummary = { counts: {}, details: {} };
+      let _bdStatusFetching = false;
+      let _bdStatusLastFetch = null;
 
       function _bdStatusSlug(status) {
         return status.replace(/[^a-zA-Z0-9]/g, '');
@@ -1977,17 +2041,37 @@
         ).join('');
       }
 
+      function _renderBDStatusCounts(statusList) {
+        (statusList || BD_STATUS_LIST).forEach(st => {
+          const el = document.getElementById('bd-status-count-' + _bdStatusSlug(st));
+          if (el) el.textContent = _bdStatusSummary.counts[st] || 0;
+        });
+      }
+
       async function loadBDStatusSummary(forceRefresh) {
         const statusEl = document.getElementById('bd-status-status');
         if (!document.getElementById('bd-status-cardgrid').innerHTML) _renderBDStatusCardGrid();
-        if (_bdStatusLoaded && !forceRefresh) return;
+
+        if (!_bdStatusLoaded) {
+          const cached = loadDataCache('bdStatusSummary');
+          if (cached) {
+            _bdStatusSummary = { counts: cached.payload.counts || {}, details: cached.payload.details || {} };
+            _bdStatusLoaded = true;
+            _renderBDStatusCounts();
+            if (statusEl) statusEl.textContent = 'Data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        if (statusEl) statusEl.textContent = 'Memuat data...';
+        if (_bdStatusFetching) return;
+        if (_bdStatusLoaded && !forceRefresh && _bdStatusLastFetch && (Date.now() - _bdStatusLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _bdStatusFetching = true;
+        if (statusEl && !_bdStatusLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getBDStatusSummary');
           const json = await res.json();
@@ -1997,14 +2081,15 @@
           }
           _bdStatusSummary = { counts: json.counts || {}, details: json.details || {} };
           _bdStatusLoaded = true;
-          (json.statusList || BD_STATUS_LIST).forEach(st => {
-            const el = document.getElementById('bd-status-count-' + _bdStatusSlug(st));
-            if (el) el.textContent = _bdStatusSummary.counts[st] || 0;
-          });
+          _bdStatusLastFetch = Date.now();
+          saveDataCache('bdStatusSummary', { counts: _bdStatusSummary.counts, details: _bdStatusSummary.details });
+          _renderBDStatusCounts(json.statusList);
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
           if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _bdStatusFetching = false;
         }
       }
 
@@ -2079,6 +2164,8 @@
       const ACTION_PLAN_LIST = ['Delivery Approval', 'Withdrawal', 'Machine Exchange', 'Relocation'];
       let _actionPlanLoaded = false;
       let _actionPlanSummary = { counts: {}, details: {} };
+      let _actionPlanFetching = false;
+      let _actionPlanLastFetch = null;
 
       function _renderActionPlanCardGrid() {
         const grid = document.getElementById('action-plan-cardgrid');
@@ -2092,17 +2179,37 @@
         ).join('');
       }
 
+      function _renderActionPlanCounts(actionPlanList) {
+        (actionPlanList || ACTION_PLAN_LIST).forEach(ap => {
+          const el = document.getElementById('action-plan-count-' + _bdStatusSlug(ap));
+          if (el) el.textContent = _actionPlanSummary.counts[ap] || 0;
+        });
+      }
+
       async function loadActionPlanSummary(forceRefresh) {
         const statusEl = document.getElementById('action-plan-status');
         if (!document.getElementById('action-plan-cardgrid').innerHTML) _renderActionPlanCardGrid();
-        if (_actionPlanLoaded && !forceRefresh) return;
+
+        if (!_actionPlanLoaded) {
+          const cached = loadDataCache('actionPlanSummary');
+          if (cached) {
+            _actionPlanSummary = { counts: cached.payload.counts || {}, details: cached.payload.details || {} };
+            _actionPlanLoaded = true;
+            _renderActionPlanCounts();
+            if (statusEl) statusEl.textContent = 'Data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        if (statusEl) statusEl.textContent = 'Memuat data...';
+        if (_actionPlanFetching) return;
+        if (_actionPlanLoaded && !forceRefresh && _actionPlanLastFetch && (Date.now() - _actionPlanLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _actionPlanFetching = true;
+        if (statusEl && !_actionPlanLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getActionPlanSummary');
           const json = await res.json();
@@ -2112,14 +2219,15 @@
           }
           _actionPlanSummary = { counts: json.counts || {}, details: json.details || {} };
           _actionPlanLoaded = true;
-          (json.actionPlanList || ACTION_PLAN_LIST).forEach(ap => {
-            const el = document.getElementById('action-plan-count-' + _bdStatusSlug(ap));
-            if (el) el.textContent = _actionPlanSummary.counts[ap] || 0;
-          });
+          _actionPlanLastFetch = Date.now();
+          saveDataCache('actionPlanSummary', { counts: _actionPlanSummary.counts, details: _actionPlanSummary.details });
+          _renderActionPlanCounts(json.actionPlanList);
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
           if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _actionPlanFetching = false;
         }
       }
 
@@ -2211,17 +2319,33 @@
       let _invJSHeaders = [];
       let _invJSData = [];
       let _invJSLoaded = false;
+      let _invJSFetching = false;
+      let _invJSLastFetch = null;
 
       async function loadInventoryJS(forceRefresh) {
         const statusEl = document.getElementById('invJS-status');
-        if (_invJSLoaded && !forceRefresh) return;
+
+        if (!_invJSLoaded) {
+          const cached = loadDataCache('invJS');
+          if (cached) {
+            _invJSHeaders = cached.payload.headers || [];
+            _invJSData = cached.payload.data || [];
+            _invJSLoaded = true;
+            renderInventoryJSTable();
+            statusEl.textContent = _invJSData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_invJSFetching) return;
+        if (_invJSLoaded && !forceRefresh && _invJSLastFetch && (Date.now() - _invJSLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _invJSFetching = true;
+        if (!_invJSLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getInventoryJS');
           const json = await res.json();
@@ -2232,10 +2356,14 @@
           _invJSHeaders = json.headers || [];
           _invJSData = json.data || [];
           _invJSLoaded = true;
+          _invJSLastFetch = Date.now();
+          saveDataCache('invJS', { headers: _invJSHeaders, data: _invJSData });
           statusEl.textContent = _invJSData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderInventoryJSTable();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _invJSFetching = false;
         }
       }
 
@@ -2271,17 +2399,33 @@
       let _invCIMBHeaders = [];
       let _invCIMBData = [];
       let _invCIMBLoaded = false;
+      let _invCIMBFetching = false;
+      let _invCIMBLastFetch = null;
 
       async function loadInventoryCIMB(forceRefresh) {
         const statusEl = document.getElementById('invCIMB-status');
-        if (_invCIMBLoaded && !forceRefresh) return;
+
+        if (!_invCIMBLoaded) {
+          const cached = loadDataCache('invCIMB');
+          if (cached) {
+            _invCIMBHeaders = cached.payload.headers || [];
+            _invCIMBData = cached.payload.data || [];
+            _invCIMBLoaded = true;
+            renderInventoryCIMBTable();
+            statusEl.textContent = _invCIMBData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_invCIMBFetching) return;
+        if (_invCIMBLoaded && !forceRefresh && _invCIMBLastFetch && (Date.now() - _invCIMBLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _invCIMBFetching = true;
+        if (!_invCIMBLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getInventoryCIMB');
           const json = await res.json();
@@ -2292,10 +2436,14 @@
           _invCIMBHeaders = json.headers || [];
           _invCIMBData = json.data || [];
           _invCIMBLoaded = true;
+          _invCIMBLastFetch = Date.now();
+          saveDataCache('invCIMB', { headers: _invCIMBHeaders, data: _invCIMBData });
           statusEl.textContent = _invCIMBData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderInventoryCIMBTable();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _invCIMBFetching = false;
         }
       }
 
@@ -2342,6 +2490,8 @@
       let _mprepRtdCount = 0;
       let _mprepLoaded = false;
       let _mprepProgressTimer = null;
+      let _mprepFetching = false;
+      let _mprepLastFetch = null;
 
       // Mode "+ Add Task" (checkbox) + seleksi. Seleksi disimpan sebagai Map
       // key -> row (BUKAN berdasarkan indeks baris hasil filter), supaya baris
@@ -2507,14 +2657,31 @@
 
       async function loadMachinePrepList(forceRefresh) {
         const statusEl = document.getElementById('mprep-status');
-        if (_mprepLoaded && !forceRefresh) return;
+
+        if (!_mprepLoaded) {
+          const cached = loadDataCache('mprepList');
+          if (cached) {
+            _mprepData = cached.payload.data || [];
+            _mprepStockCount = cached.payload.stockCount || 0;
+            _mprepRtdCount = cached.payload.rtdCount || 0;
+            _mprepLoaded = true;
+            document.getElementById('mprep-count').textContent = _mprepStockCount + '/' + _mprepRtdCount;
+            _mprepPopulateFilterDropdowns();
+            renderMachinePrepTable();
+            statusEl.textContent = _mprepData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_mprepFetching) return;
+        if (_mprepLoaded && !forceRefresh && _mprepLastFetch && (Date.now() - _mprepLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _mprepFetching = true;
+        if (!_mprepLoaded) statusEl.textContent = 'Memuat data...';
         _mprepStartProgress();
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getMachinePreparationList');
@@ -2528,6 +2695,8 @@
           _mprepStockCount = json.stockCount || 0;
           _mprepRtdCount = json.rtdCount || 0;
           _mprepLoaded = true;
+          _mprepLastFetch = Date.now();
+          saveDataCache('mprepList', { data: _mprepData, stockCount: _mprepStockCount, rtdCount: _mprepRtdCount });
           statusEl.textContent = _mprepData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           document.getElementById('mprep-count').textContent = _mprepStockCount + '/' + _mprepRtdCount;
           _mprepPopulateFilterDropdowns();
@@ -2536,6 +2705,8 @@
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
           _mprepFinishProgress(false);
+        } finally {
+          _mprepFetching = false;
         }
       }
 
@@ -2603,6 +2774,8 @@
       ];
       let _taskMprepData = [];
       let _taskMprepLoaded = false;
+      let _taskMprepFetching = false;
+      let _taskMprepLastFetch = null;
 
       // Task yang statusnya sudah "Done" (ditandai dari Popup Pengerjaan Task di
       // menu Task Team Prepare) atau "Removed" (dihapus manual lewat tombol
@@ -2617,14 +2790,29 @@
 
       async function loadTaskMachinePrepList(forceRefresh) {
         const statusEl = document.getElementById('taskmprep-status');
-        if (_taskMprepLoaded && !forceRefresh) { renderTaskMachinePrepTable(); return; }
+
+        if (!_taskMprepLoaded) {
+          const cached = loadDataCache('taskMprepList');
+          if (cached) {
+            _taskMprepData = cached.payload.data || [];
+            _taskMprepLoaded = true;
+            renderTaskMachinePrepTable();
+            statusEl.textContent = _taskMprepData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        } else {
+          renderTaskMachinePrepTable();
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_taskMprepFetching) return;
+        if (_taskMprepLoaded && !forceRefresh && _taskMprepLastFetch && (Date.now() - _taskMprepLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _taskMprepFetching = true;
+        if (!_taskMprepLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTaskMachinePrepList');
           const json = await res.json();
@@ -2634,10 +2822,14 @@
           }
           _taskMprepData = json.data || [];
           _taskMprepLoaded = true;
+          _taskMprepLastFetch = Date.now();
+          saveDataCache('taskMprepList', { data: _taskMprepData });
           statusEl.textContent = _taskMprepData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTaskMachinePrepTable();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _taskMprepFetching = false;
         }
       }
 
@@ -2833,6 +3025,8 @@
       let _jabodetabekLoaded = false;
       let _jabodetabekAddTaskMode = false;
       let _jabodetabekSelectedRows = new Set();
+      let _jabodetabekFetching = false;
+      let _jabodetabekLastFetch = null;
 
       // Kolom yang ditampilkan di menu "Input Task" setelah data dikirim dari Jabodetabek
       const INPUT_TASK_COLUMNS = [
@@ -3047,14 +3241,28 @@
 
       async function loadJabodetabek(forceRefresh) {
         const statusEl = document.getElementById('jabodetabek-status');
-        if (_jabodetabekLoaded && !forceRefresh) return;
+
+        if (!_jabodetabekLoaded) {
+          const cached = loadDataCache('jabodetabek');
+          if (cached) {
+            _jabodetabekHeaders = cached.payload.headers || [];
+            _jabodetabekData = cached.payload.data || [];
+            _jabodetabekLoaded = true;
+            renderJabodetabekTable();
+            statusEl.textContent = _jabodetabekData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_jabodetabekFetching) return;
+        if (_jabodetabekLoaded && !forceRefresh && _jabodetabekLastFetch && (Date.now() - _jabodetabekLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _jabodetabekFetching = true;
+        if (!_jabodetabekLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabek');
           const json = await res.json();
@@ -3065,10 +3273,14 @@
           _jabodetabekHeaders = json.headers || [];
           _jabodetabekData = json.data || [];
           _jabodetabekLoaded = true;
+          _jabodetabekLastFetch = Date.now();
+          saveDataCache('jabodetabek', { headers: _jabodetabekHeaders, data: _jabodetabekData });
           statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderJabodetabekTable();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _jabodetabekFetching = false;
         }
       }
 
@@ -3406,10 +3618,15 @@
       // =============================================
       // PLAN TASK (menampilkan hasil Submit dari Form Plan Task di Input Task)
       // =============================================
+      // 'PRODUCT TYPE' hanya terisi untuk task hasil tarikan Request BD - Event
+      // (lookup TICKET ke sheet "Event" di spreadsheet "Logistic Request 2026",
+      // kolom F, dilakukan di server saat submitPlanTask_); task dari Jabodetabek
+      // akan tampil kosong pada kolom ini.
       const PLAN_TASK_DISPLAY_COLUMNS = [
         'Plan Date', 'TICKET', 'NO VMC JUMPSTART', 'LOCATION NAME', 'ACTION PLAN',
         'PROPOSED VM TYPE', 'VM TYPE ON SITE', 'MACHINE SET UP', 'PRICE SETTINGS',
-        'SITE PIC', 'SITE PIC PHONE NO.', 'DELIVERY / PICK UP ADDRESS', 'REMARKS'
+        'SITE PIC', 'SITE PIC PHONE NO.', 'DELIVERY / PICK UP ADDRESS', 'REMARKS',
+        'PRODUCT TYPE'
       ];
       // Satu elemen array = satu batch hasil submit Plan Task (satu team/PIC),
       // berbentuk { divisi, pic, noKendaraan, rows }. Batch baru ditambahkan
@@ -3567,6 +3784,64 @@
         // baris di dalamnya sudah lewat Plan Date akan mengembalikan string
         // kosong (lihat _buildPlanTaskBatchBlockHTML) sehingga otomatis hilang.
         wrapEl.innerHTML = _planTaskBatches.map((batch, i) => _buildPlanTaskBatchBlockHTML(batch, i)).join('');
+      }
+
+      // Tombol "Bersihkan Task Terhapus" — sinkronkan tampilan menu Plan Task
+      // (yang datanya di-cache di browser lewat _planTaskBatches/localStorage)
+      // dengan kondisi sheet "Plan Task" yang sebenarnya: kalau ada baris yang
+      // sudah dihapus langsung dari sheet (bukan lewat tombol di app), baris itu
+      // akan otomatis hilang juga dari tampilan di sini. Pencocokan pakai TICKET
+      // (bukan rowNumber saja) karena menghapus satu baris di sheet menggeser
+      // rowNumber baris-baris di bawahnya — sekalian rowNumber lokal di-refresh
+      // (self-heal) sesuai posisi terbaru di sheet supaya tombol lain (Cetak,
+      // input NO VMC JUMPSTART) tetap merujuk ke baris yang benar.
+      async function bersihkanPlanTaskTerhapus() {
+        const btn = document.getElementById('plan-task-cleanup-btn');
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Memeriksa sheet...';
+        try {
+          const json = await _getFromGasWithRetry_('getPlanTaskExistingTickets', {});
+          if (!json || !json.success) {
+            showAppAlert('❌ ' + ((json && json.message) || 'Gagal mengambil data sheet Plan Task.'), 'error');
+            return;
+          }
+          // Map TICKET (di-normalisasi trim+lowercase) -> rowNumber terbaru di sheet.
+          const existing = Array.isArray(json.tickets) ? json.tickets : [];
+          const ticketRowMap = new Map();
+          existing.forEach(item => {
+            const key = String(item.ticket || '').trim().toLowerCase();
+            if (key) ticketRowMap.set(key, item.rowNumber);
+          });
+
+          let removedCount = 0;
+          _planTaskBatches.forEach(batch => {
+            const keptRows = [];
+            (batch.rows || []).forEach(row => {
+              const key = String(row['TICKET'] || '').trim().toLowerCase();
+              if (key && ticketRowMap.has(key)) {
+                row.rowNumber = ticketRowMap.get(key); // self-heal rowNumber
+                keptRows.push(row);
+              } else {
+                removedCount++;
+              }
+            });
+            batch.rows = keptRows;
+          });
+          _planTaskBatches = _planTaskBatches.filter(batch => (batch.rows || []).length > 0);
+
+          renderPlanTaskTable();
+          if (removedCount > 0) {
+            showToast('🧹 ' + removedCount + ' task yang sudah dihapus dari sheet ikut dibersihkan dari tampilan.', 'success');
+          } else {
+            showToast('Semua task yang tampil masih sesuai dengan sheet — tidak ada yang perlu dibersihkan.', 'success');
+          }
+        } catch (err) {
+          showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
       }
 
       // =============================================
@@ -4521,15 +4796,33 @@
       let _tpFinalStatusOptions = [];
       let _tpFinalStatusLoaded = false;
       let _tpContext = null; // { rowNumberSource, noVMC, serialNumber, machineType, exLocation, alokasi, assets, sheetAsal }
+      let _teamPrepareLoaded = false;
+      let _teamPrepareFetching = false;
+      let _teamPrepareLastFetch = null;
 
       async function loadTeamPrepareCards(forceRefresh) {
         const statusEl = document.getElementById('team-prepare-status');
+
+        if (!_teamPrepareLoaded) {
+          const cached = loadDataCache('teamPrepareCards');
+          if (cached) {
+            _teamPrepareCards = cached.payload.data || [];
+            _teamPrepareLoaded = true;
+            renderTeamPrepareCards();
+            statusEl.textContent = _teamPrepareCards.length + ' task (cache) — memuat data terbaru...';
+          }
+        }
+
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_teamPrepareFetching) return;
+        if (_teamPrepareLoaded && !forceRefresh && _teamPrepareLastFetch && (Date.now() - _teamPrepareLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _teamPrepareFetching = true;
+        if (!_teamPrepareLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamPrepareCards');
           const json = await res.json();
@@ -4538,10 +4831,15 @@
             return;
           }
           _teamPrepareCards = json.data || [];
+          _teamPrepareLoaded = true;
+          _teamPrepareLastFetch = Date.now();
+          saveDataCache('teamPrepareCards', { data: _teamPrepareCards });
           statusEl.textContent = _teamPrepareCards.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTeamPrepareCards();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _teamPrepareFetching = false;
         }
       }
 
@@ -5072,6 +5370,8 @@
       let _eventLoaded = false;
       let _eventAddTaskMode = false;
       let _eventSelectedRows = new Set();
+      let _eventFetching = false;
+      let _eventLastFetch = null;
 
       // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
       function toggleEventAddTask() {
@@ -5139,14 +5439,28 @@
 
       async function loadEvent(forceRefresh) {
         const statusEl = document.getElementById('event-status');
-        if (_eventLoaded && !forceRefresh) return;
+
+        if (!_eventLoaded) {
+          const cached = loadDataCache('event');
+          if (cached) {
+            _eventHeaders = cached.payload.headers || [];
+            _eventData = cached.payload.data || [];
+            _eventLoaded = true;
+            renderEventTable();
+            statusEl.textContent = _eventData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
 
-        statusEl.textContent = 'Memuat data...';
+        if (_eventFetching) return;
+        if (_eventLoaded && !forceRefresh && _eventLastFetch && (Date.now() - _eventLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _eventFetching = true;
+        if (!_eventLoaded) statusEl.textContent = 'Memuat data...';
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getEvent');
           const json = await res.json();
@@ -5157,10 +5471,14 @@
           _eventHeaders = json.headers || [];
           _eventData = json.data || [];
           _eventLoaded = true;
+          _eventLastFetch = Date.now();
+          saveDataCache('event', { headers: _eventHeaders, data: _eventData });
           statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderEventTable();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _eventFetching = false;
         }
       }
 
@@ -5227,10 +5545,34 @@
         'so-alokasi': { key: 'alokasi', placeholder: '-- Pilih Alokasi --' },
       };
       let _stockOpnameSourceLoaded = false;
+      let _stockOpnameFetching = false;
+      let _stockOpnameLastFetch = null;
+
+      function _populateStockOpnameDropdowns(dropdownData) {
+        Object.keys(STOCK_OPNAME_DROPDOWN_MAP).forEach(function (elId) {
+          const cfg = STOCK_OPNAME_DROPDOWN_MAP[elId];
+          const selectEl = document.getElementById(elId);
+          const prevVal = selectEl.value;
+          const options = dropdownData[cfg.key] || [];
+          selectEl.innerHTML = '<option value="">' + cfg.placeholder + '</option>' +
+            options.map(function (v) {
+              return '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>';
+            }).join('');
+          if (options.includes(prevVal)) selectEl.value = prevVal;
+        });
+      }
 
       async function loadStockOpnameSource(forceRefresh) {
         const statusEl = document.getElementById('stockOpname-status');
-        if (_stockOpnameSourceLoaded && !forceRefresh) return;
+
+        if (!_stockOpnameSourceLoaded) {
+          const cached = loadDataCache('stockOpnameDropdowns');
+          if (cached) {
+            _populateStockOpnameDropdowns(cached.payload);
+            _stockOpnameSourceLoaded = true;
+            statusEl.textContent = '';
+          }
+        }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
@@ -5238,8 +5580,14 @@
           return;
         }
 
-        statusEl.textContent = 'Memuat pilihan dropdown...';
-        statusEl.style.color = '#94a3b8';
+        if (_stockOpnameFetching) return;
+        if (_stockOpnameSourceLoaded && !forceRefresh && _stockOpnameLastFetch && (Date.now() - _stockOpnameLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _stockOpnameFetching = true;
+        if (!_stockOpnameSourceLoaded) {
+          statusEl.textContent = 'Memuat pilihan dropdown...';
+          statusEl.style.color = '#94a3b8';
+        }
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSourceDropdowns');
           const json = await res.json();
@@ -5249,21 +5597,16 @@
             return;
           }
 
-          Object.keys(STOCK_OPNAME_DROPDOWN_MAP).forEach(function (elId) {
-            const cfg = STOCK_OPNAME_DROPDOWN_MAP[elId];
-            const selectEl = document.getElementById(elId);
-            const options = json[cfg.key] || [];
-            selectEl.innerHTML = '<option value="">' + cfg.placeholder + '</option>' +
-              options.map(function (v) {
-                return '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>';
-              }).join('');
-          });
-
+          _populateStockOpnameDropdowns(json);
           _stockOpnameSourceLoaded = true;
+          _stockOpnameLastFetch = Date.now();
+          saveDataCache('stockOpnameDropdowns', json);
           statusEl.textContent = '';
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
           statusEl.style.color = '#ef4444';
+        } finally {
+          _stockOpnameFetching = false;
         }
       }
 
