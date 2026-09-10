@@ -1279,6 +1279,29 @@
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <h1 class="text-lg font-bold text-slate-800">Request BD - Jabodetabek</h1>
           <div class="flex flex-col items-stretch sm:items-end gap-2">
+            <div class="w-full sm:w-auto flex flex-col sm:flex-row sm:flex-nowrap gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Landmark</label>
+                <select id="jabodetabek-filter-landmark" onchange="renderJabodetabekTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Landmark</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Kota</label>
+                <select id="jabodetabek-filter-kota" onchange="onJabodetabekKotaFilterChange()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Kota</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Kecamatan</label>
+                <select id="jabodetabek-filter-kecamatan" onchange="renderJabodetabekTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Kecamatan</option>
+                </select>
+              </div>
+            </div>
             <div class="flex items-center gap-2">
               <input id="jabodetabek-search" type="text" placeholder="Cari data..."
                 oninput="renderJabodetabekTable()"
@@ -1319,6 +1342,29 @@
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
           <h1 class="text-lg font-bold text-slate-800">Request BD - Event</h1>
           <div class="flex flex-col items-stretch sm:items-end gap-2">
+            <div class="w-full sm:w-auto flex flex-col sm:flex-row sm:flex-nowrap gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Landmark</label>
+                <select id="event-filter-landmark" onchange="renderEventTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Landmark</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Kota</label>
+                <select id="event-filter-kota" onchange="onEventKotaFilterChange()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Kota</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Kecamatan</label>
+                <select id="event-filter-kecamatan" onchange="renderEventTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Kecamatan</option>
+                </select>
+              </div>
+            </div>
             <div class="flex items-center gap-2">
               <input id="event-search" type="text" placeholder="Cari data..."
                 oninput="renderEventTable()"
@@ -3246,6 +3292,116 @@
         return found !== undefined ? found : target;
       }
 
+      // =============================================
+      // FILTER LANDMARK / KOTA / KECAMATAN (menu Jabodetabek & Event)
+      // Landmark/Kota/Kecamatan BUKAN kolom sheet tersendiri — nilainya diturunkan
+      // (parsing) dari teks bebas kolom "DELIVERY / PICK UP ADDRESS", dengan pola:
+      //   "Pick Up: <Landmark opsional>, Jl. ..., RT.../RW..., <Kelurahan>,
+      //    Kec. <Kecamatan>, Kota/Kabupaten <Kota>, <Provinsi> <kode pos opsional>"
+      // Contoh: "Pick Up: Graha Intikom, Jl. Kuningan Barat II No.11 3, RT.3/RW.2,
+      //          Kuningan Bar., Kec. Mampang Prpt., Kota Jakarta Selatan, ..."
+      // -> Landmark = "Graha Intikom", Kecamatan = "Mampang Prpt.", Kota = "Kota Jakarta Selatan"
+      // Tidak mengubah apa pun di sheet — murni pengelompokan/filter di frontend.
+      // =============================================
+      function _titleCase(s) {
+        return String(s).toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+      }
+
+      function _parseAddressComponents(address) {
+        const result = { landmark: '', kota: '', kecamatan: '' };
+        if (!address) return result;
+
+        // Buang prefix jenis pengambilan/pengiriman ("Pick Up:", "Delivery:", dst.)
+        let addr = String(address).trim()
+          .replace(/^\s*(pick\s*up|delivery|drop\s*off|penjemputan|pengiriman)\s*:\s*/i, '');
+
+        const segments = addr.split(',').map(s => s.trim()).filter(Boolean);
+        if (!segments.length) return result;
+
+        // Landmark: segmen pertama, HANYA kalau bukan awal alamat jalan/RT-RW/Kec/Kota
+        // (kalau alamat langsung mulai dari "Jl. ...", berarti tidak ada landmark)
+        const first = segments[0];
+        if (first && !/^jl\.?\s/i.test(first) && !/^rt\.?\s*\d/i.test(first) &&
+            !/^kec\.?\s/i.test(first) && !/^(kota|kabupaten)\s/i.test(first)) {
+          result.landmark = first;
+        }
+
+        // Kecamatan: segmen yang diawali "Kec."
+        const kecSeg = segments.find(s => /^kec\.?\s+/i.test(s));
+        if (kecSeg) {
+          result.kecamatan = _titleCase(kecSeg.replace(/^kec\.?\s*/i, '').trim());
+        }
+
+        // Kota/Kabupaten: segmen yang diawali "Kota"/"Kabupaten" (nama kota disimpan
+        // lengkap dengan prefiksnya, mis. "Kota Jakarta Selatan", supaya tidak rancu
+        // dengan Kecamatan/Kelurahan yang kebetulan mirip)
+        const kotaSeg = segments.find(s => /^(kota|kabupaten)\s+/i.test(s));
+        if (kotaSeg) {
+          result.kota = _titleCase(kotaSeg.trim());
+        }
+
+        return result;
+      }
+
+      // Tempel hasil parsing Landmark/Kota/Kecamatan ke tiap baris data (properti
+      // internal __landmark/__kota/__kecamatan) berdasarkan kolom addressColumnName.
+      function _enrichLocationFilters(data, headers, addressColumnName) {
+        const addrKey = _findHeaderKey(headers, addressColumnName);
+        data.forEach(row => {
+          const comp = _parseAddressComponents(row[addrKey]);
+          row.__landmark = comp.landmark;
+          row.__kota = comp.kota;
+          row.__kecamatan = comp.kecamatan;
+        });
+      }
+
+      // Isi ulang opsi dropdown filter dari nilai unik yang benar-benar ada di data saat
+      // ini (supaya tidak ada opsi kosong), sambil mempertahankan pilihan yang sedang aktif
+      // kalau masih valid.
+      function _populateLocationFilterOptions(selectId, data, field, placeholder) {
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        const prevValue = sel.value;
+        const values = new Set();
+        data.forEach(row => { const v = (row[field] || '').trim(); if (v) values.add(v); });
+        const sorted = Array.from(values).sort((a, b) => a.localeCompare(b, 'id'));
+        sel.innerHTML = '<option value="">' + placeholder + '</option>' +
+          sorted.map(v => '<option value="' + v.replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+        if (prevValue && sorted.includes(prevValue)) sel.value = prevValue;
+      }
+
+      // Isi ulang opsi dropdown Kecamatan supaya HANYA menampilkan kecamatan yang ada
+      // pada Kota/Kabupaten yang sedang dipilih (kalau belum pilih Kota, tampilkan
+      // semua kecamatan dari seluruh data seperti biasa).
+      function _refreshKecamatanFilterOptions(idPrefix, data) {
+        const kotaVal = document.getElementById(idPrefix + '-filter-kota').value;
+        const scoped = kotaVal ? data.filter(row => row.__kota === kotaVal) : data;
+        _populateLocationFilterOptions(idPrefix + '-filter-kecamatan', scoped, '__kecamatan', 'Semua Kecamatan');
+      }
+
+      // Dipanggil saat dropdown Kota di Jabodetabek/Event berubah: perbarui dulu opsi
+      // Kecamatan supaya mengikuti Kota terpilih, baru render ulang tabel.
+      function onJabodetabekKotaFilterChange() {
+        _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
+        renderJabodetabekTable();
+      }
+      function onEventKotaFilterChange() {
+        _refreshKecamatanFilterOptions('event', _eventData);
+        renderEventTable();
+      }
+
+      // Terapkan filter Landmark/Kota/Kecamatan + kata kunci pencarian ke satu baris data.
+      // idPrefix: 'jabodetabek' atau 'event'.
+      function _matchesLocationFilters(row, idPrefix) {
+        const landmarkVal = document.getElementById(idPrefix + '-filter-landmark').value;
+        const kotaVal = document.getElementById(idPrefix + '-filter-kota').value;
+        const kecamatanVal = document.getElementById(idPrefix + '-filter-kecamatan').value;
+        if (landmarkVal && row.__landmark !== landmarkVal) return false;
+        if (kotaVal && row.__kota !== kotaVal) return false;
+        if (kecamatanVal && row.__kecamatan !== kecamatanVal) return false;
+        return true;
+      }
+
       function _mapRowToInputTaskColumns(row, headers) {
         const obj = {};
         INPUT_TASK_COLUMNS.forEach(col => {
@@ -3294,18 +3450,27 @@
         });
       }
 
+      // Gabungan filter pencarian (search box) + dropdown Landmark/Kota/Kecamatan,
+      // dipakai bersama oleh renderJabodetabekTable() dan confirmJabodetabekAddTask()
+      // supaya indeks baris yang dicentang selalu tepat mengacu ke baris yang sama.
+      function _getFilteredJabodetabekData() {
+        const keyword = (document.getElementById('jabodetabek-search').value || '').toLowerCase().trim();
+        return _jabodetabekData.filter(row => {
+          if (keyword && !_jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))) return false;
+          return _matchesLocationFilters(row, 'jabodetabek');
+        });
+      }
+
       // Tombol "Add": proses baris yang dicentang lalu kembali ke tampilan semula
       function confirmJabodetabekAddTask() {
         if (_jabodetabekSelectedRows.size === 0) {
           showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
           return;
         }
-        // Indeks di _jabodetabekSelectedRows mengacu pada hasil filter (pencarian) saat
-        // checkbox dicentang, jadi pakai ulang filter yang sama supaya baris yang diambil tepat.
-        const keyword = (document.getElementById('jabodetabek-search').value || '').toLowerCase().trim();
-        const filtered = !keyword ? _jabodetabekData : _jabodetabekData.filter(row =>
-          _jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
-        );
+        // Indeks di _jabodetabekSelectedRows mengacu pada hasil filter (pencarian +
+        // dropdown lokasi) saat checkbox dicentang, jadi pakai ulang filter yang sama
+        // supaya baris yang diambil tepat.
+        const filtered = _getFilteredJabodetabekData();
 
         // Data yang sudah ada di Input Task (mis. dikirim sebelumnya dari Jabodetabek/Event)
         // tidak ditimpa — baris baru ditambahkan setelah baris yang sudah ada.
@@ -3330,6 +3495,10 @@
             _jabodetabekHeaders = cached.payload.headers || [];
             _jabodetabekData = cached.payload.data || [];
             _jabodetabekLoaded = true;
+            _enrichLocationFilters(_jabodetabekData, _jabodetabekHeaders, 'DELIVERY / PICK UP ADDRESS');
+            _populateLocationFilterOptions('jabodetabek-filter-landmark', _jabodetabekData, '__landmark', 'Semua Landmark');
+            _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
+            _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
             renderJabodetabekTable();
             statusEl.textContent = _jabodetabekData.length + ' baris data (cache) — memuat data terbaru...';
           }
@@ -3356,6 +3525,10 @@
           _jabodetabekData = json.data || [];
           _jabodetabekLoaded = true;
           _jabodetabekLastFetch = Date.now();
+          _enrichLocationFilters(_jabodetabekData, _jabodetabekHeaders, 'DELIVERY / PICK UP ADDRESS');
+          _populateLocationFilterOptions('jabodetabek-filter-landmark', _jabodetabekData, '__landmark', 'Semua Landmark');
+          _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
+          _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
           saveDataCache('jabodetabek', { headers: _jabodetabekHeaders, data: _jabodetabekData });
           statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderJabodetabekTable();
@@ -3391,7 +3564,6 @@
       function renderJabodetabekTable() {
         const thead = document.getElementById('jabodetabek-thead');
         const tbody = document.getElementById('jabodetabek-tbody');
-        const keyword = (document.getElementById('jabodetabek-search').value || '').toLowerCase().trim();
 
         applyEqualColumns('jabodetabek-table', 'jabodetabek-colgroup', _jabodetabekHeaders, _jabodetabekAddTaskMode);
 
@@ -3405,9 +3577,7 @@
           (h || '') + '</th>'
         ).join('') + '</tr>';
 
-        const filtered = !keyword ? _jabodetabekData : _jabodetabekData.filter(row =>
-          _jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
-        );
+        const filtered = _getFilteredJabodetabekData();
 
         if (filtered.length === 0) {
           tbody.innerHTML = '<tr><td colspan="' + (_jabodetabekHeaders.length + (_jabodetabekAddTaskMode ? 1 : 0) || 1) +
@@ -5557,6 +5727,17 @@
         });
       }
 
+      // Gabungan filter pencarian (search box) + dropdown Landmark/Kota/Kecamatan,
+      // dipakai bersama oleh renderEventTable() dan confirmEventAddTask() supaya
+      // indeks baris yang dicentang selalu tepat mengacu ke baris yang sama.
+      function _getFilteredEventData() {
+        const keyword = (document.getElementById('event-search').value || '').toLowerCase().trim();
+        return _eventData.filter(row => {
+          if (keyword && !_eventHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))) return false;
+          return _matchesLocationFilters(row, 'event');
+        });
+      }
+
       // Tombol "Add": proses baris yang dicentang, kirim ke Input Task (sama seperti
       // Jabodetabek) — baris yang sudah ada di Input Task tidak ditimpa, baris baru
       // ditambahkan setelahnya.
@@ -5565,10 +5746,9 @@
           showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
           return;
         }
-        const keyword = (document.getElementById('event-search').value || '').toLowerCase().trim();
-        const filtered = !keyword ? _eventData : _eventData.filter(row =>
-          _eventHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
-        );
+        // Indeks di _eventSelectedRows mengacu pada hasil filter (pencarian + dropdown
+        // lokasi) saat checkbox dicentang, jadi pakai ulang filter yang sama.
+        const filtered = _getFilteredEventData();
 
         const newRows = Array.from(_eventSelectedRows)
           .sort((a, b) => a - b)
@@ -5596,6 +5776,10 @@
             _eventHeaders = cached.payload.headers || [];
             _eventData = cached.payload.data || [];
             _eventLoaded = true;
+            _enrichLocationFilters(_eventData, _eventHeaders, 'DELIVERY / PICK UP ADDRESS');
+            _populateLocationFilterOptions('event-filter-landmark', _eventData, '__landmark', 'Semua Landmark');
+            _populateLocationFilterOptions('event-filter-kota', _eventData, '__kota', 'Semua Kota');
+            _refreshKecamatanFilterOptions('event', _eventData);
             renderEventTable();
             statusEl.textContent = _eventData.length + ' baris data (cache) — memuat data terbaru...';
           }
@@ -5622,6 +5806,10 @@
           _eventData = json.data || [];
           _eventLoaded = true;
           _eventLastFetch = Date.now();
+          _enrichLocationFilters(_eventData, _eventHeaders, 'DELIVERY / PICK UP ADDRESS');
+          _populateLocationFilterOptions('event-filter-landmark', _eventData, '__landmark', 'Semua Landmark');
+          _populateLocationFilterOptions('event-filter-kota', _eventData, '__kota', 'Semua Kota');
+          _refreshKecamatanFilterOptions('event', _eventData);
           saveDataCache('event', { headers: _eventHeaders, data: _eventData });
           statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderEventTable();
@@ -5635,7 +5823,6 @@
       function renderEventTable() {
         const thead = document.getElementById('event-thead');
         const tbody = document.getElementById('event-tbody');
-        const keyword = (document.getElementById('event-search').value || '').toLowerCase().trim();
 
         applyEqualColumns('event-table', 'event-colgroup', _eventHeaders, _eventAddTaskMode);
 
@@ -5649,9 +5836,7 @@
           (h || '') + '</th>'
         ).join('') + '</tr>';
 
-        const filtered = !keyword ? _eventData : _eventData.filter(row =>
-          _eventHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))
-        );
+        const filtered = _getFilteredEventData();
 
         if (filtered.length === 0) {
           tbody.innerHTML = '<tr><td colspan="' + (_eventHeaders.length + (_eventAddTaskMode ? 1 : 0) || 1) +
