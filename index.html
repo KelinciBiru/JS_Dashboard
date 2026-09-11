@@ -838,6 +838,38 @@
         </div>
       </div>
 
+      <!-- HISTORYCAL DISPATCH -->
+      <div id="content-HistorycalDispatch" class="page-content">
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Historycal Dispatch</h1>
+          <button onclick="loadHistorycalDispatch(true)"
+            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
+        </div>
+        <div id="historycal-dispatch-status" class="text-xs text-slate-500 mb-3"></div>
+        <div id="historycal-dispatch-empty" class="placeholder-box">Belum ada riwayat Task Team Dispatch.</div>
+        <div id="historycal-dispatch-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
+          <table id="historycal-dispatch-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="historycal-dispatch-colgroup"></colgroup>
+            <thead id="historycal-dispatch-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="historycal-dispatch-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MODAL: Daftar Checklist + Foto Bukti (klik Location Name di Historycal Dispatch) -->
+      <div id="historycal-dispatch-checklist-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5">
+          <div class="flex justify-between items-center mb-3 gap-2">
+            <h3 class="text-sm font-bold text-slate-800">Checklist &amp; Foto Bukti — <span id="hd-checklist-location"></span></h3>
+            <button onclick="closeHistorycalDispatchChecklistModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+          </div>
+          <div id="hd-checklist-meta" class="text-xs text-slate-500 mb-3"></div>
+          <div id="hd-checklist-list" class="space-y-1.5 mb-4"></div>
+          <div class="text-xs font-bold text-slate-700 mb-2">Foto Bukti</div>
+          <div id="hd-checklist-photos" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+        </div>
+      </div>
+
       <!-- TEAM DISPATCH -->
       <div id="content-TeamDispatch" class="page-content">
         <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -1672,6 +1704,7 @@
             { label: 'Input Task', action: "showInventory('Input Task')" },
             { label: 'Plan Task', action: "showInventory('Plan Task')" },
             { label: 'Task on Going', action: "showInventory('Status Task')" },
+            { label: 'Historycal Dispatch', action: "showInventory('Historycal Dispatch')" },
           ],
         },
         {
@@ -1762,6 +1795,7 @@
         'InputTask': () => loadPlanTaskDropdowns(true),
         'PlanTask': () => loadPlanTaskBatches(true),
         'StatusTask': () => loadTaskOnGoing(true),
+        'HistorycalDispatch': () => loadHistorycalDispatch(true),
         'TeamDispatch': () => loadTeamDispatchTasks(true),
         'TeamPrepare': () => loadTeamPrepareCards(true)
       };
@@ -1823,9 +1857,11 @@
         // menu dibuka lewat showInventory()).
         restorePlanTaskResult();
         restoreTaskOnGoingRows();
+        restoreHistorycalDispatchRows();
         restoreTeamDispatchRows();
         renderPlanTaskTable();
         renderTaskOnGoingTable();
+        renderHistorycalDispatchTable();
         renderTeamDispatchCards();
         restorePlanTaskFormDraft();
 
@@ -1909,6 +1945,7 @@
         if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); }
         if (n === 'Plan Task') { renderPlanTaskTable(); loadPlanTaskBatches(false); }
         if (n === 'Status Task') { loadTaskOnGoing(false); }
+        if (n === 'Historycal Dispatch') { loadHistorycalDispatch(false); }
         if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); }
         if (n === 'Team Prepare') { loadTeamPrepareCards(false); }
       }
@@ -4447,6 +4484,184 @@
           .catch(err => {
             showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
           });
+      }
+
+      // =============================================
+      // HISTORYCAL DISPATCH (menu Plan Task > Historycal Dispatch)
+      // Menampilkan riwayat sheet "Task Team Dispatch" (spreadsheet Dashboard
+      // Dispatch V2) — log task yang sudah Delivered/Closed lengkap checklist
+      // foto & link foto bukti (ditulis oleh _recordTaskTeamDispatch_ di
+      // Code.gs saat popup Delivered disimpan). Butuh action GAS baru
+      // 'getTaskTeamDispatchHistory' yang mengembalikan seluruh baris sheet
+      // "Task Team Dispatch" (lihat catatan implementasi backend terpisah).
+      // =============================================
+      // Kolom yang ditampilkan di tabel utama menu Historycal Dispatch —
+      // ringkas saja; detail checklist & foto bukti dipindah ke popup (klik
+      // Location Name), lihat HISTORYCAL_DISPATCH_CHECKLIST_COLUMNS di bawah.
+      const HISTORYCAL_DISPATCH_COLUMNS = [
+        'Timestamp', 'Action Plan', 'Loading Date (Actual)', 'Location Name',
+        'MACHINE TYPE (sent from WH)', 'NO VMC JUMPSTART', 'PIC Dispatch'
+      ];
+      // Kolom checklist (10 item) yang dulu tampil di tabel utama — sekarang
+      // dirender di dalam popup saat Location Name diklik. Label harus sama
+      // persis dengan DISPATCH_CHECKLIST_FOTO_ITEMS/TASK_TEAM_DISPATCH_HEADERS
+      // supaya key-nya cocok dengan data hasil getTaskTeamDispatchHistory.
+      const HISTORYCAL_DISPATCH_CHECKLIST_COLUMNS = [
+        'VM on the Spot', 'Router+Simcard', 'No. VMC',
+        'Harga Produk (Hanya untuk Coffee Machine)', 'SKU',
+        'Suhu Compressor (Hanya untuk Mart Machine)', 'QR',
+        'Test Transaksi Berhasil', 'Full Body', 'Area Sekitar VM'
+      ];
+      const HISTORYCAL_DISPATCH_STORAGE_KEY = 'nod_historycalDispatchRows';
+      let _historycalDispatchRows = [];
+
+      function saveHistorycalDispatchRows() {
+        try { localStorage.setItem(HISTORYCAL_DISPATCH_STORAGE_KEY, JSON.stringify(_historycalDispatchRows)); } catch (e) { /* abaikan */ }
+      }
+      function restoreHistorycalDispatchRows() {
+        try {
+          const raw = localStorage.getItem(HISTORYCAL_DISPATCH_STORAGE_KEY);
+          if (raw) _historycalDispatchRows = JSON.parse(raw) || [];
+        } catch (e) { _historycalDispatchRows = []; }
+      }
+
+      async function loadHistorycalDispatch(forceRefresh) {
+        const statusEl = document.getElementById('historycal-dispatch-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTaskTeamDispatchHistory');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          // Urutkan terbaru dulu (Timestamp desc) supaya riwayat terkini tampil di atas.
+          _historycalDispatchRows = (json.rows || []).slice().sort((a, b) => {
+            const ta = new Date(a['Timestamp'] || 0).getTime();
+            const tb = new Date(b['Timestamp'] || 0).getTime();
+            return tb - ta;
+          });
+          saveHistorycalDispatchRows();
+          statusEl.textContent = _historycalDispatchRows.length + ' riwayat — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderHistorycalDispatchTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      // Loading Date (Actual) dari server bisa berupa 'yyyy-MM-dd HH:mm:ss'
+      // (kalau tersimpan sebagai Date di sheet) atau string tanggal lain —
+      // ditampilkan seragam sebagai DD/MM/YYYY di tabel utama.
+      function _historycalDispatchFormatDMY_(value) {
+        const raw = String(value ?? '').trim();
+        if (!raw) return '';
+        const datePart = raw.split(' ')[0];
+        const m = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return m[3] + '/' + m[2] + '/' + m[1];
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          return dd + '/' + mm + '/' + d.getFullYear();
+        }
+        return raw;
+      }
+
+      // Ambil FILE_ID dari URL hasil file.getUrl() Apps Script
+      // (https://drive.google.com/file/d/FILE_ID/view?usp=drivesdk) supaya
+      // bisa dibangun jadi URL thumbnail yang bisa langsung dipakai sebagai
+      // src <img>. Kembalikan null kalau polanya tidak cocok.
+      function _driveFileIdFromUrl_(url) {
+        const m = String(url || '').match(/\/d\/([a-zA-Z0-9_-]+)/);
+        return m ? m[1] : null;
+      }
+      function _driveThumbnailSrc_(url) {
+        const id = _driveFileIdFromUrl_(url);
+        return id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w1000') : url;
+      }
+
+      function renderHistorycalDispatchTable() {
+        const emptyEl = document.getElementById('historycal-dispatch-empty');
+        const wrapEl = document.getElementById('historycal-dispatch-table-wrap');
+        const thead = document.getElementById('historycal-dispatch-thead');
+        const tbody = document.getElementById('historycal-dispatch-tbody');
+
+        if (!_historycalDispatchRows.length) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.classList.add('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        wrapEl.classList.remove('hidden');
+
+        applyEqualColumns('historycal-dispatch-table', 'historycal-dispatch-colgroup', HISTORYCAL_DISPATCH_COLUMNS, false);
+
+        thead.innerHTML = '<tr>' + HISTORYCAL_DISPATCH_COLUMNS.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          h + '</th>'
+        ).join('') + '</tr>';
+
+        tbody.innerHTML = _historycalDispatchRows.map((row, i) =>
+          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+          HISTORYCAL_DISPATCH_COLUMNS.map(h => {
+            if (h === 'Location Name') {
+              return '<td class="px-4 py-2.5 align-top whitespace-normal break-words leading-snug">' +
+                '<button type="button" onclick="openHistorycalDispatchChecklistModal(' + i + ')" ' +
+                'class="text-blue-600 hover:underline font-semibold text-left">' + (row[h] ?? '') + '</button>' +
+                '</td>';
+            }
+            const val = (h === 'Loading Date (Actual)') ? _historycalDispatchFormatDMY_(row[h]) : (row[h] ?? '');
+            return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + val + '</td>';
+          }).join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // Popup Daftar Checklist + Foto Bukti — dibuka saat Location Name di
+      // tabel Historycal Dispatch diklik. Datanya sudah ada di
+      // _historycalDispatchRows (satu kali fetch getTaskTeamDispatchHistory),
+      // jadi popup ini murni render ulang dari data yang sudah dimuat.
+      function openHistorycalDispatchChecklistModal(index) {
+        const row = _historycalDispatchRows[index];
+        if (!row) return;
+
+        document.getElementById('hd-checklist-location').textContent = row['Location Name'] || '';
+        document.getElementById('hd-checklist-meta').textContent =
+          (row['Action Plan'] || '-') + ' • ' + _historycalDispatchFormatDMY_(row['Loading Date (Actual)']) +
+          ' • ' + (row['MACHINE TYPE (sent from WH)'] || '-') + ' • NO VMC: ' + (row['NO VMC JUMPSTART'] || '-') +
+          ' • PIC: ' + (row['PIC Dispatch'] || '-');
+
+        const listEl = document.getElementById('hd-checklist-list');
+        listEl.innerHTML = HISTORYCAL_DISPATCH_CHECKLIST_COLUMNS.map(label => {
+          const val = String(row[label] ?? '').trim();
+          const badgeClass = val.toLowerCase() === 'ok'
+            ? 'bg-green-100 text-green-700'
+            : (val ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400');
+          return '<div class="flex items-center justify-between gap-2 text-xs border-b border-slate-100 py-1.5">' +
+            '<span class="text-slate-700">' + label + '</span>' +
+            '<span class="px-2 py-0.5 rounded-full font-semibold shrink-0 ' + badgeClass + '">' + (val || '-') + '</span>' +
+            '</div>';
+        }).join('');
+
+        const photosEl = document.getElementById('hd-checklist-photos');
+        const raw = String(row['Foto Bukti'] ?? '').trim();
+        const urls = raw ? raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
+        photosEl.innerHTML = urls.length ? urls.map(u =>
+          '<a href="' + u + '" target="_blank" rel="noopener" class="block rounded-md overflow-hidden border border-slate-200 hover:opacity-90">' +
+          '<img src="' + _driveThumbnailSrc_(u) + '" loading="lazy" class="w-full h-28 object-cover" ' +
+          'onerror="this.parentElement.outerHTML=\'<a href=&quot;' + u + '&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot; class=&quot;flex items-center justify-center h-28 rounded-md border border-slate-200 text-xs text-blue-600 hover:underline&quot;>Buka Foto</a>\';">' +
+          '</a>'
+        ).join('') : '<div class="col-span-full text-xs text-slate-400">Tidak ada foto bukti.</div>';
+
+        document.getElementById('historycal-dispatch-checklist-modal').classList.remove('hidden');
+      }
+      function closeHistorycalDispatchChecklistModal() {
+        document.getElementById('historycal-dispatch-checklist-modal').classList.add('hidden');
       }
 
       // =============================================
