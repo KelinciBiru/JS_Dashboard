@@ -392,7 +392,13 @@
        otomatis seragam dan tidak perlu copy-paste class Tailwind lagi.
     ============================================================ */
     .side-menu-group {
-      margin-top: 4px;
+      margin-top: 10px;
+    }
+
+    #sidebar-menu-groups {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .side-menu-toggle {
@@ -400,13 +406,27 @@
       width: 100%;
       align-items: center;
       justify-content: space-between;
-      padding: 8px;
+      gap: 8px;
+      padding: 10px 8px;
       border-radius: 8px;
       font-size: 13px;
       font-weight: 500;
       color: var(--neu-text);
       background: transparent;
       transition: background-color .15s, color .15s;
+    }
+
+    .side-menu-toggle > span:first-child {
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .side-menu-toggle .side-menu-arrow {
+      flex: 0 0 auto;
     }
 
     .side-menu-toggle:hover {
