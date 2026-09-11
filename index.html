@@ -895,14 +895,11 @@
         <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Team Dispatch</h1>
           <div class="flex gap-2">
-            <button onclick="checkDispatchQueueStatus()"
-              class="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 text-xs font-semibold rounded-md whitespace-nowrap">Cek Antrian</button>
             <button onclick="loadTeamDispatchTasks(true)"
               class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
           </div>
         </div>
         <div id="team-dispatch-status" class="text-xs text-slate-500 mb-3"></div>
-        <div id="team-dispatch-queue-status" class="text-xs mb-3"></div>
         <div id="team-dispatch-empty" class="placeholder-box">Belum ada Task untuk didispatch.</div>
         <div id="team-dispatch-cards" class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));"></div>
       </div>
@@ -1565,6 +1562,37 @@
           el.classList.add('app-toast-out');
           setTimeout(() => el.remove(), 250);
         }, 3200);
+      }
+
+      // =============================================
+      // UI HELPER — SPINNER LOADING PADA TOMBOL
+      // Dipakai oleh flow Task Team Dispatch (Start / Cancel / Delivered /
+      // Simpan) supaya tombol menampilkan ikon spinner + label proses selama
+      // menunggu balasan server, lalu kembali ke tampilan semula (isi HTML
+      // tombol dikembalikan persis seperti sebelumnya lewat dataset).
+      // =============================================
+      function _setBtnLoading_(btn, loadingLabel) {
+        if (!btn) return;
+        if (btn.dataset.origHtml === undefined) btn.dataset.origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML =
+          '<span class="inline-flex items-center justify-center gap-1.5">' +
+            '<svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+              '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
+              '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>' +
+            '</svg>' +
+            '<span>' + (loadingLabel || 'Memproses...') + '</span>' +
+          '</span>';
+      }
+      function _clearBtnLoading_(btn) {
+        if (!btn) return;
+        if (btn.dataset.origHtml !== undefined) {
+          btn.innerHTML = btn.dataset.origHtml;
+          delete btn.dataset.origHtml;
+        }
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
       }
 
       function showAppAlert(message, type) {
@@ -4863,15 +4891,15 @@
         const actionButtons = isOnDelivery
           ? (
             '<div class="flex flex-col gap-2 mt-2">' +
-              '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ')" ' +
+              '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Delivered</button>' +
-              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\')" ' +
+              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
             '</div>'
           )
           : (
             '<div class="mt-2">' +
-              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'On Delivery\')" ' +
+              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'On Delivery\', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>' +
             '</div>'
           );
@@ -4902,41 +4930,23 @@
       // 'updatePlanTaskStatus', lalu refresh Cardview Team Dispatch. Pakai GET
       // (bukan POST) karena lebih konsisten berhasil di beberapa jaringan/browser
       // yang memblokir CORS untuk request POST ke Apps Script Web App.
-      function handleDispatchAction(rowNumber, newStatus) {
+      function handleDispatchAction(rowNumber, newStatus, btnEl) {
+        _setBtnLoading_(btnEl, newStatus === 'Open' ? 'Membatalkan...' : 'Memulai...');
         _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: newStatus })
           .then(json => {
             if (!json.success) {
               showAppAlert('❌ ' + (json.message || 'Gagal memperbarui status'), 'error');
+              _clearBtnLoading_(btnEl);
               return;
             }
+            // Sukses -> cardview di-render ulang (tombol lama otomatis diganti
+            // tombol baru dari template), jadi tidak perlu _clearBtnLoading_ lagi.
             loadTeamDispatchTasks(true);
           })
           .catch(err => {
             showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+            _clearBtnLoading_(btnEl);
           });
-      }
-
-      // Cek status trigger antrian "Dispatch Queue" (action GET
-      // 'checkDispatchQueue') — dipakai buat mastiin trigger
-      // processDispatchQueueOnce_ beneran terpasang & lihat berapa baris
-      // yang masih "pending" (macet, belum kecatat ke sheet Jabodetabek).
-      async function checkDispatchQueueStatus() {
-        const el = document.getElementById('team-dispatch-queue-status');
-        el.className = 'text-xs mb-3 text-slate-500';
-        el.textContent = 'Mengecek status antrian...';
-        try {
-          const json = await _getFromGasWithRetry_('checkDispatchQueue', {}, 1);
-          if (!json.success) {
-            el.className = 'text-xs mb-3 text-red-600';
-            el.textContent = '❌ ' + (json.message || 'Gagal cek antrian');
-            return;
-          }
-          el.className = 'text-xs mb-3 ' + (json.triggerInstalled ? 'text-emerald-600' : 'text-red-600');
-          el.textContent = (json.triggerInstalled ? '✅ ' : '⚠️ ') + json.message;
-        } catch (err) {
-          el.className = 'text-xs mb-3 text-red-600';
-          el.textContent = '❌ Gagal terhubung ke server: ' + err.message;
-        }
       }
 
       // =============================================
@@ -5019,10 +5029,12 @@
         return result;
       }
 
-      function openDispatchDeliveredModal(rowNumber) {
+      function openDispatchDeliveredModal(rowNumber, btnEl) {
+        _setBtnLoading_(btnEl, 'Memuat...');
         const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
         if (!row) {
           showAppAlert('❌ Data task tidak ditemukan, silakan refresh dulu.', 'error');
+          _clearBtnLoading_(btnEl);
           return;
         }
 
@@ -5051,6 +5063,9 @@
         if (showChecklistFoto) renderDispatchChecklistFotoFields();
 
         document.getElementById('dispatch-delivered-modal').classList.remove('hidden');
+        // Tombol "Delivered" di card cuma membuka popup ini (bukan menyimpan
+        // data), jadi spinner-nya dikembalikan lagi begitu popup tampil.
+        _clearBtnLoading_(btnEl);
       }
 
       // Isi dropdown "MACHINE TYPE (sent from WH)" di popup Delivered dari daftar
@@ -5334,7 +5349,7 @@
           }
         }
 
-        saveBtn.disabled = true;
+        _setBtnLoading_(saveBtn, 'Menyimpan...');
         await _acquireDispatchWakeLock_();
 
         try {
@@ -5415,15 +5430,15 @@
 
           closeDispatchDeliveredModal();
           loadTeamDispatchTasks(true);
-          // Data diproses lewat antrian di server (lihat catatan saveDispatchDelivered_
-          // di Code.gs) — tidak instan, biasanya tercatat di sheet Jabodetabek dalam
-          // waktu kurang dari 1 menit. Task masih akan terlihat di daftar Team Dispatch
-          // sampai proses antrian itu selesai memberi status "Closed".
-          showToast('Data diterima, sedang diproses (biasanya < 1 menit sampai tercatat).', 'success');
+          // Sekarang saveDispatchDelivered langsung menulis ke Jabodetabek &
+          // Inventory JS secara sinkron di server (tidak lewat antrian lagi,
+          // lihat catatan saveDispatchDelivered_ di Code.gs) — begitu balasan
+          // ini diterima, datanya sudah benar-benar tercatat.
+          showToast('Data berhasil disimpan.', 'success');
         } catch (err) {
           statusEl.textContent = '❌ ' + err.message;
         } finally {
-          saveBtn.disabled = false;
+          _clearBtnLoading_(saveBtn);
           _releaseDispatchWakeLock_();
         }
       }
