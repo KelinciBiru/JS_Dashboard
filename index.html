@@ -522,6 +522,56 @@
       color: var(--neu-text) !important;
       box-shadow: 3px 3px 6px var(--neu-shadow-dark), -3px -3px 6px var(--neu-shadow-light) !important;
     }
+
+    /* ============================================================
+       GLOBAL MOBILE RESPONSIVE SAFETY-NET (mode HP, <=768px)
+       Berlaku utk SEMUA menu & tabel di seluruh dashboard — murni
+       tambahan, tidak mengubah struktur HTML/JS yang sudah ada.
+       Tujuan: pastikan tampilan langsung menyesuaikan layar HP
+       tanpa perlu zoom/scroll horizontal tak sengaja.
+    ============================================================ */
+    @media (max-width: 768px) {
+      /* Fix utama: input/select/textarea dgn font-size < 16px bikin
+         Safari/Chrome iOS otomatis ZOOM IN saat field disentuh —
+         inilah penyebab paling umum tampilan "tidak menyesuaikan
+         layar" di HP walau CSS-nya sendiri sudah responsive. */
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+
+      /* Cegah halaman bisa ter-scroll horizontal secara tidak
+         sengaja (mis. ada elemen lebar yang lolos dari pembungkus
+         overflow-x-auto) — konten tetap pas di lebar layar HP. */
+      html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+      }
+
+      main, .page-content {
+        max-width: 100vw;
+      }
+
+      /* Gambar/video ikut menyesuaikan lebar layar, tidak pernah
+         mendorong halaman melebar ke samping. */
+      img, video {
+        max-width: 100%;
+        height: auto;
+      }
+
+      /* Jaring pengaman tambahan: kalau ada tabel di menu manapun
+         yang lupa dibungkus div overflow-x-auto, tabel itu tetap
+         bisa di-scroll horizontal sendiri alih-alih mendorong
+         seluruh halaman melebar. */
+      table {
+        max-width: 100%;
+      }
+      .page-content > table,
+      .page-content > div > table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
   </style>
 </head>
 
