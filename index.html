@@ -3890,7 +3890,7 @@
             checkboxTd +
             _jabodetabekHeaders.map(h =>
               '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
-              (h === 'Timestamp' ? _formatJabodetabekTimestampWIB_(row[h]) : (row[h] ?? '')) + '</td>'
+              (String(h).trim().toLowerCase() === 'timestamp' ? _formatJabodetabekTimestampWIB_(row[h]) : (row[h] ?? '')) + '</td>'
             ).join('') +
             '</tr>';
         }).join('');
@@ -6475,7 +6475,7 @@
             checkboxTd +
             _eventHeaders.map(h =>
               '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
-              (h === 'Timestamp' ? _formatJabodetabekTimestampWIB_(row[h]) : (row[h] ?? '')) + '</td>'
+              (String(h).trim().toLowerCase() === 'timestamp' ? _formatJabodetabekTimestampWIB_(row[h]) : (row[h] ?? '')) + '</td>'
             ).join('') +
             '</tr>';
         }).join('');
