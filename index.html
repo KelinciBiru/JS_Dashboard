@@ -3393,6 +3393,11 @@
       // rtdOptions: normKey(PROPOSED VM TYPE) -> [{noVMC, locationName}], sumber VMC NO
       // dengan FINAL STATUS = "RTD" untuk ACTION PLAN "Delivery Approval"/"Machine Exchange".
       let _vmcRtdOptionsCache = {};
+      // Cache opsi dropdown VMC NO per baris Input Task (dipakai oleh panel custom
+      // dropdown di toggleInputTaskVmcDropdown, supaya kotak yang tertutup cukup
+      // menampilkan nomornya saja tanpa Machine Type/Location Name — lihat
+      // _buildInputTaskVmcNoCell & toggleInputTaskVmcDropdown).
+      let _inputTaskVmcOptionsForRow = {};
       // latestByLocation: normKey(LOCATION NAME) -> {noVMC, locationName}, VMC NO dengan
       // OUTBOUND DATE terbaru di lokasi tsb, untuk ACTION PLAN "Withdrawal"/"Relocation".
       let _vmcLatestByLocationCache = {};
@@ -3475,6 +3480,71 @@
           saveInputTaskRows();
         }
       }
+
+      // ===== Custom dropdown VMC NO (Input Task) =====
+      // Diganti dari <select> native ke tombol + panel custom karena <select>
+      // menampilkan teks OPTION penuh ("noVMC - Machine Type - Location Name")
+      // begitu dipilih, sehingga kotaknya terlihat penuh/tidak rapih (teks
+      // kepotong). Dengan versi custom ini: kotak yang tertutup hanya
+      // menampilkan noVMC saja, sedangkan daftar pilihan (panel) tetap
+      // menampilkan info lengkap "noVMC - Machine Type - Location Name" supaya
+      // user tetap bisa membedakan opsi mana yang mau dipilih. Panel dirender
+      // sebagai "portal" position:fixed menempel ke <body> (bukan di dalam sel
+      // tabel) supaya tidak terpotong oleh scroll container tabel
+      // (#input-task-table-wrap pakai overflow-x-auto).
+      function _jsAttrEscape(str) {
+        return String(str == null ? '' : str)
+          .replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      }
+
+      function closeInputTaskVmcDropdown() {
+        const portal = document.getElementById('input-task-vmc-portal');
+        if (!portal) return;
+        portal.classList.add('hidden');
+        portal.innerHTML = '';
+        delete portal.dataset.rowIndex;
+      }
+
+      function toggleInputTaskVmcDropdown(i, btnEl) {
+        const portal = document.getElementById('input-task-vmc-portal');
+        if (!portal) return;
+        const wasOpenForThisRow = portal.dataset.rowIndex === String(i) && !portal.classList.contains('hidden');
+        closeInputTaskVmcDropdown();
+        if (wasOpenForThisRow) return; // klik tombol yang sama -> tutup panel
+
+        const options = _inputTaskVmcOptionsForRow[i] || [];
+        const current = String((_inputTaskRows[i] && _inputTaskRows[i]['VMC NO']) || '');
+        portal.innerHTML = options.length
+          ? options.map(o => {
+              const val = String(o.noVMC);
+              const label = o.noVMC + (o.machineType ? (' - ' + o.machineType) : '') +
+                (o.locationName ? (' - ' + o.locationName) : '');
+              const isCurrent = val === current;
+              return '<div onclick="event.stopPropagation(); selectInputTaskVmcOption(' + i + ', \'' +
+                _jsAttrEscape(val) + '\')" ' +
+                'class="px-3 py-2 text-xs sm:text-sm cursor-pointer hover:bg-amber-50 border-b border-slate-100 last:border-b-0 ' +
+                (isCurrent ? 'bg-amber-50 font-semibold text-slate-800' : 'text-slate-700') + '">' +
+                _escapeHtmlAttr_(label) + '</div>';
+            }).join('')
+          : '<div class="px-3 py-2 text-xs text-slate-400 italic">Tidak ada opsi</div>';
+
+        const rect = btnEl.getBoundingClientRect();
+        portal.style.left = rect.left + 'px';
+        portal.style.top = (rect.bottom + 4) + 'px';
+        portal.style.width = Math.max(rect.width, 240) + 'px';
+        portal.dataset.rowIndex = String(i);
+        portal.classList.remove('hidden');
+      }
+
+      function selectInputTaskVmcOption(i, value) {
+        closeInputTaskVmcDropdown();
+        handleInputTaskVmcNoChange(i, value);
+        renderInputTaskTable();
+      }
+
+      document.addEventListener('click', closeInputTaskVmcDropdown);
+      window.addEventListener('scroll', closeInputTaskVmcDropdown, true);
+      window.addEventListener('resize', closeInputTaskVmcDropdown);
 
       // Tambahkan baris baru ke Input Task (dipakai bersama oleh confirmJabodetabekAddTask
       // & confirmEventAddTask) — baris lama tidak ditimpa, lalu VMC NO baris baru langsung
@@ -3944,6 +4014,9 @@
         // mengubah _inputTaskRows (Add dari Jabodetabek/Event, Bersihkan Halaman,
         // submit Plan Task) karena semuanya memanggil renderInputTaskTable().
         saveInputTaskRows();
+        // Tutup panel dropdown VMC NO custom (kalau sedang terbuka) supaya tidak
+        // nyangkut menunjuk ke baris yang sudah berubah/tidak ada lagi setelah render ulang.
+        closeInputTaskVmcDropdown();
         const emptyEl = document.getElementById('input-task-empty');
         const wrapEl = document.getElementById('input-task-table-wrap');
         const thead = document.getElementById('input-task-thead');
@@ -3993,19 +4066,25 @@
         const actionPlan = row['ACTION PLAN'];
         if (_isVmcDropdownActionPlan(actionPlan)) {
           const options = _vmcRtdOptionsCache[_last4Code(row['PROPOSED VM TYPE'])] || [];
+          _inputTaskVmcOptionsForRow[i] = options;
           if (!options.length) {
             return '<span class="text-slate-400 italic">' +
               (_vmcLookupFetching ? 'Memuat...' : 'Tidak ada VMC NO RTD untuk tipe ini') + '</span>';
           }
           const current = row['VMC NO'] || '';
-          return '<select onchange="handleInputTaskVmcNoChange(' + i + ', this.value)" ' +
-            'class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs sm:text-sm bg-white">' +
-            '<option value="">-- Pilih VMC NO --</option>' +
-            options.map(o => '<option value="' + String(o.noVMC).replace(/"/g, '&quot;') + '" ' +
-              (String(o.noVMC) === String(current) ? 'selected' : '') + '>' +
-              o.noVMC + (o.machineType ? (' - ' + o.machineType) : '') +
-              (o.locationName ? (' - ' + o.locationName) : '') + '</option>').join('') +
-            '</select>';
+          // Kotak yang tertutup HANYA menampilkan noVMC (bukan gabungan
+          // "noVMC - Machine Type - Location Name") supaya rapih — daftar
+          // pilihan lengkap tetap tersedia di panel custom, lihat
+          // toggleInputTaskVmcDropdown().
+          return '<button type="button" ' +
+            'onclick="event.stopPropagation(); toggleInputTaskVmcDropdown(' + i + ', this)" ' +
+            'class="w-full flex items-center justify-between gap-1.5 border border-slate-300 rounded-md ' +
+            'px-2 py-1.5 text-xs sm:text-sm bg-white text-left hover:border-slate-400 ' +
+            (current ? 'text-slate-800 font-semibold' : 'text-slate-400') + '">' +
+            '<span class="truncate">' + (current ? _escapeHtmlAttr_(current) : '-- Pilih VMC NO --') + '</span>' +
+            '<svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>' +
+            '</button>';
         }
         if (_isVmcAutoFillActionPlan(actionPlan)) {
           return row['VMC NO']
@@ -6951,6 +7030,13 @@
         });
       }
     </script>
+    <!-- Panel custom dropdown VMC NO untuk tabel Input Task (lihat
+         toggleInputTaskVmcDropdown / _buildInputTaskVmcNoCell). Dirender sebagai
+         "portal" position:fixed menempel ke body supaya tidak terpotong oleh
+         scroll container tabel (#input-task-table-wrap pakai overflow-x-auto). -->
+    <div id="input-task-vmc-portal"
+      class="hidden fixed z-[9999] bg-white border border-slate-300 rounded-md shadow-lg overflow-y-auto"
+      style="max-height:224px;"></div>
   </div><!-- /app-wrapper -->
 </body>
 
