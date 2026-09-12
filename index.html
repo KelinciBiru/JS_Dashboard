@@ -1062,6 +1062,34 @@
                 class="w-full text-xs text-slate-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-amber-500 file:text-white file:text-xs file:font-semibold hover:file:bg-amber-600">
               <div id="dd-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
             </div>
+            <div id="dd-machine-exchange-section" class="hidden border border-slate-200 rounded-md p-3 space-y-3 bg-slate-50">
+              <div class="text-xs font-bold text-slate-700">Machine Exchange (Sent To WH)</div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">VM TYPE ON SITE</label>
+                <input id="dd-me-vm-type-on-site" type="text" readonly
+                  class="w-full border border-slate-200 bg-slate-100 rounded-md px-3 py-2 text-sm text-slate-600">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">VMC NO</label>
+                <input id="dd-me-vmc-no" type="text" placeholder="VMC NO"
+                  class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                <div id="dd-me-vmc-status" class="text-[11px] text-slate-500 mt-1"></div>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">ASSETS</label>
+                <select id="dd-me-assets"
+                  class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                  <option value="">-- Pilih Assets --</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">FINAL STATUS</label>
+                <select id="dd-me-final-status"
+                  class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                  <option value="">-- Pilih Final Status --</option>
+                </select>
+              </div>
+            </div>
             <div id="dd-status" class="text-xs"></div>
           </div>
 
@@ -5257,6 +5285,16 @@
       let _ddContext = null; // { rowNumber, ticket }
       let _ddPhotos = []; // [{ name, mimeType, base64 }]
 
+      // State untuk section "Machine Exchange (Sent To WH)" di popup Delivered
+      // (hanya tampil untuk ACTION PLAN "Machine Exchange"). _ddMachineExchangeLookup
+      // menyimpan hasil auto-fill (sheetName/serialNumber/machineDetail) dari
+      // action 'getMachineExchangeAutofill' supaya ikut dikirim saat Simpan —
+      // lihat _recordMachineExchangeInventory_ di Code.gs.
+      let _ddMachineExchangeLookup = null; // { found, sheetName, serialNumber, machineDetail }
+      let _meDropdownsLoaded = false;
+      let _meAssetsOptions = [];
+      let _meFinalStatusOptions = [];
+
       // Daftar item "Checklist Foto" di popup Delivered — HANYA ditampilkan
       // kalau ACTION PLAN task-nya "Delivery Approval" (lihat
       // _isDispatchActionPlanDeliveryApproval_ & openDispatchDeliveredModal).
@@ -5284,6 +5322,15 @@
       // supaya tetap kena walau teks ACTION PLAN-nya sedikit berbeda.
       function _isDispatchActionPlanDeliveryApproval_(actionPlan) {
         return String(actionPlan || '').trim().toLowerCase().indexOf('delivery') !== -1;
+      }
+
+      // ACTION PLAN "Machine Exchange" -> tampilkan section "Machine Exchange
+      // (Sent To WH)" di popup Delivered. Dicocokkan via substring "exchange"
+      // (sama seperti pengecekan actionPlanLower.indexOf('exchange') di
+      // _saveDispatchDeliveredNow_ Code.gs) supaya tetap kena walau variasi
+      // kapitalisasi/spasi.
+      function _isDispatchActionPlanMachineExchange_(actionPlan) {
+        return String(actionPlan || '').trim().toLowerCase().indexOf('exchange') !== -1;
       }
 
       // Render ulang (reset) daftar radio Checklist Foto ke kondisi belum
@@ -5349,10 +5396,104 @@
         document.getElementById('dd-checklist-foto-section').classList.toggle('hidden', !showChecklistFoto);
         if (showChecklistFoto) renderDispatchChecklistFotoFields();
 
+        // Section "Machine Exchange (Sent To WH)" hanya untuk ACTION PLAN
+        // "Machine Exchange" — lihat _loadMachineExchangeSection_.
+        const showMachineExchange = _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
+        document.getElementById('dd-machine-exchange-section').classList.toggle('hidden', !showMachineExchange);
+        _ddMachineExchangeLookup = null;
+        if (showMachineExchange) {
+          _loadMachineExchangeSection_(row);
+        }
+
         document.getElementById('dispatch-delivered-modal').classList.remove('hidden');
         // Tombol "Delivered" di card cuma membuka popup ini (bukan menyimpan
         // data), jadi spinner-nya dikembalikan lagi begitu popup tampil.
         _clearBtnLoading_(btnEl);
+      }
+
+      // Isi dropdown ASSETS & FINAL STATUS di section "Machine Exchange (Sent
+      // To WH)" dari sheet "Source" pada spreadsheet Inventory JS (action
+      // 'getSourceDropdowns', sama sumber dengan dropdown Stock Opname/Team
+      // Prepare) — dimuat sekali lalu di-cache.
+      async function _ensureMachineExchangeDropdowns_() {
+        if (_meDropdownsLoaded) return;
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSourceDropdowns');
+          const json = await res.json();
+          if (json.success) {
+            _meAssetsOptions = json.assets || [];
+            _meFinalStatusOptions = json.finalStatus || [];
+            _meDropdownsLoaded = true;
+          }
+        } catch (err) { /* dropdown opsional, abaikan kalau gagal dimuat */ }
+
+        const assetsEl = document.getElementById('dd-me-assets');
+        assetsEl.innerHTML = '<option value="">-- Pilih Assets --</option>' +
+          _meAssetsOptions.map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+
+        const statusEl = document.getElementById('dd-me-final-status');
+        statusEl.innerHTML = '<option value="">-- Pilih Final Status --</option>' +
+          _meFinalStatusOptions.map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+      }
+
+      // Muat & isi section "Machine Exchange (Sent To WH)" saat popup Delivered
+      // dibuka untuk task ACTION PLAN "Machine Exchange":
+      //  - VM TYPE ON SITE: auto (readonly), dari sheet "Jabodetabek" (kolom
+      //    "VM TYPE ON SITE") dicocokkan lewat TICKET — action
+      //    'getMachineExchangeAutofill' (Code.gs); fallback ke nilai "VM TYPE
+      //    ON SITE" yang sudah ada di card (sheet "Plan Task") kalau lookup
+      //    tidak dapat apa-apa.
+      //  - VMC NO & ASSETS: auto kalau ketemu (lookup by LOCATION NAME +
+      //    OUTBOUND DATE terbaru di 5 sheet Stock Opname), kalau tidak
+      //    ketemu dikosongkan supaya user isi/pilih manual.
+      //  - FINAL STATUS: selalu dikosongkan, wajib dipilih user.
+      async function _loadMachineExchangeSection_(row) {
+        document.getElementById('dd-me-vm-type-on-site').value = row['VM TYPE ON SITE'] || '';
+        document.getElementById('dd-me-vmc-no').value = '';
+        document.getElementById('dd-me-vmc-status').textContent = 'Memuat data otomatis...';
+
+        await _ensureMachineExchangeDropdowns_();
+        document.getElementById('dd-me-assets').value = '';
+        document.getElementById('dd-me-final-status').value = '';
+
+        try {
+          const url = INVENTORY_JS_GAS_URL + '?action=getMachineExchangeAutofill' +
+            '&ticket=' + encodeURIComponent(row['TICKET'] || '') +
+            '&locationName=' + encodeURIComponent(row['LOCATION NAME'] || '');
+          const res = await fetch(url);
+          const json = await res.json();
+
+          if (!json.success) {
+            document.getElementById('dd-me-vmc-status').textContent = '';
+            return;
+          }
+
+          if (json.vmTypeOnSite) {
+            document.getElementById('dd-me-vm-type-on-site').value = json.vmTypeOnSite;
+          }
+
+          const vmc = json.vmc || {};
+          if (vmc.found) {
+            document.getElementById('dd-me-vmc-no').value = vmc.noVMC || '';
+            if (vmc.assets) document.getElementById('dd-me-assets').value = vmc.assets;
+            document.getElementById('dd-me-vmc-status').textContent =
+              '✅ Otomatis dari sheet "' + (vmc.sheetName || '-') + '"';
+            _ddMachineExchangeLookup = {
+              found: true,
+              sheetName: vmc.sheetName || '',
+              serialNumber: vmc.serialNumber || '',
+              machineDetail: vmc.machineDetail || ''
+            };
+          } else {
+            document.getElementById('dd-me-vmc-status').textContent =
+              '⚠️ VMC NO tidak ditemukan otomatis, silakan isi manual.';
+            _ddMachineExchangeLookup = null;
+          }
+        } catch (err) {
+          document.getElementById('dd-me-vmc-status').textContent =
+            '⚠️ Gagal memuat data otomatis, silakan isi manual.';
+          _ddMachineExchangeLookup = null;
+        }
       }
 
       // Isi dropdown "MACHINE TYPE (sent from WH)" di popup Delivered dari daftar
@@ -5436,6 +5577,7 @@
         document.getElementById('dispatch-delivered-modal').classList.add('hidden');
         _ddContext = null;
         _ddPhotos = [];
+        _ddMachineExchangeLookup = null;
       }
 
       // Kompres/resize foto di browser sebelum dikirim ke server, supaya
@@ -5636,6 +5778,31 @@
           }
         }
 
+        // Section "Machine Exchange (Sent To WH)" — VMC NO & FINAL STATUS
+        // wajib diisi sebelum Simpan kalau section ini tampil (ACTION PLAN
+        // "Machine Exchange"); ASSETS boleh kosong (opsional). Dikirim ke
+        // GAS sebagai payload.machineExchange, dicatat sebagai baris baru
+        // ke Inventory JS oleh _recordMachineExchangeInventory_.
+        let machineExchange = null;
+        const machineExchangeVisible = !document.getElementById('dd-machine-exchange-section').classList.contains('hidden');
+        if (machineExchangeVisible) {
+          const meVmcNo = document.getElementById('dd-me-vmc-no').value.trim();
+          const meFinalStatus = document.getElementById('dd-me-final-status').value;
+          if (!meVmcNo || !meFinalStatus) {
+            statusEl.textContent = '❌ VMC NO dan Final Status pada bagian "Machine Exchange (Sent To WH)" wajib diisi sebelum Simpan.';
+            return;
+          }
+          machineExchange = {
+            vmTypeOnSite: document.getElementById('dd-me-vm-type-on-site').value,
+            vmcNo: meVmcNo,
+            assets: document.getElementById('dd-me-assets').value,
+            finalStatus: meFinalStatus,
+            sheetName: (_ddMachineExchangeLookup && _ddMachineExchangeLookup.sheetName) || '',
+            serialNumber: (_ddMachineExchangeLookup && _ddMachineExchangeLookup.serialNumber) || '',
+            machineDetail: (_ddMachineExchangeLookup && _ddMachineExchangeLookup.machineDetail) || ''
+          };
+        }
+
         _setBtnLoading_(saveBtn, 'Menyimpan...');
         await _acquireDispatchWakeLock_();
 
@@ -5701,7 +5868,12 @@
             // Hanya terisi kalau ACTION PLAN "Delivery Approval" (lihat
             // _isDispatchActionPlanDeliveryApproval_); dicatat GAS ke sheet
             // "Task Team Dispatch" (lihat _recordTaskTeamDispatch_ di Code.gs).
-            checklistFoto: checklistFoto
+            checklistFoto: checklistFoto,
+            // Hanya terisi kalau ACTION PLAN "Machine Exchange" (lihat
+            // _isDispatchActionPlanMachineExchange_); dicatat GAS sebagai
+            // baris baru ke salah satu sheet Stock Opname, lihat
+            // _recordMachineExchangeInventory_ di Code.gs.
+            machineExchange: machineExchange
           };
 
           let saveJson;
