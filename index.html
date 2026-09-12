@@ -249,6 +249,63 @@
       text-align: center !important;
     }
 
+    /* ============================================================
+       CARDVIEW TASK TEAM DISPATCH — badge filter per Team (chip
+       horizontal-scroll) + kartu Task per Team.
+       Mode HP (<=768px, sama seperti breakpoint sidebar di atas):
+         kartu Task ditumpuk horizontal (scroll-snap, satu kartu per
+         "slide") supaya halaman tidak memanjang ke bawah.
+       Mode Desktop (>768px): grid rapi multi-kolom.
+    ============================================================ */
+    .td-badges-wrap {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+
+    .td-team-badge {
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .td-team-badge.is-active {
+      background-color: #1e293b;
+      border-color: #1e293b;
+      color: #fff;
+    }
+
+    .td-team-group {
+      margin-bottom: 20px;
+    }
+
+    .td-team-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .td-team-cards {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 12px;
+        padding: 2px 2px 10px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+
+      .td-team-cards > .td-card {
+        flex: 0 0 84%;
+        scroll-snap-align: center;
+      }
+    }
+
     .placeholder-box {
       border: none;
       border-radius: var(--neu-radius-md);
@@ -896,7 +953,8 @@
         </div>
         <div id="team-dispatch-status" class="text-xs text-slate-500 mb-3"></div>
         <div id="team-dispatch-empty" class="placeholder-box">Belum ada Task untuk didispatch.</div>
-        <div id="team-dispatch-cards" class="grid gap-3" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));"></div>
+        <div id="team-dispatch-filter" class="td-badges-wrap mb-3"></div>
+        <div id="team-dispatch-cards"></div>
       </div>
 
       <!-- MODAL: Delivered — Team Dispatch -->
@@ -4865,12 +4923,30 @@
         }
       }
 
+      // Filter badge Team yang sedang aktif dipilih di Cardview Task Team
+      // Dispatch. null/'' = tampilkan semua Team. Disimpan di luar fungsi
+      // render supaya tetap "nempel" saat refresh data (loadTeamDispatchTasks).
+      let _teamDispatchActiveKey = '';
+
+      function filterTeamDispatchByTeam(key) {
+        _teamDispatchActiveKey = (_teamDispatchActiveKey === key) ? '' : key;
+        renderTeamDispatchCards();
+      }
+
+      function _escapeHtmlAttr_(str) {
+        return String(str == null ? '' : str)
+          .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
       function renderTeamDispatchCards() {
         const emptyEl = document.getElementById('team-dispatch-empty');
+        const filterEl = document.getElementById('team-dispatch-filter');
         const wrapEl = document.getElementById('team-dispatch-cards');
 
         if (!_teamDispatchRows.length) {
           emptyEl.classList.remove('hidden');
+          filterEl.innerHTML = '';
           wrapEl.innerHTML = '';
           return;
         }
@@ -4889,15 +4965,41 @@
           const key = divisi + '||' + pic + '||' + noKendaraan;
           if (!(key in groupIndexByKey)) {
             groupIndexByKey[key] = groups.length;
-            groups.push({ divisi: divisi, pic: pic, noKendaraan: noKendaraan, rows: [] });
+            groups.push({ key: key, divisi: divisi, pic: pic, noKendaraan: noKendaraan, rows: [] });
           }
           groups[groupIndexByKey[key]].rows.push(row);
         });
 
-        wrapEl.innerHTML = groups.map(group => {
+        // Kalau Team yang lagi difilter sudah tidak ada lagi di data terbaru
+        // (mis. semua Task-nya sudah selesai/hilang), reset filter ke "Semua".
+        if (_teamDispatchActiveKey && !groups.some(g => g.key === _teamDispatchActiveKey)) {
+          _teamDispatchActiveKey = '';
+        }
+
+        // Badge filter per Team — klik salah satu badge untuk hanya
+        // menampilkan Task milik Team tersebut; klik lagi (atau badge
+        // "Semua Team") untuk menampilkan seluruh Team kembali.
+        const allActiveClass = _teamDispatchActiveKey === '' ? ' is-active' : '';
+        let badgesHtml =
+          '<span class="td-team-badge' + allActiveClass + ' text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-300 text-slate-600" ' +
+            'onclick="filterTeamDispatchByTeam(\'\')">Semua Team (' + _teamDispatchRows.length + ')</span>';
+        groups.forEach(group => {
+          const isActive = _teamDispatchActiveKey === group.key ? ' is-active' : '';
+          badgesHtml +=
+            '<span class="td-team-badge' + isActive + ' text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-300 text-slate-600" ' +
+              'onclick="filterTeamDispatchByTeam(\'' + _escapeHtmlAttr_(group.key) + '\')">' +
+              _escapeHtmlAttr_(group.pic) + ' (' + group.rows.length + ')</span>';
+        });
+        filterEl.innerHTML = badgesHtml;
+
+        const visibleGroups = _teamDispatchActiveKey
+          ? groups.filter(g => g.key === _teamDispatchActiveKey)
+          : groups;
+
+        wrapEl.innerHTML = visibleGroups.map(group => {
           const cardsHtml = group.rows.map(row => _buildTeamDispatchCardHTML(row)).join('');
           return (
-            '<div class="mb-5">' +
+            '<div class="td-team-group">' +
               '<div class="bg-slate-800 text-white rounded-lg px-4 py-2.5 mb-3 overflow-hidden flex flex-wrap items-center gap-x-4 gap-y-1.5">' +
                 '<span class="inline-flex items-center gap-1.5 min-w-0"><span class="text-xs font-bold uppercase tracking-wide shrink-0">Team:</span>' +
                 '<span class="text-sm font-semibold break-words">' + group.divisi + '</span></span>' +
@@ -4909,7 +5011,7 @@
                 '<span class="text-sm font-semibold break-words">' + group.noKendaraan + '</span></span>' +
                 '<span class="ml-auto shrink-0 text-[10px] bg-white/10 px-2 py-1 rounded-full whitespace-nowrap">' + group.rows.length + ' task</span>' +
               '</div>' +
-              '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">' + cardsHtml + '</div>' +
+              '<div class="td-team-cards">' + cardsHtml + '</div>' +
             '</div>'
           );
         }).join('');
@@ -5023,7 +5125,9 @@
         // Nama lokasi diberi baris PENUH sendiri (tidak berbagi baris dengan
         // badge status) supaya tidak terpaksa menyempit dan pecah per-suku-kata.
         // Badge status ditaruh di bawahnya, rata kiri.
-        return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
+        // Class "td-card" dipakai CSS .td-team-cards (mode HP) untuk
+        // menjadikan kartu ini satu "slide" penuh dalam carousel horizontal.
+        return '<div class="td-card bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
           '<div class="flex flex-col gap-1.5">' +
             '<span class="text-sm font-bold text-slate-800 break-words leading-snug">' + (row['LOCATION NAME'] || '-') + '</span>' +
             '<span class="self-start text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
