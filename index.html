@@ -3398,6 +3398,9 @@
       // menampilkan nomornya saja tanpa Machine Type/Location Name — lihat
       // _buildInputTaskVmcNoCell & toggleInputTaskVmcDropdown).
       let _inputTaskVmcOptionsForRow = {};
+      // Referensi tombol yang sedang membuka panel VMC NO (dipakai untuk
+      // reposisi panel saat scroll — lihat _repositionInputTaskVmcPortal).
+      let _inputTaskVmcOpenBtn = null;
       // latestByLocation: normKey(LOCATION NAME) -> {noVMC, locationName}, VMC NO dengan
       // OUTBOUND DATE terbaru di lokasi tsb, untuk ACTION PLAN "Withdrawal"/"Relocation".
       let _vmcLatestByLocationCache = {};
@@ -3503,6 +3506,24 @@
         portal.classList.add('hidden');
         portal.innerHTML = '';
         delete portal.dataset.rowIndex;
+        _inputTaskVmcOpenBtn = null;
+      }
+
+      // Reposisi panel supaya tetap menempel di bawah tombolnya saat halaman/
+      // tabel discroll (dipanggil dari listener scroll/resize di bawah), bukan
+      // langsung menutup panel — sebelumnya panel malah tiba-tiba tertutup
+      // setiap kali ada scroll (termasuk scroll di dalam panel itu sendiri).
+      function _repositionInputTaskVmcPortal() {
+        const portal = document.getElementById('input-task-vmc-portal');
+        if (!portal || portal.classList.contains('hidden') || !_inputTaskVmcOpenBtn) return;
+        if (!document.body.contains(_inputTaskVmcOpenBtn)) { closeInputTaskVmcDropdown(); return; }
+        const rect = _inputTaskVmcOpenBtn.getBoundingClientRect();
+        // Kalau tombolnya sudah scroll keluar layar sama sekali, tutup saja
+        // panelnya daripada mengambang di tempat yang tidak masuk akal.
+        if (rect.bottom < 0 || rect.top > window.innerHeight) { closeInputTaskVmcDropdown(); return; }
+        portal.style.left = rect.left + 'px';
+        portal.style.top = (rect.bottom + 4) + 'px';
+        portal.style.width = Math.max(rect.width, 240) + 'px';
       }
 
       function toggleInputTaskVmcDropdown(i, btnEl) {
@@ -3534,6 +3555,7 @@
         portal.style.width = Math.max(rect.width, 240) + 'px';
         portal.dataset.rowIndex = String(i);
         portal.classList.remove('hidden');
+        _inputTaskVmcOpenBtn = btnEl;
       }
 
       function selectInputTaskVmcOption(i, value) {
@@ -3543,8 +3565,17 @@
       }
 
       document.addEventListener('click', closeInputTaskVmcDropdown);
-      window.addEventListener('scroll', closeInputTaskVmcDropdown, true);
-      window.addEventListener('resize', closeInputTaskVmcDropdown);
+      // Scroll DI DALAM panel opsi (list-nya sendiri, kalau opsinya banyak dan
+      // scrollable) diabaikan total — jangan sampai ikut menutup/reposisi
+      // panelnya sendiri. Scroll di luar panel (halaman, tabel, dsb) hanya
+      // memindahkan posisi panel supaya tetap menempel ke tombolnya, tidak
+      // langsung menutup.
+      window.addEventListener('scroll', function (e) {
+        const portal = document.getElementById('input-task-vmc-portal');
+        if (portal && portal.contains(e.target)) return;
+        _repositionInputTaskVmcPortal();
+      }, true);
+      window.addEventListener('resize', _repositionInputTaskVmcPortal);
 
       // Tambahkan baris baru ke Input Task (dipakai bersama oleh confirmJabodetabekAddTask
       // & confirmEventAddTask) — baris lama tidak ditimpa, lalu VMC NO baris baru langsung
