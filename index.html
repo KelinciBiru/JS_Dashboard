@@ -3839,6 +3839,23 @@
         table.style.width = '100%';
       }
 
+      // Kolom "Timestamp" di menu Request BD - Jabodetabek datang dari server
+      // sebagai Date (di-serialize JSON jadi string ISO UTC oleh Apps Script).
+      // Ditampilkan seragam sebagai DD/MM/YYYY HH:mm WIB (Asia/Jakarta) supaya
+      // tidak bergantung timezone browser user.
+      function _formatJabodetabekTimestampWIB_(value) {
+        if (value === null || value === undefined || value === '') return '';
+        const d = new Date(value);
+        if (isNaN(d.getTime())) return String(value);
+        const parts = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Asia/Jakarta',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        }).formatToParts(d);
+        const get = (t) => (parts.find(p => p.type === t) || {}).value || '';
+        return get('day') + '/' + get('month') + '/' + get('year') + ' ' + get('hour') + ':' + get('minute') + ' WIB';
+      }
+
       function renderJabodetabekTable() {
         const thead = document.getElementById('jabodetabek-thead');
         const tbody = document.getElementById('jabodetabek-tbody');
@@ -3873,7 +3890,8 @@
           return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
             checkboxTd +
             _jabodetabekHeaders.map(h =>
-              '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
+              '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
+              (h === 'Timestamp' ? _formatJabodetabekTimestampWIB_(row[h]) : (row[h] ?? '')) + '</td>'
             ).join('') +
             '</tr>';
         }).join('');
