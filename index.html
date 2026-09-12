@@ -763,11 +763,6 @@
               <input id="pt-planDate" type="date" oninput="savePlanTaskFormDraft()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">NO VMC JUMPSTART</label>
-              <input id="pt-noVmcJumpstart" type="text" placeholder="NO VMC JUMPSTART" oninput="savePlanTaskFormDraft()"
-                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-            </div>
-            <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">No. Kendaraan</label>
               <input id="pt-noKendaraan" type="text" placeholder="No. Kendaraan" oninput="savePlanTaskFormDraft()"
                 class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
@@ -1990,7 +1985,7 @@
         if (n === 'List Machine Preparation') loadMachinePrepList(false);
         if (n === 'Machine Preparation') loadTaskMachinePrepList(false);
         if (n === 'Stock Opname') loadStockOpnameSource(false);
-        if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); }
+        if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); refreshInputTaskVmcNo(); }
         if (n === 'Plan Task') { renderPlanTaskTable(); loadPlanTaskBatches(false); }
         if (n === 'Status Task') { loadTaskOnGoing(false); }
         if (n === 'Historycal Dispatch') { loadHistorycalDispatch(false); }
@@ -3245,13 +3240,104 @@
       let _jabodetabekFetching = false;
       let _jabodetabekLastFetch = null;
 
-      // Kolom yang ditampilkan di menu "Input Task" setelah data dikirim dari Jabodetabek
+      // Kolom yang ditampilkan di menu "Input Task" setelah data dikirim dari Jabodetabek/Event.
+      // 'VMC NO' BUKAN kolom sheet Request BD — nilainya diisi lewat dropdown (ACTION PLAN
+      // "Delivery Approval"/"Machine Exchange", lihat _vmcRtdOptionsCache) atau otomatis
+      // (ACTION PLAN "Withdrawal"/"Relocation", lihat _vmcLatestByLocationCache), lihat
+      // refreshInputTaskVmcNo() & renderInputTaskTable().
       const INPUT_TASK_COLUMNS = [
-        'TICKET', 'BD PIC', 'TICKET NUMBER / LOCATION ID', 'ACTION PLAN',
-        'PROPOSED VM TYPE', 'LOCATION NAME', 'NEW VM POSITION',
-        'VM TYPE ON SITE', 'REMARKS', 'DELIVERY / PICK UP ADDRESS'
+        'TICKET', 'ACTION PLAN', 'VMC NO', 'PROPOSED VM TYPE',
+        'LOCATION NAME', 'VM TYPE ON SITE', 'DELIVERY / PICK UP ADDRESS'
       ];
       let _inputTaskRows = [];
+
+      // =============================================
+      // VMC NO — lookup otomatis untuk tabel Input Task (action GAS 'getVmcNoLookup')
+      // =============================================
+      // rtdOptions: normKey(PROPOSED VM TYPE) -> [{noVMC, locationName}], sumber VMC NO
+      // dengan FINAL STATUS = "RTD" untuk ACTION PLAN "Delivery Approval"/"Machine Exchange".
+      let _vmcRtdOptionsCache = {};
+      // latestByLocation: normKey(LOCATION NAME) -> {noVMC, locationName}, VMC NO dengan
+      // OUTBOUND DATE terbaru di lokasi tsb, untuk ACTION PLAN "Withdrawal"/"Relocation".
+      let _vmcLatestByLocationCache = {};
+      let _vmcLookupFetching = false;
+
+      function _normKey(s) {
+        return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      }
+
+      function _isVmcDropdownActionPlan(actionPlan) {
+        const ap = _normKey(actionPlan);
+        return ap === 'delivery approval' || ap === 'machine exchange';
+      }
+      function _isVmcAutoFillActionPlan(actionPlan) {
+        const ap = _normKey(actionPlan);
+        return ap === 'withdrawal' || ap === 'relocation';
+      }
+
+      // Ambil data VMC NO (dropdown RTD per MACHINE TYPE + auto-fill per LOCATION NAME)
+      // dari GAS untuk seluruh baris _inputTaskRows yang butuh, lalu render ulang tabel.
+      async function refreshInputTaskVmcNo() {
+        if (_vmcLookupFetching) return;
+        if (!_inputTaskRows.length) return;
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) return;
+
+        const machineTypes = new Set();
+        const locationNames = new Set();
+        _inputTaskRows.forEach(row => {
+          if (_isVmcDropdownActionPlan(row['ACTION PLAN']) && row['PROPOSED VM TYPE']) {
+            machineTypes.add(row['PROPOSED VM TYPE']);
+          } else if (_isVmcAutoFillActionPlan(row['ACTION PLAN']) && !row['VMC NO'] && row['LOCATION NAME']) {
+            locationNames.add(row['LOCATION NAME']);
+          }
+        });
+        if (!machineTypes.size && !locationNames.size) return;
+
+        _vmcLookupFetching = true;
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+              action: 'getVmcNoLookup',
+              data: { machineTypes: Array.from(machineTypes), locationNames: Array.from(locationNames) }
+            }),
+          });
+          const json = await res.json();
+          if (json.success) {
+            Object.assign(_vmcRtdOptionsCache, json.rtdOptions || {});
+            Object.assign(_vmcLatestByLocationCache, json.latestByLocation || {});
+            // Isi otomatis VMC NO untuk baris Withdrawal/Relocation yang cocok
+            _inputTaskRows.forEach(row => {
+              if (_isVmcAutoFillActionPlan(row['ACTION PLAN']) && !row['VMC NO']) {
+                const found = _vmcLatestByLocationCache[_normKey(row['LOCATION NAME'])];
+                if (found) row['VMC NO'] = found.noVMC;
+              }
+            });
+            renderInputTaskTable();
+          }
+        } catch (err) { /* biarkan, dropdown/isi otomatis akan tetap coba lagi saat render berikutnya */ }
+        finally { _vmcLookupFetching = false; }
+      }
+
+      // Dipanggil saat user memilih VMC NO dari dropdown (ACTION PLAN Delivery
+      // Approval/Machine Exchange). Yang disimpan hanya nomornya saja (bukan
+      // "nomor-Location Name" yang tampil di opsi dropdown).
+      function handleInputTaskVmcNoChange(i, value) {
+        if (_inputTaskRows[i]) {
+          _inputTaskRows[i]['VMC NO'] = value;
+          saveInputTaskRows();
+        }
+      }
+
+      // Tambahkan baris baru ke Input Task (dipakai bersama oleh confirmJabodetabekAddTask
+      // & confirmEventAddTask) — baris lama tidak ditimpa, lalu VMC NO baris baru langsung
+      // dicoba resolve (dropdown RTD / auto-fill lokasi).
+      function _addRowsToInputTask(newRows) {
+        _inputTaskRows = _inputTaskRows.concat(newRows);
+        showPage('Input Task');
+        renderInputTaskTable();
+        refreshInputTaskVmcNo();
+      }
 
       // Simpan/pulihkan _inputTaskRows ke localStorage supaya data yang sudah
       // masuk ke Input Task tidak hilang saat halaman di-refresh (F5).
@@ -3336,13 +3422,11 @@
         try {
           const divisiEl = document.getElementById('pt-divisi');
           const dateEl = document.getElementById('pt-planDate');
-          const vmcEl = document.getElementById('pt-noVmcJumpstart');
           const kendaraanEl = document.getElementById('pt-noKendaraan');
           const draft = {
             divisi: divisiEl ? divisiEl.value : '',
             picSelected: Array.from(_ptPicSelected),
             planDate: dateEl ? dateEl.value : '',
-            noVmcJumpstart: vmcEl ? vmcEl.value : '',
             noKendaraan: kendaraanEl ? kendaraanEl.value : ''
           };
           localStorage.setItem(PLAN_TASK_FORM_DRAFT_STORAGE_KEY, JSON.stringify(draft));
@@ -3354,10 +3438,8 @@
           if (!raw) return;
           const draft = JSON.parse(raw) || {};
           const dateEl = document.getElementById('pt-planDate');
-          const vmcEl = document.getElementById('pt-noVmcJumpstart');
           const kendaraanEl = document.getElementById('pt-noKendaraan');
           if (dateEl && draft.planDate) dateEl.value = draft.planDate;
-          if (vmcEl && draft.noVmcJumpstart) vmcEl.value = draft.noVmcJumpstart;
           if (kendaraanEl && draft.noKendaraan) kendaraanEl.value = draft.noKendaraan;
           if (Array.isArray(draft.picSelected) && draft.picSelected.length) {
             _ptPicSelected = new Set(draft.picSelected);
@@ -3494,6 +3576,7 @@
       function _mapRowToInputTaskColumns(row, headers) {
         const obj = {};
         INPUT_TASK_COLUMNS.forEach(col => {
+          if (col === 'VMC NO') { obj[col] = ''; return; } // diisi lewat refreshInputTaskVmcNo()
           const key = _findHeaderKey(headers, col);
           obj[col] = row[key] ?? '';
         });
@@ -3568,11 +3651,9 @@
           .map(i => filtered[i])
           .filter(Boolean)
           .map(row => _mapRowToInputTaskColumns(row, _jabodetabekHeaders));
-        _inputTaskRows = _inputTaskRows.concat(newRows);
 
         cancelJabodetabekAddTask();
-        showPage('Input Task');
-        renderInputTaskTable();
+        _addRowsToInputTask(newRows);
       }
 
       async function loadJabodetabek(forceRefresh) {
@@ -3721,11 +3802,48 @@
 
         tbody.innerHTML = _inputTaskRows.map((row, i) =>
           '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
-          INPUT_TASK_COLUMNS.map(h =>
-            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
-          ).join('') +
+          INPUT_TASK_COLUMNS.map(h => {
+            if (h === 'VMC NO') {
+              return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
+                _buildInputTaskVmcNoCell(row, i) + '</td>';
+            }
+            return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>';
+          }).join('') +
           '</tr>'
         ).join('');
+      }
+
+      // Sel kolom VMC NO di tabel Input Task:
+      // - ACTION PLAN "Delivery Approval"/"Machine Exchange" -> dropdown VMC NO dengan
+      //   FINAL STATUS "RTD" yang MACHINE TYPE-nya sama dengan PROPOSED VM TYPE baris ini,
+      //   opsi ditampilkan "noVMC-Location Name" tapi yang tersimpan/tampil setelah dipilih
+      //   hanya nomornya saja.
+      // - ACTION PLAN "Withdrawal"/"Relocation" -> otomatis terisi (hasil pencarian OUTBOUND
+      //   DATE terbaru per LOCATION NAME), ditampilkan read-only.
+      // - ACTION PLAN lain -> tidak relevan, tampil "-".
+      function _buildInputTaskVmcNoCell(row, i) {
+        const actionPlan = row['ACTION PLAN'];
+        if (_isVmcDropdownActionPlan(actionPlan)) {
+          const options = _vmcRtdOptionsCache[_normKey(row['PROPOSED VM TYPE'])] || [];
+          if (!options.length) {
+            return '<span class="text-slate-400 italic">' +
+              (_vmcLookupFetching ? 'Memuat...' : 'Tidak ada VMC NO RTD untuk tipe ini') + '</span>';
+          }
+          const current = row['VMC NO'] || '';
+          return '<select onchange="handleInputTaskVmcNoChange(' + i + ', this.value)" ' +
+            'class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs sm:text-sm bg-white">' +
+            '<option value="">-- Pilih VMC NO --</option>' +
+            options.map(o => '<option value="' + String(o.noVMC).replace(/"/g, '&quot;') + '" ' +
+              (String(o.noVMC) === String(current) ? 'selected' : '') + '>' +
+              o.noVMC + (o.locationName ? ('-' + o.locationName) : '') + '</option>').join('') +
+            '</select>';
+        }
+        if (_isVmcAutoFillActionPlan(actionPlan)) {
+          return row['VMC NO']
+            ? '<span class="font-semibold">' + row['VMC NO'] + '</span>'
+            : '<span class="text-slate-400 italic">' + (_vmcLookupFetching ? 'Mencari...' : 'Tidak ditemukan') + '</span>';
+        }
+        return '<span class="text-slate-400">-</span>';
       }
 
       // Tombol "Bersihkan Halaman": kosongkan tabel Input Task + reset Form Plan Task
@@ -3895,7 +4013,6 @@
           divisi: document.getElementById('pt-divisi').value.trim(),
           pic: getPicValue(),
           planDate: document.getElementById('pt-planDate').value,
-          noVmcJumpstart: document.getElementById('pt-noVmcJumpstart').value.trim(),
           noKendaraan: document.getElementById('pt-noKendaraan').value.trim(),
           tasks: _inputTaskRows,
         };
@@ -3957,7 +4074,6 @@
         document.getElementById('pt-divisi').selectedIndex = 0;
         resetPicSelection();
         document.getElementById('pt-planDate').value = '';
-        document.getElementById('pt-noVmcJumpstart').value = '';
         document.getElementById('pt-noKendaraan').value = '';
         clearPlanTaskFormDraft();
       }
@@ -6090,11 +6206,9 @@
           .map(i => filtered[i])
           .filter(Boolean)
           .map(row => _mapRowToInputTaskColumns(row, _eventHeaders));
-        _inputTaskRows = _inputTaskRows.concat(newRows);
 
         cancelEventAddTask();
-        showPage('Input Task');
-        renderInputTaskTable();
+        _addRowsToInputTask(newRows);
       }
 
       function showEvent() {
