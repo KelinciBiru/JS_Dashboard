@@ -3402,6 +3402,17 @@
         return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
       }
 
+      // Kode pencocokan tipe mesin berbasis 4 karakter terakhir (harus sama persis
+      // dengan _last4CodeForLookup_ di GAS): buang semua karakter selain huruf/angka,
+      // uppercase, ambil 4 karakter paling belakang. Dipakai supaya PROPOSED VM TYPE
+      // "SM 2106" tetap cocok dengan MACHINE TYPE "CP-2106"/"NJ-2106" di dropdown VMC NO
+      // (sama-sama berakhiran kode model "2106").
+      function _last4Code(s) {
+        const cleaned = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (!cleaned) return '';
+        return cleaned.length <= 4 ? cleaned : cleaned.slice(-4);
+      }
+
       function _isVmcDropdownActionPlan(actionPlan) {
         const ap = _normKey(actionPlan);
         return ap === 'delivery approval' || ap === 'machine exchange';
@@ -3968,16 +3979,20 @@
 
       // Sel kolom VMC NO di tabel Input Task:
       // - ACTION PLAN "Delivery Approval"/"Machine Exchange" -> dropdown VMC NO dengan
-      //   FINAL STATUS "RTD" yang MACHINE TYPE-nya sama dengan PROPOSED VM TYPE baris ini,
-      //   opsi ditampilkan "noVMC-Location Name" tapi yang tersimpan/tampil setelah dipilih
-      //   hanya nomornya saja.
+      //   FINAL STATUS "RTD" yang 4 karakter terakhir MACHINE TYPE-nya sama dengan 4
+      //   karakter terakhir PROPOSED VM TYPE baris ini (lihat _last4Code) — bukan exact
+      //   match, karena prefix tipe di Request BD bisa beda dari Stock Opname walau kode
+      //   model sama (mis. "SM 2106" vs "CP-2106"/"NJ-2106"). Opsi ditampilkan
+      //   "noVMC - Machine Type - Location Name" (MACHINE TYPE asli ikut ditampilkan
+      //   supaya jelas tipe mana yang dipilih walau teksnya beda dari PROPOSED VM TYPE),
+      //   tapi yang tersimpan/tampil setelah dipilih hanya nomornya saja.
       // - ACTION PLAN "Withdrawal"/"Relocation" -> otomatis terisi (hasil pencarian OUTBOUND
       //   DATE terbaru per LOCATION NAME), ditampilkan read-only.
       // - ACTION PLAN lain -> tidak relevan, tampil "-".
       function _buildInputTaskVmcNoCell(row, i) {
         const actionPlan = row['ACTION PLAN'];
         if (_isVmcDropdownActionPlan(actionPlan)) {
-          const options = _vmcRtdOptionsCache[_normKey(row['PROPOSED VM TYPE'])] || [];
+          const options = _vmcRtdOptionsCache[_last4Code(row['PROPOSED VM TYPE'])] || [];
           if (!options.length) {
             return '<span class="text-slate-400 italic">' +
               (_vmcLookupFetching ? 'Memuat...' : 'Tidak ada VMC NO RTD untuk tipe ini') + '</span>';
@@ -3988,7 +4003,8 @@
             '<option value="">-- Pilih VMC NO --</option>' +
             options.map(o => '<option value="' + String(o.noVMC).replace(/"/g, '&quot;') + '" ' +
               (String(o.noVMC) === String(current) ? 'selected' : '') + '>' +
-              o.noVMC + (o.locationName ? ('-' + o.locationName) : '') + '</option>').join('') +
+              o.noVMC + (o.machineType ? (' - ' + o.machineType) : '') +
+              (o.locationName ? (' - ' + o.locationName) : '') + '</option>').join('') +
             '</select>';
         }
         if (_isVmcAutoFillActionPlan(actionPlan)) {
