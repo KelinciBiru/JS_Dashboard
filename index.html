@@ -1512,6 +1512,7 @@
           </div>
         </div>
         <div id="jabodetabek-status" class="text-xs text-slate-400 mb-2"></div>
+        <div id="jabodetabek-sla-filter-wrap" class="hidden flex flex-wrap items-center gap-2 mb-3"></div>
         <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
           <table id="jabodetabek-table" class="table-fixed text-xs sm:text-sm border-collapse">
             <colgroup id="jabodetabek-colgroup"></colgroup>
@@ -3373,6 +3374,9 @@
       let _jabodetabekLoaded = false;
       let _jabodetabekAddTaskMode = false;
       let _jabodetabekSelectedRows = new Set();
+      // Filter badge SLA (hanya aktif saat mode "+ Add Task"): null = semua,
+      // atau salah satu key dari JABODETABEK_SLA_FILTER_DEFS di bawah.
+      let _jabodetabekSlaFilter = null;
       let _jabodetabekFetching = false;
       let _jabodetabekLastFetch = null;
 
@@ -3840,6 +3844,7 @@
       function toggleJabodetabekAddTask() {
         _jabodetabekAddTaskMode = true;
         _jabodetabekSelectedRows.clear();
+        _jabodetabekSlaFilter = null;
         document.getElementById('jabodetabek-addtask-btn').classList.add('hidden');
         document.getElementById('jabodetabek-add-btn').classList.remove('hidden');
         document.getElementById('jabodetabek-cancel-btn').classList.remove('hidden');
@@ -3850,6 +3855,7 @@
       function cancelJabodetabekAddTask() {
         _jabodetabekAddTaskMode = false;
         _jabodetabekSelectedRows.clear();
+        _jabodetabekSlaFilter = null;
         document.getElementById('jabodetabek-addtask-btn').classList.remove('hidden');
         document.getElementById('jabodetabek-add-btn').classList.add('hidden');
         document.getElementById('jabodetabek-cancel-btn').classList.add('hidden');
@@ -3873,12 +3879,22 @@
       // Gabungan filter pencarian (search box) + dropdown Landmark/Kota/Kecamatan,
       // dipakai bersama oleh renderJabodetabekTable() dan confirmJabodetabekAddTask()
       // supaya indeks baris yang dicentang selalu tepat mengacu ke baris yang sama.
-      function _getFilteredJabodetabekData() {
+      // Filter dasar (pencarian + dropdown lokasi) saja, TANPA filter badge SLA —
+      // dipakai oleh badge filter untuk menghitung jumlah data per kategori.
+      function _getFilteredJabodetabekDataBase_() {
         const keyword = (document.getElementById('jabodetabek-search').value || '').toLowerCase().trim();
         return _jabodetabekData.filter(row => {
           if (keyword && !_jabodetabekHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))) return false;
           return _matchesLocationFilters(row, 'jabodetabek');
         });
+      }
+
+      function _getFilteredJabodetabekData() {
+        const base = _getFilteredJabodetabekDataBase_();
+        // Badge filter SLA hanya berlaku saat mode "+ Add Task" aktif.
+        if (!_jabodetabekAddTaskMode || !_jabodetabekSlaFilter) return base;
+        const tsKey = _findHeaderKey(_jabodetabekHeaders, 'TIMESTAMP');
+        return base.filter(row => _computeJabodetabekSla_(row[tsKey]).key === _jabodetabekSlaFilter);
       }
 
       // Tombol "Add": proses baris yang dicentang lalu kembali ke tampilan semula
@@ -4009,13 +4025,14 @@
       // >= 2 bulan -> "X Hari" (oranye), < 2 bulan -> "X Hari" (hijau).
       // Selisih bulan dihitung dari komponen tanggal kalender (bukan hari/30)
       // supaya sesuai maksud "terhitung dari TIMESTAMP" dalam satuan bulan.
+      // 'key' dipakai untuk filter badge (JABODETABEK_SLA_FILTER_DEFS).
       function _computeJabodetabekSla_(timestampValue) {
         if (timestampValue === null || timestampValue === undefined || timestampValue === '') {
-          return { label: '-', colorClass: 'bg-slate-100 text-slate-500 border border-slate-200' };
+          return { key: null, label: '-', colorClass: 'bg-slate-100 text-slate-500 border border-slate-200' };
         }
         const start = new Date(timestampValue);
         if (isNaN(start.getTime())) {
-          return { label: '-', colorClass: 'bg-slate-100 text-slate-500 border border-slate-200' };
+          return { key: null, label: '-', colorClass: 'bg-slate-100 text-slate-500 border border-slate-200' };
         }
         const now = new Date();
         const daysElapsed = Math.max(0, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
@@ -4025,17 +4042,66 @@
         if (monthsElapsed < 0) monthsElapsed = 0;
 
         if (monthsElapsed >= 3) {
-          return { label: 'Overdue', colorClass: 'bg-red-100 text-red-700 border border-red-300' };
+          return { key: 'overdue', label: 'Overdue', colorClass: 'bg-red-100 text-red-700 border border-red-300' };
         }
         if (monthsElapsed >= 2) {
-          return { label: daysElapsed + ' Hari', colorClass: 'bg-orange-100 text-orange-700 border border-orange-300' };
+          return { key: 'orange', label: daysElapsed + ' Hari', colorClass: 'bg-orange-100 text-orange-700 border border-orange-300' };
         }
-        return { label: daysElapsed + ' Hari', colorClass: 'bg-green-100 text-green-700 border border-green-300' };
+        return { key: 'green', label: daysElapsed + ' Hari', colorClass: 'bg-green-100 text-green-700 border border-green-300' };
+      }
+
+      // Definisi 3 badge filter SLA di menu Request BD - Jabodetabek (mode "+ Add Task").
+      const JABODETABEK_SLA_FILTER_DEFS = [
+        { key: 'overdue', label: 'Overdue', activeClass: 'bg-red-500 text-white border-red-500', idleClass: 'bg-red-50 text-red-600 border-red-300 hover:bg-red-100' },
+        { key: 'orange', label: '>= 2 Bulan', activeClass: 'bg-orange-500 text-white border-orange-500', idleClass: 'bg-orange-50 text-orange-600 border-orange-300 hover:bg-orange-100' },
+        { key: 'green', label: '< 2 Bulan', activeClass: 'bg-green-500 text-white border-green-500', idleClass: 'bg-green-50 text-green-600 border-green-300 hover:bg-green-100' }
+      ];
+
+      // Render 3 badge filter SLA + hitung jumlah data per badge, berdasarkan data
+      // yang sudah lolos filter pencarian/lokasi (BUKAN ikut filter SLA itu sendiri,
+      // supaya angka tiap badge tetap menunjukkan total sebenarnya walau salah satu
+      // badge sedang aktif). Klik badge yang sedang aktif akan menonaktifkannya lagi
+      // (kembali menampilkan semua).
+      function _renderJabodetabekSlaFilterBadges() {
+        const wrap = document.getElementById('jabodetabek-sla-filter-wrap');
+        if (!_jabodetabekAddTaskMode) {
+          wrap.classList.add('hidden');
+          wrap.innerHTML = '';
+          return;
+        }
+        wrap.classList.remove('hidden');
+
+        const baseFiltered = _getFilteredJabodetabekDataBase_();
+        const tsKey = _findHeaderKey(_jabodetabekHeaders, 'TIMESTAMP');
+        const counts = { overdue: 0, orange: 0, green: 0 };
+        baseFiltered.forEach(row => {
+          const sla = _computeJabodetabekSla_(row[tsKey]);
+          if (sla.key && counts.hasOwnProperty(sla.key)) counts[sla.key]++;
+        });
+
+        wrap.innerHTML = JABODETABEK_SLA_FILTER_DEFS.map(def => {
+          const isActive = _jabodetabekSlaFilter === def.key;
+          return '<button type="button" onclick="toggleJabodetabekSlaFilter(\'' + def.key + '\')" ' +
+            'class="btn-press px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ' +
+            (isActive ? def.activeClass : def.idleClass) + '">' +
+            def.label + ' (' + counts[def.key] + ')</button>';
+        }).join('');
+      }
+
+      // Toggle salah satu badge filter SLA; klik badge yang sama saat aktif = matikan filter.
+      function toggleJabodetabekSlaFilter(key) {
+        _jabodetabekSlaFilter = (_jabodetabekSlaFilter === key) ? null : key;
+        // Kosongkan centang saat ganti filter — indeks baris tercentang mengacu ke
+        // hasil filter sebelumnya, supaya tidak salah baris kalau dipertahankan.
+        _jabodetabekSelectedRows.clear();
+        renderJabodetabekTable();
       }
 
       function renderJabodetabekTable() {
         const thead = document.getElementById('jabodetabek-thead');
         const tbody = document.getElementById('jabodetabek-tbody');
+
+        _renderJabodetabekSlaFilterBadges();
 
         // Mode normal (browse) tetap tampilkan semua header sheet apa adanya;
         // mode "+ Add Task" memakai daftar kolom terkurasi + SLA (lihat
