@@ -1182,6 +1182,14 @@
                 placeholder="Catatan pengerjaan, boleh diisi beberapa paragraf..."></textarea>
             </div>
 
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Foto Bukti Selesai</label>
+              <input id="tp-photo-input" type="file" accept="image/*" multiple
+                onchange="handleTeamPreparePhotoInput(this)"
+                class="w-full text-xs text-slate-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-amber-500 file:text-white file:text-xs file:font-semibold hover:file:bg-amber-600">
+              <div id="tp-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
+            </div>
+
             <div id="tp-checklist-wrap" class="space-y-4"></div>
 
             <div id="tp-modal-status" class="text-xs"></div>
@@ -1311,6 +1319,38 @@
             </thead>
             <tbody id="mprep-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- HISTORYCAL PREPARATION -->
+      <div id="content-HistorycalPreparation" class="page-content">
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Historycal Preparation</h1>
+          <button onclick="loadHistorycalPreparation(true)"
+            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
+        </div>
+        <div id="historycal-preparation-status" class="text-xs text-slate-500 mb-3"></div>
+        <div id="historycal-preparation-empty" class="placeholder-box">Belum ada riwayat hasil pengerjaan Task Team Prepare.</div>
+        <div id="historycal-preparation-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
+          <table id="historycal-preparation-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="historycal-preparation-colgroup"></colgroup>
+            <thead id="historycal-preparation-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="historycal-preparation-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MODAL: Detail lengkap + Foto Bukti (klik VMC NO di Historycal Preparation) -->
+      <div id="historycal-preparation-detail-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5">
+          <div class="flex justify-between items-center mb-3 gap-2">
+            <h3 class="text-sm font-bold text-slate-800">Detail Preparation — <span id="hp-detail-vmc"></span></h3>
+            <button onclick="closeHistorycalPreparationDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+          </div>
+          <div id="hp-detail-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs mb-4"></div>
+          <div id="hp-detail-checklist-wrap" class="space-y-3 mb-4"></div>
+          <div class="text-xs font-bold text-slate-700 mb-2">Foto Bukti</div>
+          <div id="hp-detail-photos" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
         </div>
       </div>
 
@@ -1876,6 +1916,7 @@
           items: [
             { label: 'Task Machine Preparation', action: "showInventory('Machine Preparation')" },
             { label: 'List Machine Preparation', action: "showInventory('List Machine Preparation')" },
+            { label: 'Historycal Preparation', action: "showInventory('Historycal Preparation')" },
           ],
         },
         {
@@ -1976,6 +2017,7 @@
         'PlanTask': () => loadPlanTaskBatches(true),
         'StatusTask': () => loadTaskOnGoing(true),
         'HistorycalDispatch': () => loadHistorycalDispatch(true),
+        'HistorycalPreparation': () => loadHistorycalPreparation(true),
         'TeamDispatch': () => loadTeamDispatchTasks(true),
         'TeamPrepare': () => loadTeamPrepareCards(true)
       };
@@ -2126,6 +2168,7 @@
         if (n === 'Plan Task') { renderPlanTaskTable(); loadPlanTaskBatches(false); }
         if (n === 'Status Task') { loadTaskOnGoing(false); }
         if (n === 'Historycal Dispatch') { loadHistorycalDispatch(false); }
+        if (n === 'Historycal Preparation') { loadHistorycalPreparation(false); }
         if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); }
         if (n === 'Team Prepare') { loadTeamPrepareCards(false); }
       }
@@ -5227,6 +5270,145 @@
       }
 
       // =============================================
+      // HISTORYCAL PREPARATION (menu Machine Preparation > Historycal Preparation)
+      // Menampilkan riwayat sheet "Task Team Prepare" (spreadsheet Dashboard
+      // Dispatch V2) — log tiap kali Popup "Pengerjaan Task" (menu Task Team
+      // Prepare) disimpan, lengkap checklist (JSON) & Foto Bukti Selesai
+      // (ditulis oleh submitTeamPrepareTask_ di Code.gs). Sumber data: action
+      // GAS 'getTeamPrepareHistory'. Klik VMC NO di tabel membuka popup detail
+      // lengkap + gambar, murni dari data yang sudah dimuat (tanpa fetch lagi),
+      // pola sama persis dengan Historycal Dispatch di atas.
+      // =============================================
+      const HISTORYCAL_PREPARATION_COLUMNS = [
+        'VMC NO', 'SERIAL NUMBER', 'MACHINE DETAIL', 'EX. LOCATION',
+        'ASSETS', 'ALOKASI', 'FINAL STATUS', 'KETERANGAN'
+      ];
+      let _historycalPreparationRows = [];
+
+      async function loadHistorycalPreparation(forceRefresh) {
+        const statusEl = document.getElementById('historycal-preparation-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamPrepareHistory');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _historycalPreparationRows = json.rows || [];
+          statusEl.textContent = _historycalPreparationRows.length + ' riwayat — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderHistorycalPreparationTable();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderHistorycalPreparationTable() {
+        const emptyEl = document.getElementById('historycal-preparation-empty');
+        const wrapEl = document.getElementById('historycal-preparation-table-wrap');
+        const thead = document.getElementById('historycal-preparation-thead');
+        const tbody = document.getElementById('historycal-preparation-tbody');
+
+        if (!_historycalPreparationRows.length) {
+          emptyEl.classList.remove('hidden');
+          wrapEl.classList.add('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        wrapEl.classList.remove('hidden');
+
+        applyEqualColumns('historycal-preparation-table', 'historycal-preparation-colgroup', HISTORYCAL_PREPARATION_COLUMNS, false);
+
+        thead.innerHTML = '<tr>' + HISTORYCAL_PREPARATION_COLUMNS.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          h + '</th>'
+        ).join('') + '</tr>';
+
+        tbody.innerHTML = _historycalPreparationRows.map((row, i) =>
+          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+          HISTORYCAL_PREPARATION_COLUMNS.map(h => {
+            if (h === 'VMC NO') {
+              return '<td class="px-4 py-2.5 align-top whitespace-normal break-words leading-snug">' +
+                '<button type="button" onclick="openHistorycalPreparationDetailModal(' + i + ')" ' +
+                'class="text-blue-600 hover:underline font-semibold text-left">' + (row[h] || '-') + '</button>' +
+                '</td>';
+            }
+            return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>';
+          }).join('') +
+          '</tr>'
+        ).join('');
+      }
+
+      // Popup Detail — dibuka saat VMC NO di tabel Historycal Preparation
+      // diklik. Menampilkan seluruh field dasar (termasuk yang tidak tampil
+      // di tabel utama: MACHINE TYPE, INBOUND DATE, PIC, SHEET ASAL,
+      // Timestamp), checklist tambahan (parse dari kolom "DETAIL CHECKLIST
+      // (JSON)"), dan galeri Foto Bukti (kolom "FOTO BUKTI", URL dipisah
+      // newline/koma — sama seperti Historycal Dispatch).
+      const HP_DETAIL_FIELD_LABELS = [
+        ['Timestamp', 'Timestamp'], ['VMC NO', 'VMC NO'], ['SERIAL NUMBER', 'Serial Number'],
+        ['MACHINE TYPE', 'Machine Type'], ['EX. LOCATION', 'Ex. Location'], ['MACHINE DETAIL', 'Machine Detail'],
+        ['INBOUND DATE', 'Inbound Date'], ['ASSETS', 'Assets'], ['ALOKASI', 'Alokasi'],
+        ['FINAL STATUS', 'Final Status'], ['PIC', 'PIC'], ['SHEET ASAL', 'Sheet Asal']
+      ];
+
+      function openHistorycalPreparationDetailModal(index) {
+        const row = _historycalPreparationRows[index];
+        if (!row) return;
+
+        document.getElementById('hp-detail-vmc').textContent = row['VMC NO'] || '-';
+
+        document.getElementById('hp-detail-fields').innerHTML = HP_DETAIL_FIELD_LABELS.map(pair => {
+          const key = pair[0], label = pair[1];
+          const val = (key === 'Timestamp') ? _historycalDispatchFormatDMY_(row[key]) : (row[key] || '-');
+          return '<div><span class="font-semibold text-slate-500">' + label + ':</span> ' +
+            '<span class="text-slate-700">' + val + '</span></div>';
+        }).join('') +
+          '<div class="sm:col-span-2"><span class="font-semibold text-slate-500">Keterangan:</span> ' +
+          '<div class="text-slate-700 whitespace-pre-wrap mt-0.5">' + (row['KETERANGAN'] || '-') + '</div></div>';
+
+        const checklistWrap = document.getElementById('hp-detail-checklist-wrap');
+        let checklist = [];
+        try { checklist = JSON.parse(row['DETAIL CHECKLIST (JSON)'] || '[]'); } catch (e) { checklist = []; }
+        checklistWrap.innerHTML = checklist.length ? checklist.map(block =>
+          '<div class="border border-slate-200 rounded-lg p-3">' +
+            '<div class="text-xs font-bold text-slate-700 mb-1">' + (block.title || block.key || '') + '</div>' +
+            '<div>' + (block.items || []).map(item => {
+              const val = String(item.value ?? '').trim();
+              const badgeClass = val.toUpperCase() === 'OK' || val.toUpperCase() === 'DONE'
+                ? 'bg-green-100 text-green-700'
+                : (val ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400');
+              return '<div class="flex items-center justify-between gap-2 text-xs border-b border-slate-100 py-1.5 last:border-0">' +
+                '<span class="text-slate-600 break-words">' + (item.label || '') + '</span>' +
+                '<span class="px-2 py-0.5 rounded-full font-semibold shrink-0 ' + badgeClass + '">' + (val || '-') + '</span>' +
+                '</div>';
+            }).join('') +
+          '</div>' +
+          '</div>'
+        ).join('') : '';
+
+        const photosEl = document.getElementById('hp-detail-photos');
+        const raw = String(row['FOTO BUKTI'] ?? '').trim();
+        const urls = raw ? raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
+        photosEl.innerHTML = urls.length ? urls.map(u =>
+          '<a href="' + u + '" target="_blank" rel="noopener" class="block rounded-md overflow-hidden border border-slate-200 hover:opacity-90">' +
+          '<img src="' + _driveThumbnailSrc_(u) + '" loading="lazy" class="w-full h-28 object-cover" ' +
+          'onerror="this.parentElement.outerHTML=\'<a href=&quot;' + u + '&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot; class=&quot;flex items-center justify-center h-28 rounded-md border border-slate-200 text-xs text-blue-600 hover:underline&quot;>Buka Foto</a>\';">' +
+          '</a>'
+        ).join('') : '<div class="col-span-full text-xs text-slate-400">Tidak ada foto bukti.</div>';
+
+        document.getElementById('historycal-preparation-detail-modal').classList.remove('hidden');
+      }
+      function closeHistorycalPreparationDetailModal() {
+        document.getElementById('historycal-preparation-detail-modal').classList.add('hidden');
+      }
+
+      // =============================================
       // TASK TEAM DISPATCH (Cardview: Start / Cancel / Delivered)
       // Menampilkan task sheet "Plan Task" yang Status-nya BUKAN "Closed"
       // (Open & On Delivery). Status "Open": hanya tombol Start yang tampil.
@@ -6301,6 +6483,8 @@
         document.getElementById('tp-checklist-wrap').innerHTML = '';
         document.getElementById('tp-f-keterangan').value = '';
         document.getElementById('tp-f-pic').value = '';
+        _tpPhotos = [];
+        renderTeamPreparePhotoPreview();
 
         await Promise.all([_ensureTpFinalStatusOptions(), _ensureTpPicOptions()]);
 
@@ -6410,10 +6594,63 @@
 
       let _tpLastChecklist = [];
 
+      // Foto Bukti Selesai (Popup "Pengerjaan Task") — pola identik dengan
+      // _ddPhotos/handleDispatchDeliveredPhotoInput di Team Dispatch: foto
+      // dikompres di browser dulu (_compressDispatchPhoto_, fungsi generik,
+      // sudah dipakai bersama), disimpan sementara sebagai base64 di memori,
+      // baru diunggah satu-per-satu ke Drive saat tombol Simpan ditekan (lihat
+      // submitTeamPrepareTask di bawah).
+      let _tpPhotos = [];
+
+      function handleTeamPreparePhotoInput(inputEl) {
+        const files = Array.from(inputEl.files || []);
+        if (!files.length) return;
+
+        const statusEl = document.getElementById('tp-modal-status');
+        statusEl.textContent = 'Memproses foto...';
+
+        const tasks = files.map(file =>
+          _compressDispatchPhoto_(file, 1600, 0.7).then(result => ({
+            name: file.name,
+            mimeType: result.mimeType,
+            base64: result.base64
+          }))
+        );
+
+        Promise.all(tasks).then(results => {
+          _tpPhotos = _tpPhotos.concat(results);
+          renderTeamPreparePhotoPreview();
+          statusEl.textContent = '';
+        }).catch(err => {
+          statusEl.textContent = '';
+          showAppAlert('❌ Gagal memproses foto: ' + err.message, 'error');
+        });
+
+        inputEl.value = ''; // reset supaya file yang sama bisa dipilih lagi kalau perlu
+      }
+
+      function removeTeamPreparePhoto(idx) {
+        _tpPhotos.splice(idx, 1);
+        renderTeamPreparePhotoPreview();
+      }
+
+      function renderTeamPreparePhotoPreview() {
+        const wrap = document.getElementById('tp-photo-preview');
+        if (!wrap) return;
+        wrap.innerHTML = _tpPhotos.map((p, idx) =>
+          '<div class="relative">' +
+            '<img src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200">' +
+            '<button type="button" onclick="removeTeamPreparePhoto(' + idx + ')" ' +
+              'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">&times;</button>' +
+          '</div>'
+        ).join('');
+      }
+
       function closeTeamPrepareModal() {
         document.getElementById('team-prepare-modal').classList.add('hidden');
         _tpContext = null;
         _tpLastChecklist = [];
+        _tpPhotos = [];
       }
 
       async function submitTeamPrepareTask() {
@@ -6430,13 +6667,53 @@
         const statusEl = document.getElementById('tp-modal-status');
         const saveBtn = document.getElementById('tp-save-btn');
         saveBtn.disabled = true;
-        statusEl.textContent = 'Menyimpan data...';
+
+        const noVMCValue = document.getElementById('tp-f-novmc').value;
 
         try {
+          // Sama seperti submitDispatchDelivered: kalau ada foto, cek dulu
+          // akses Drive-nya, lalu unggah SATU-PER-SATU (bukan digabung jadi
+          // satu request besar) supaya masing-masing request tetap kecil dan
+          // tidak gampang gagal ("Failed to fetch") di jaringan yang kurang
+          // stabil. URL hasil upload baru dikirim bareng data teks lainnya.
+          if (_tpPhotos.length > 0) {
+            statusEl.textContent = 'Memeriksa akses penyimpanan foto...';
+            let driveCheck;
+            try {
+              driveCheck = await _getFromGasWithRetry_('checkDriveAccess', {}, 1);
+            } catch (err) {
+              throw new Error('Tidak bisa terhubung ke server (Failed to fetch). Cek koneksi internet Hp/PC, lalu coba lagi.');
+            }
+            if (!driveCheck.success) {
+              throw new Error(driveCheck.message || 'Akses penyimpanan foto (Google Drive) bermasalah.');
+            }
+          }
+
+          const photoUrls = [];
+          for (let i = 0; i < _tpPhotos.length; i++) {
+            statusEl.textContent = 'Mengunggah foto ' + (i + 1) + ' dari ' + _tpPhotos.length + '...';
+            let uploadJson;
+            try {
+              uploadJson = await _postToGasWithRetry_(
+                'uploadTeamPreparePhoto',
+                { noVMC: noVMCValue, photo: _tpPhotos[i] },
+                3
+              );
+            } catch (err) {
+              throw new Error('Gagal mengunggah foto ke-' + (i + 1) + ': koneksi terputus (Failed to fetch). Pastikan layar Hp tidak terkunci selama proses Simpan, lalu coba lagi.');
+            }
+
+            if (!uploadJson.success) {
+              throw new Error(uploadJson.message || ('Gagal mengunggah foto ke-' + (i + 1)));
+            }
+            photoUrls.push(uploadJson.url);
+          }
+
+          statusEl.textContent = 'Menyimpan data...';
           const payload = {
             rowNumberSource: _tpContext.rowNumber,
             rowNumberDetail: _tpContext.detailRowNumber || '',
-            noVMC: document.getElementById('tp-f-novmc').value,
+            noVMC: noVMCValue,
             serialNumber: document.getElementById('tp-f-serial').value,
             machineType: _tpContext.machineType || '',
             exLocation: document.getElementById('tp-f-exlocation').value,
@@ -6448,7 +6725,8 @@
             keterangan: document.getElementById('tp-f-keterangan').value,
             pic: picValue,
             sheetAsal: _tpContext.sheet || '',
-            checklist: _collectTeamPrepareChecklist(_tpLastChecklist)
+            checklist: _collectTeamPrepareChecklist(_tpLastChecklist),
+            photoUrls: photoUrls
           };
 
           const json = await _getFromGasWithRetry_('saveTeamPrepareTask', payload, 3);
