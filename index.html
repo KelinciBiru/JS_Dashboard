@@ -572,6 +572,367 @@
         -webkit-overflow-scrolling: touch;
       }
     }
+
+    /* ================================================================
+       MOBILE PROFESSIONAL REDESIGN v2 (<=768px)
+       - Sidebar lama (slide dari kiri) diganti "deck" neumorphism yang
+         muncul dari BAWAH layar (bottom-sheet), dibuka lewat dock.
+       - Layar utama HP menjadi HOMESCREEN berisi ikon-ikon menu (mirip
+         homescreen HP), bukan langsung menampilkan tabel Dashboard.
+       - Dock neumorphism mengambang di bawah, menggantikan tombol
+         hamburger lama, berisi navigasi cepat: Home / Menu / Refresh / Keluar.
+       - Toast, modal (bottom-sheet), table & cardview dipertegas kesan
+         "app native" profesional.
+    ================================================================ */
+    :root {
+      --dock-h: 74px;
+    }
+
+    /* ---- Ikon bulat generik (dipakai homescreen, dock, folder) ---- */
+    .mh-icon-surface {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--neu-bg);
+      color: #d97706;
+      box-shadow: 6px 6px 12px var(--neu-shadow-dark), -6px -6px 12px var(--neu-shadow-light);
+    }
+
+    .mh-icon-surface svg {
+      width: 46%;
+      height: 46%;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ---- HOMESCREEN (mobile only) ---- */
+    #mobile-home-screen {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      body.mh-active main,
+      body.mh-active #mobile-topbar {
+        display: none !important;
+      }
+
+      body.mh-active #mobile-home-screen {
+        display: block;
+      }
+
+      #mobile-home-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        overflow-y: auto;
+        background: var(--neu-bg);
+        padding: 26px 20px calc(var(--dock-h) + 34px);
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .mh-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 22px;
+      }
+
+      .mh-header-logo {
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
+        flex-shrink: 0;
+      }
+
+      .mh-header-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: 12px;
+      }
+
+      .mh-header-text h1 {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--neu-text);
+        line-height: 1.25;
+      }
+
+      .mh-header-text p {
+        font-size: 12px;
+        color: var(--neu-text-soft);
+        margin-top: 2px;
+      }
+
+      .mh-header-text p span {
+        font-weight: 700;
+        color: #d97706;
+      }
+
+      .mh-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px 12px;
+      }
+
+      .mh-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+        box-shadow: none;
+        padding: 0;
+        border-radius: 0;
+      }
+
+      .mh-tile:active {
+        box-shadow: none;
+        transform: scale(0.94);
+      }
+
+      .mh-tile .mh-icon-surface {
+        width: 58px;
+        height: 58px;
+        border-radius: 20px;
+      }
+
+      .mh-tile-label {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: var(--neu-text);
+        text-align: center;
+        line-height: 1.2;
+        max-width: 74px;
+      }
+
+      .mh-tile-badge {
+        position: relative;
+      }
+
+      .mh-tile-badge::after {
+        content: attr(data-count);
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 9.5px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(239, 68, 68, .5);
+      }
+
+      .mh-tile-badge[data-count=""]::after,
+      .mh-tile-badge[data-count="0"]::after {
+        display: none;
+      }
+
+      .mh-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--neu-text-soft);
+        margin: 22px 2px 12px;
+      }
+
+      /* ---- DOCK (mobile only) ---- */
+      #mobile-dock {
+        position: fixed;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        z-index: 9500;
+        height: var(--dock-h);
+        border-radius: 26px;
+        background: var(--neu-bg);
+        box-shadow: 8px 8px 20px var(--neu-shadow-dark), -8px -8px 20px var(--neu-shadow-light);
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 6px;
+      }
+
+      .dock-btn {
+        background: transparent;
+        box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        flex: 1 1 0;
+        height: 100%;
+        color: var(--neu-text-soft);
+        font-size: 9.5px;
+        font-weight: 600;
+      }
+
+      .dock-btn:active {
+        box-shadow: none;
+        transform: scale(0.92);
+      }
+
+      .dock-btn svg {
+        width: 21px;
+        height: 21px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .dock-btn.dock-btn-main {
+        color: #d97706;
+        position: relative;
+        top: -16px;
+        background: var(--neu-bg);
+        width: 54px;
+        height: 54px;
+        flex: 0 0 54px;
+        border-radius: 50%;
+        box-shadow: 6px 6px 14px var(--neu-shadow-dark), -6px -6px 14px var(--neu-shadow-light);
+      }
+
+      .dock-btn.dock-btn-main svg {
+        width: 24px;
+        height: 24px;
+      }
+
+      .dock-btn.dock-active {
+        color: #d97706;
+      }
+
+      /* Beri jarak bawah supaya konten halaman tidak ketutup dock */
+      main {
+        padding-bottom: calc(var(--dock-h) + 30px) !important;
+      }
+
+      /* Toast digeser ke atas dock */
+      #app-toast-container {
+        bottom: calc(var(--dock-h) + 22px) !important;
+      }
+
+      /* ---- SIDEBAR -> "DECK" NEUMORPHISM: bottom-sheet, bukan lagi
+         slide dari kiri. Isinya (grup menu) tetap sama persis, hanya
+         wadahnya yang jadi deck naik dari bawah. ---- */
+      aside#sidebar {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 82vh;
+        max-height: 640px;
+        border-radius: 28px 28px 0 0;
+        padding: 14px 18px 22px !important;
+        box-shadow: 0 -10px 30px var(--neu-shadow-dark);
+        transform: translateY(100%);
+        z-index: 9600;
+      }
+
+      aside#sidebar.active {
+        transform: translateY(0);
+      }
+
+      aside#sidebar::before {
+        content: "";
+        display: block;
+        width: 44px;
+        height: 5px;
+        border-radius: 4px;
+        background: var(--neu-shadow-dark);
+        margin: 4px auto 10px;
+      }
+
+      #mobile-home-backdrop.active,
+      #mobile-sidebar-backdrop.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #mobile-sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 9550;
+        background: rgba(15, 23, 42, .35);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .2s ease;
+      }
+    }
+
+    /* ---- MODAL -> BOTTOM SHEET di HP (berlaku generik utk SEMUA modal
+       overlay ".fixed.inset-0" yang sudah ada, tanpa perlu ubah tiap
+       modal satu-satu di HTML/JS) ---- */
+    @media (max-width: 768px) {
+      div[class*="fixed"][class*="inset-0"] {
+        align-items: flex-end !important;
+        padding: 0 !important;
+      }
+
+      div[class*="fixed"][class*="inset-0"] > div:first-child {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 88vh;
+        overflow-y: auto;
+        border-radius: 24px 24px 0 0 !important;
+        animation: sheet-up .22s ease-out;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #mobile-home-screen,
+      #mobile-dock {
+        animation: none;
+      }
+    }
+
+    @keyframes sheet-up {
+      from {
+        opacity: 0;
+        transform: translateY(28px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ---- TABLE & CARDVIEW — sentuhan profesional tambahan di HP ---- */
+    @media (max-width: 768px) {
+      .overflow-x-auto.rounded-lg.shadow {
+        border-radius: var(--neu-radius-md) !important;
+      }
+
+      table thead th {
+        font-size: 10.5px !important;
+        letter-spacing: .02em;
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+      }
+
+      table tbody td {
+        font-size: 12px !important;
+      }
+
+      .td-card {
+        border-radius: var(--neu-radius-md) !important;
+        box-shadow: 7px 7px 16px var(--neu-shadow-dark), -7px -7px 16px var(--neu-shadow-light) !important;
+        border: none !important;
+      }
+    }
   </style>
 </head>
 
@@ -648,8 +1009,62 @@
   <!-- APP (tersembunyi sebelum login) -->
   <div id="app-wrapper" style="display:none;width:100%;">
     <div id="mobile-topbar">
-      <button id="menu-btn" aria-label="Buka menu">☰</button>
+      <button id="menu-btn" aria-label="Kembali ke Home">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
+          <path d="M3 11l9-8 9 8"></path>
+          <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"></path>
+        </svg>
+      </button>
       <span id="mobile-topbar-title">Warehouse Pulogadung</span>
+    </div>
+
+    <!-- ============================================================
+         MOBILE HOMESCREEN — layar utama khusus HP: grid ikon menu,
+         mirip homescreen ponsel. Diisi otomatis oleh renderMobileHome()
+         dari sumber data yang sama (SIDEBAR_MENU_GROUPS) supaya selalu
+         sinkron dengan menu sidebar tanpa perlu ditulis dua kali.
+    ============================================================ -->
+    <div id="mobile-home-screen">
+      <div class="mh-header">
+        <div class="mh-header-logo mh-icon-surface">
+          <img src="https://lh3.googleusercontent.com/d/1IA8Atse0gsknernjZAMSETWo5YOt8ls2" alt="Logo">
+        </div>
+        <div class="mh-header-text">
+          <h1>Warehouse Pulogadung</h1>
+          <p>Selamat datang, <span id="mh-role-label">-</span></p>
+        </div>
+      </div>
+      <div class="mh-section-title">Menu</div>
+      <div class="mh-grid" id="mobile-home-grid"></div>
+    </div>
+
+    <!-- Backdrop redup di belakang deck sidebar saat dibuka di HP -->
+    <div id="mobile-sidebar-backdrop"></div>
+
+    <!-- ============================================================
+         DOCK NEUMORPHISM (mobile only) — pengganti tombol hamburger
+         lepas. Selalu mengambang di bawah: Home / Refresh / Menu (deck) / Keluar.
+    ============================================================ -->
+    <div id="mobile-dock">
+      <button class="dock-btn" id="dock-home-btn" aria-label="Home">
+        <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"></path></svg>
+        <span>Home</span>
+      </button>
+      <button class="dock-btn" id="dock-refresh-btn" aria-label="Refresh">
+        <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        <span>Refresh</span>
+      </button>
+      <button class="dock-btn dock-btn-main" id="dock-menu-btn" aria-label="Menu">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+      </button>
+      <button class="dock-btn" id="dock-role-btn" aria-label="Role">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span id="dock-role-label">Role</span>
+      </button>
+      <button class="dock-btn" id="dock-logout-btn" aria-label="Keluar">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+        <span>Keluar</span>
+      </button>
     </div>
 
     <aside id="sidebar">
@@ -1689,6 +2104,21 @@
     <!-- ============================================================
          TOAST NOTIFICATION — pengganti pesan status ringan
     ============================================================ -->
+    <!-- ============================================================
+         MOBILE HOME "FOLDER" — bottom-sheet berisi ikon-ikon submenu
+         saat salah satu grup (mis. Inventory, Plan Task) di-tap dari
+         homescreen HP. Konten diisi otomatis oleh openMobileFolder().
+    ============================================================ -->
+    <div id="mobile-folder-modal" class="hidden fixed inset-0 z-[20500] flex items-center justify-center bg-black/40 p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <h3 id="mobile-folder-title" class="text-sm font-bold text-slate-800">Menu</h3>
+          <button onclick="closeMobileFolder()" class="neu-badge-close" aria-label="Tutup">✕</button>
+        </div>
+        <div class="mh-grid" id="mobile-folder-grid" style="grid-template-columns:repeat(3,1fr);"></div>
+      </div>
+    </div>
+
     <div id="app-toast-container" aria-live="polite" style="
       position:fixed; z-index:20001; left:50%; bottom:24px; transform:translateX(-50%);
       display:flex; flex-direction:column; gap:8px; align-items:center;
@@ -1924,6 +2354,9 @@
         });
         document.getElementById('app-wrapper').style.display = 'none';
         document.getElementById('login-page').style.display = 'flex';
+        closeMobileSidebar();
+        closeMobileFolder();
+        document.body.classList.remove('mh-active');
       }
 
       /**
@@ -2047,6 +2480,122 @@
           document.getElementById('prepare-sub').classList.remove('hidden');
           showInventory('Team Prepare');
         }
+
+        renderMobileHome();
+        const roleLbl = document.getElementById('dock-role-label');
+        if (roleLbl) roleLbl.textContent = currentRole || 'Role';
+        // Di layar HP, arahkan user ke homescreen ikon (bukan langsung ke
+        // tabel Dashboard/Team Dispatch/Team Prepare) supaya pengalaman
+        // pertama di HP terasa seperti membuka aplikasi mobile.
+        if (window.innerWidth <= 768) goMobileHome();
+      }
+
+      // =============================================
+      // MOBILE HOMESCREEN + DOCK NEUMORPHISM
+      // Homescreen HP menampilkan grid ikon menu (mirip layar utama HP),
+      // sumber datanya SAMA PERSIS dengan SIDEBAR_MENU_GROUPS (+ Menu
+      // Utama/Dashboard) supaya tidak pernah tidak-sinkron dengan sidebar.
+      // Grup dengan 1 item langsung membuka halamannya; grup dengan lebih
+      // dari 1 item membuka "folder" (bottom-sheet) berisi ikon submenu.
+      // =============================================
+      const MOBILE_MENU_ICONS = {
+        dashboard: '<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"></path></svg>',
+        inventory: '<svg viewBox="0 0 24 24"><path d="M21 8L12 3 3 8v8l9 5 9-5V8z"></path><path d="M3 8l9 5 9-5"></path><path d="M12 13v8"></path></svg>',
+        requestbd: '<svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 13h6M9 17h6"></path></svg>',
+        machineprep: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.26 1 1.51.6.25 1.3.12 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.25.6.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>',
+        plantask: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h3"></path></svg>',
+        dispatch: '<svg viewBox="0 0 24 24"><path d="M1 3h13v13H1z"></path><path d="M14 8h4l3 3v5h-7V8z"></path><circle cx="6" cy="18" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg>',
+        prepare: '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>'
+      };
+
+      function _mobileMenuEntries_() {
+        const entries = [{ id: 'dashboard', label: 'Menu Utama', action: "showDashboard()", roles: ['ADMIN'] }];
+        SIDEBAR_MENU_GROUPS.forEach(function (g) { entries.push(g); });
+        return entries.filter(function (g) { return g.roles.includes(currentRole); });
+      }
+
+      function renderMobileHome() {
+        const grid = document.getElementById('mobile-home-grid');
+        if (!grid) return;
+        const roleLabelEl = document.getElementById('mh-role-label');
+        if (roleLabelEl) roleLabelEl.textContent = currentRole || '-';
+
+        grid.innerHTML = _mobileMenuEntries_().map(function (g) {
+          const icon = MOBILE_MENU_ICONS[g.id] || MOBILE_MENU_ICONS.dashboard;
+          const isSingle = !g.items || g.items.length <= 1;
+          const rawAction = g.action || (g.items && g.items[0] && g.items[0].action) || '';
+          const clickAction = isSingle
+            ? 'goMobileToPage(&quot;' + rawAction.replace(/"/g, '&quot;') + '&quot;)'
+            : "openMobileFolder('" + g.id + "')";
+          return (
+            '<button type="button" class="mh-tile" onclick="' + clickAction + '">' +
+              '<span class="mh-icon-surface">' + icon + '</span>' +
+              '<span class="mh-tile-label">' + g.label + '</span>' +
+            '</button>'
+          );
+        }).join('');
+      }
+
+      function openMobileFolder(groupId) {
+        const group = SIDEBAR_MENU_GROUPS.find(function (g) { return g.id === groupId; });
+        if (!group) return;
+        document.getElementById('mobile-folder-title').textContent = group.label;
+        const grid = document.getElementById('mobile-folder-grid');
+        grid.innerHTML = group.items.map(function (it) {
+          const icon = MOBILE_MENU_ICONS[groupId] || MOBILE_MENU_ICONS.dashboard;
+          return (
+            '<button type="button" class="mh-tile" onclick="closeMobileFolder(); goMobileToPage(&quot;' + it.action.replace(/"/g, '&quot;') + '&quot;)">' +
+              '<span class="mh-icon-surface">' + icon + '</span>' +
+              '<span class="mh-tile-label">' + it.label + '</span>' +
+            '</button>'
+          );
+        }).join('');
+        document.getElementById('mobile-folder-modal').classList.remove('hidden');
+      }
+
+      function closeMobileFolder() {
+        document.getElementById('mobile-folder-modal').classList.add('hidden');
+      }
+
+      /** Sembunyikan homescreen HP, tampilkan konten halaman (main). */
+      function _mobileShowMain_() {
+        document.body.classList.remove('mh-active');
+      }
+
+      /** Tampilkan homescreen HP (grid ikon), sembunyikan konten halaman. */
+      function goMobileHome() {
+        closeMobileFolder();
+        closeMobileSidebar();
+        renderMobileHome();
+        document.body.classList.add('mh-active');
+      }
+
+      /** Dipanggil dari tile homescreen/folder: jalankan action navigasi lalu tampilkan main. */
+      function goMobileToPage(actionStr) {
+        if (!actionStr) return;
+        _mobileShowMain_();
+        try { (0, eval)(actionStr); } catch (e) { /* abaikan action kosong/invalid */ }
+      }
+
+      function openMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobile-sidebar-backdrop');
+        if (sidebar) sidebar.classList.add('active');
+        if (backdrop) backdrop.classList.add('active');
+      }
+
+      function closeMobileSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobile-sidebar-backdrop');
+        if (sidebar) sidebar.classList.remove('active');
+        if (backdrop) backdrop.classList.remove('active');
+      }
+
+      /** Update judul di top bar HP setiap kali pindah halaman, supaya
+       *  konteks halaman yang sedang dibuka selalu jelas. */
+      function _updateMobileTopbarTitle_(pageName) {
+        const el = document.getElementById('mobile-topbar-title');
+        if (el && pageName) el.textContent = pageName;
       }
 
       // =============================================
@@ -2156,9 +2705,43 @@
         const btn = document.getElementById('menu-btn');
         const sidebar = document.getElementById('sidebar');
         if (btn && sidebar) {
-          btn.addEventListener('click', e => { e.stopPropagation(); sidebar.classList.toggle('active'); });
-          document.addEventListener('click', e => { if (!sidebar.contains(e.target) && e.target !== btn) sidebar.classList.remove('active'); });
+          // Di desktop, tombol ini tetap membuka sidebar. Di HP, tombol
+          // top-bar ini sudah berganti fungsi jadi "kembali ke Home"
+          // (lihat listener khusus di bawah) karena buka/tutup deck menu
+          // sudah dipindah ke tombol tengah Dock.
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            if (window.innerWidth <= 768) { goMobileHome(); return; }
+            sidebar.classList.toggle('active');
+          });
+          document.addEventListener('click', e => {
+            if (window.innerWidth <= 768) return;
+            if (!sidebar.contains(e.target) && e.target !== btn) sidebar.classList.remove('active');
+          });
         }
+
+        // ---- DOCK NEUMORPHISM (HP) ----
+        const dockHome = document.getElementById('dock-home-btn');
+        const dockMenu = document.getElementById('dock-menu-btn');
+        const dockRefresh = document.getElementById('dock-refresh-btn');
+        const dockRole = document.getElementById('dock-role-btn');
+        const dockLogout = document.getElementById('dock-logout-btn');
+        const sidebarBackdrop = document.getElementById('mobile-sidebar-backdrop');
+
+        if (dockHome) dockHome.addEventListener('click', () => goMobileHome());
+        if (dockMenu) dockMenu.addEventListener('click', () => {
+          const isOpen = sidebar && sidebar.classList.contains('active');
+          if (isOpen) closeMobileSidebar(); else openMobileSidebar();
+        });
+        if (dockRefresh) dockRefresh.addEventListener('click', () => {
+          const key = _getActivePageKey_();
+          const loader = key && AUTO_REFRESH_LOADERS[key];
+          if (loader && !document.body.classList.contains('mh-active')) { loader(); showToast('Data diperbarui', 'success'); }
+          else { renderMobileHome(); showToast('Homescreen diperbarui', 'success'); }
+        });
+        if (dockRole) dockRole.addEventListener('click', () => showToast('Login sebagai ' + currentRole, 'info'));
+        if (dockLogout) dockLogout.addEventListener('click', () => doLogout());
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', () => closeMobileSidebar());
 
         startAutoRefresh();
       });
@@ -2200,6 +2783,8 @@
       // NAVIGASI
       // =============================================
       function showPage(pageName) {
+        _mobileShowMain_();
+        _updateMobileTopbarTitle_(pageName);
         document.querySelectorAll('.page-content').forEach(el => { el.style.display = 'none'; el.classList.remove('active-page'); });
         const targetId = 'content-' + pageName.replace(/\s+/g, '');
         const target = document.getElementById(targetId);
