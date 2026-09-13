@@ -3959,7 +3959,7 @@
 
       // Lebar minimum per kolom (px) supaya tidak terlalu sempit saat kolom banyak
       const MIN_COL_WIDTH_PX = 150;
-      const CHECKBOX_COL_WIDTH_PX = 44;
+      const CHECKBOX_COL_WIDTH_PX = 36;
 
       // hasCheckbox: true jika mode "Add Task" aktif, sehingga kolom checkbox
       // ekstra di sebelah kiri ikut dihitung di <colgroup> (kalau tidak, jumlah
@@ -4002,8 +4002,8 @@
         applyEqualColumns('jabodetabek-table', 'jabodetabek-colgroup', _jabodetabekHeaders, _jabodetabekAddTaskMode);
 
         const checkboxTh = _jabodetabekAddTaskMode
-          ? '<th class="px-2 py-3 text-center border-b border-slate-700 align-bottom">' +
-            '<input type="checkbox" onchange="handleJabodetabekSelectAll(this)"></th>'
+          ? '<th class="w-9 px-1 py-3 text-center border-b border-slate-700 align-middle">' +
+            '<input type="checkbox" class="w-4 h-4 align-middle accent-amber-500" onchange="handleJabodetabekSelectAll(this)"></th>'
           : '';
 
         thead.innerHTML = '<tr>' + checkboxTh + _jabodetabekHeaders.map(h =>
@@ -4021,8 +4021,8 @@
 
         tbody.innerHTML = filtered.map((row, i) => {
           const checkboxTd = _jabodetabekAddTaskMode
-            ? '<td class="px-2 py-2.5 text-center align-top">' +
-              '<input type="checkbox" class="jabodetabek-row-checkbox" data-row-index="' + i + '" ' +
+            ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
+              '<input type="checkbox" class="jabodetabek-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-index="' + i + '" ' +
               (_jabodetabekSelectedRows.has(i) ? 'checked ' : '') +
               'onchange="handleJabodetabekRowCheck(this, ' + i + ')"></td>'
             : '';
@@ -6745,8 +6745,8 @@
         applyEqualColumns('event-table', 'event-colgroup', _eventHeaders, _eventAddTaskMode);
 
         const checkboxTh = _eventAddTaskMode
-          ? '<th class="px-2 py-3 text-center border-b border-slate-700 align-bottom">' +
-            '<input type="checkbox" onchange="handleEventSelectAll(this)"></th>'
+          ? '<th class="w-9 px-1 py-3 text-center border-b border-slate-700 align-middle">' +
+            '<input type="checkbox" class="w-4 h-4 align-middle accent-amber-500" onchange="handleEventSelectAll(this)"></th>'
           : '';
 
         thead.innerHTML = '<tr>' + checkboxTh + _eventHeaders.map(h =>
@@ -6764,8 +6764,8 @@
 
         tbody.innerHTML = filtered.map((row, i) => {
           const checkboxTd = _eventAddTaskMode
-            ? '<td class="px-2 py-2.5 text-center align-top">' +
-              '<input type="checkbox" class="event-row-checkbox" data-row-index="' + i + '" ' +
+            ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
+              '<input type="checkbox" class="event-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-index="' + i + '" ' +
               (_eventSelectedRows.has(i) ? 'checked ' : '') +
               'onchange="handleEventRowCheck(this, ' + i + ')"></td>'
             : '';
