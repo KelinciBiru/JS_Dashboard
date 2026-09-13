@@ -19,6 +19,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     *,
     *::before,
@@ -1118,7 +1119,7 @@
       <div id="content-Dashboard" class="page-content active-page">
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
-          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true);"
+          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true);"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
             🔄 Refresh
           </button>
@@ -1158,13 +1159,49 @@
           </button>
         </div>
 
-        <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Status Order from BD</h2>
-        <div id="bd-status-status" class="text-xs text-slate-500 mb-2"></div>
-        <div id="bd-status-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3"></div>
+        <div class="flex items-center justify-between mt-6 mb-2">
+          <h2 class="text-sm font-bold text-slate-700">Status Order from BD</h2>
+          <button type="button" onclick="toggleDashSection('bdStatus')" id="toggle-btn-bdStatus"
+            class="text-[11px] font-semibold text-amber-700 hover:text-amber-800 px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 whitespace-nowrap">Sembunyikan</button>
+        </div>
+        <div id="dash-section-bdStatus">
+          <div id="bd-status-status" class="text-xs text-slate-500 mb-2"></div>
+          <div id="bd-status-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3"></div>
+        </div>
 
-        <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Action Plan</h2>
-        <div id="action-plan-status" class="text-xs text-slate-500 mb-2"></div>
-        <div id="action-plan-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        <div class="flex items-center justify-between mt-6 mb-2">
+          <h2 class="text-sm font-bold text-slate-700">Action Plan</h2>
+          <button type="button" onclick="toggleDashSection('actionPlan')" id="toggle-btn-actionPlan"
+            class="text-[11px] font-semibold text-amber-700 hover:text-amber-800 px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 whitespace-nowrap">Sembunyikan</button>
+        </div>
+        <div id="dash-section-actionPlan">
+          <div id="action-plan-status" class="text-xs text-slate-500 mb-2"></div>
+          <div id="action-plan-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
+        </div>
+
+        <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Summary Dispatch</h2>
+        <div id="summary-dispatch-status" class="text-xs text-slate-500 mb-2"></div>
+
+        <div class="rounded-2xl border-2 border-slate-100 bg-white p-4 mb-4">
+          <h3 class="text-xs font-bold text-slate-600 mb-2">Summary Activity Dispatch (Done)</h3>
+          <div id="summary-dispatch-filter" class="flex flex-wrap gap-2 mb-3"></div>
+          <div style="position:relative;height:260px;">
+            <canvas id="summary-dispatch-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border-2 border-slate-100 bg-white p-4">
+          <h3 class="text-xs font-bold text-slate-600 mb-1">Tabel PIC Dispatch</h3>
+          <p class="text-[11px] text-slate-400 mb-2">Qty activity Done per bulan (Januari s.d. bulan berjalan), supaya kelihatan naik/turunnya.</p>
+          <div class="overflow-auto border border-slate-100 rounded-lg">
+            <table class="min-w-full text-xs">
+              <thead id="summary-dispatch-pic-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+              <tbody id="summary-dispatch-pic-tbody">
+                <tr><td class="px-3 py-6 text-center text-slate-400">Memuat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- POPUP DETAIL DASHBOARD (klik salah satu cardview Menu Utama) -->
@@ -2620,7 +2657,7 @@
       const AUTO_REFRESH_INTERVAL_MS = 20000;
 
       const AUTO_REFRESH_LOADERS = {
-        'Dashboard': () => { loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); },
+        'Dashboard': () => { loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true); },
         'ReportInventoryJS': () => loadInventoryJS(true),
         'ReportInventoryCIMB': () => loadInventoryCIMB(true),
         'ListMachinePreparation': () => loadMachinePrepList(true),
@@ -2856,9 +2893,11 @@
 
       function showDashboard() {
         showPage('Dashboard');
+        initDashSectionToggles();
         loadDashboardSummary(false);
         loadBDStatusSummary(false);
         loadActionPlanSummary(false);
+        loadSummaryDispatch(false);
       }
 
       // =============================================
@@ -3049,6 +3088,54 @@
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+      }
+
+      // =============================================
+      // MENU UTAMA (DASHBOARD) — Hide/Show section "Status Order from BD"
+      // dan "Action Plan" supaya halaman tidak terlalu padat.
+      // State disimpan di localStorage supaya tetap tersembunyi
+      // walau halaman di-refresh.
+      // =============================================
+      const DASH_SECTION_LABELS = {
+        bdStatus: 'Status Order from BD',
+        actionPlan: 'Action Plan'
+      };
+
+      function _getDashSectionHiddenState() {
+        try {
+          return JSON.parse(localStorage.getItem('_dashSectionHidden') || '{}');
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function _setDashSectionHiddenState(state) {
+        try {
+          localStorage.setItem('_dashSectionHidden', JSON.stringify(state));
+        } catch (e) {}
+      }
+
+      function _applyDashSectionState(key, hidden) {
+        const wrap = document.getElementById('dash-section-' + key);
+        const btn = document.getElementById('toggle-btn-' + key);
+        if (!wrap || !btn) return;
+        wrap.classList.toggle('hidden', hidden);
+        btn.textContent = hidden ? 'Tampilkan' : 'Sembunyikan';
+      }
+
+      function toggleDashSection(key) {
+        const state = _getDashSectionHiddenState();
+        const hidden = !state[key];
+        state[key] = hidden;
+        _setDashSectionHiddenState(state);
+        _applyDashSectionState(key, hidden);
+      }
+
+      function initDashSectionToggles() {
+        const state = _getDashSectionHiddenState();
+        Object.keys(DASH_SECTION_LABELS).forEach(function (key) {
+          _applyDashSectionState(key, !!state[key]);
+        });
       }
 
       // =============================================
@@ -3339,6 +3426,221 @@
           countEl.textContent = query
             ? filtered.length + ' dari ' + _actionPlanDetailTotal + ' data ditemukan untuk "' + searchInput.value.trim() + '"'
             : '';
+        }
+      }
+
+      // =============================================
+      // MENU UTAMA (DASHBOARD) — "Summary Dispatch"
+      // Ditaruh persis di bawah cardview "Action Plan". Gabungan data dari
+      // sheet "Jabodetabek" & "Event" (GAS: getSummaryDispatch_), hanya
+      // baris status Done (kolom LOGISTICS UPDATE), tahun berjalan.
+      // Berisi: (1) grafik tren bulanan jumlah activity Done per ACTION PLAN
+      // (bisa difilter Semua/Delivery Approval/Machine Exchange/Relocation/
+      // Withdrawal), (2) tabel PIC Dispatch — qty activity Done per nama PIC.
+      // =============================================
+      let _summaryDispatchLoaded = false;
+      let _summaryDispatchData = { months: [], actionPlanList: [], series: {}, picTable: [] };
+      let _summaryDispatchFetching = false;
+      let _summaryDispatchLastFetch = null;
+      let _summaryDispatchActiveFilter = 'Semua';
+      let _summaryDispatchChart = null;
+
+      const SUMMARY_DISPATCH_FILTER_COLORS = {
+        'Semua': '#0b1f3a',
+        'Delivery Approval': '#22c55e',
+        'Machine Exchange': '#3b82f6',
+        'Relocation': '#a855f7',
+        'Withdrawal': '#f59e0b'
+      };
+
+      function _renderSummaryDispatchFilterBadges() {
+        const wrap = document.getElementById('summary-dispatch-filter');
+        if (!wrap) return;
+        const items = ['Semua'].concat(_summaryDispatchData.actionPlanList || []);
+        wrap.innerHTML = items.map(ap => {
+          const active = _summaryDispatchActiveFilter === ap;
+          const color = SUMMARY_DISPATCH_FILTER_COLORS[ap] || '#64748b';
+          const style = active
+            ? 'background-color:' + color + ';color:#ffffff;border-color:' + color + ';'
+            : 'background-color:#ffffff;color:#334155;border-color:#e2e8f0;';
+          return '<button onclick="_setSummaryDispatchFilter(\'' + _escJsStr(ap) + '\')" ' +
+            'class="btn-press px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-colors" ' +
+            'style="' + style + '">' + ap + '</button>';
+        }).join('');
+      }
+
+      function _setSummaryDispatchFilter(ap) {
+        _summaryDispatchActiveFilter = ap;
+        _renderSummaryDispatchFilterBadges();
+        _renderSummaryDispatchChart();
+      }
+
+      function _renderSummaryDispatchChart() {
+        const canvas = document.getElementById('summary-dispatch-chart');
+        if (!canvas) return;
+
+        if (typeof Chart === 'undefined') {
+          // Library Chart.js (CDN) gagal dimuat — tampilkan pesan jelas
+          // di kartu grafik alih-alih diam-diam kosong.
+          const wrap = canvas.parentElement;
+          if (wrap && !document.getElementById('summary-dispatch-chart-error')) {
+            wrap.innerHTML = '<div id="summary-dispatch-chart-error" class="flex items-center justify-center h-full text-xs text-red-500 text-center px-4">' +
+              '❌ Gagal memuat library grafik (Chart.js) dari CDN. Cek koneksi internet / pemblokir CDN, lalu muat ulang halaman.</div>';
+          }
+          return;
+        }
+
+        const months = _summaryDispatchData.months || [];
+        const actionPlanList = _summaryDispatchData.actionPlanList || [];
+        const series = _summaryDispatchData.series || {};
+
+        let datasets;
+        if (_summaryDispatchActiveFilter === 'Semua') {
+          const totals = months.map((_, i) =>
+            actionPlanList.reduce((sum, ap) => sum + ((series[ap] || [])[i] || 0), 0));
+          datasets = [{
+            label: 'Semua Activity',
+            data: totals,
+            borderColor: SUMMARY_DISPATCH_FILTER_COLORS['Semua'],
+            backgroundColor: SUMMARY_DISPATCH_FILTER_COLORS['Semua'],
+            tension: 0.3,
+            fill: false
+          }];
+        } else {
+          const ap = _summaryDispatchActiveFilter;
+          const color = SUMMARY_DISPATCH_FILTER_COLORS[ap] || '#64748b';
+          datasets = [{
+            label: ap,
+            data: (series[ap] || months.map(() => 0)),
+            borderColor: color,
+            backgroundColor: color,
+            tension: 0.3,
+            fill: false
+          }];
+        }
+
+        if (_summaryDispatchChart) {
+          _summaryDispatchChart.data.labels = months;
+          _summaryDispatchChart.data.datasets = datasets;
+          _summaryDispatchChart.update();
+          return;
+        }
+
+        _summaryDispatchChart = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: { labels: months, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+      }
+
+      // Tabel PIC Dispatch — breakdown per bulan (Jan s.d. bulan berjalan),
+      // supaya kelihatan naik/turunnya qty tiap PIC per bulan (bukan cuma
+      // total keseluruhan). Kolom bulan terakhir (bulan berjalan) dikasih
+      // panah tren dibanding bulan sebelumnya.
+      function _renderSummaryDispatchPicTableHead() {
+        const thead = document.getElementById('summary-dispatch-pic-thead');
+        if (!thead) return;
+        const months = _summaryDispatchData.months || [];
+        thead.innerHTML = '<tr>' +
+          '<th class="px-3 py-2 text-left font-semibold sticky left-0" style="background-color:#0b1f3a;">PIC Dispatch</th>' +
+          months.map(m => '<th class="px-3 py-2 text-center font-semibold whitespace-nowrap">' + m + '</th>').join('') +
+          '<th class="px-3 py-2 text-center font-semibold whitespace-nowrap">Total</th>' +
+          '</tr>';
+      }
+
+      function _summaryDispatchTrendArrow_(current, previous) {
+        if (previous === undefined || previous === null) return '';
+        if (current > previous) return ' <span class="text-emerald-500 font-bold">▲</span>';
+        if (current < previous) return ' <span class="text-red-500 font-bold">▼</span>';
+        return ' <span class="text-slate-300 font-bold">▬</span>';
+      }
+
+      function _renderSummaryDispatchPicTable() {
+        _renderSummaryDispatchPicTableHead();
+        const tbody = document.getElementById('summary-dispatch-pic-tbody');
+        if (!tbody) return;
+        const months = _summaryDispatchData.months || [];
+        const rows = _summaryDispatchData.picTable || [];
+        const colspan = months.length + 2;
+
+        tbody.innerHTML = rows.length === 0
+          ? '<tr><td colspan="' + colspan + '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
+          : rows.map(r => {
+              const monthly = r.monthly || months.map(() => 0);
+              const lastIdx = monthly.length - 1;
+              const monthCells = monthly.map((qty, i) => {
+                const arrow = i === lastIdx ? _summaryDispatchTrendArrow_(qty, monthly[i - 1]) : '';
+                return '<td class="px-3 py-2 text-center">' + (qty || 0) + arrow + '</td>';
+              }).join('');
+              return '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
+                '<td class="px-3 py-2 font-semibold sticky left-0 bg-white">' + (r.pic || '-') + '</td>' +
+                monthCells +
+                '<td class="px-3 py-2 text-center font-bold">' + (r.total || 0) + '</td>' +
+                '</tr>';
+            }).join('');
+      }
+
+      async function loadSummaryDispatch(forceRefresh) {
+        const statusEl = document.getElementById('summary-dispatch-status');
+
+        if (!_summaryDispatchLoaded) {
+          const cached = loadDataCache('summaryDispatch');
+          if (cached) {
+            _summaryDispatchData = {
+              months: cached.payload.months || [],
+              actionPlanList: cached.payload.actionPlanList || [],
+              series: cached.payload.series || {},
+              picTable: cached.payload.picTable || []
+            };
+            _summaryDispatchLoaded = true;
+            _renderSummaryDispatchFilterBadges();
+            _renderSummaryDispatchChart();
+            _renderSummaryDispatchPicTable();
+            if (statusEl) statusEl.textContent = 'Data (cache) — memuat data terbaru...';
+          }
+        }
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+
+        if (_summaryDispatchFetching) return;
+        if (_summaryDispatchLoaded && !forceRefresh && _summaryDispatchLastFetch &&
+          (Date.now() - _summaryDispatchLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _summaryDispatchFetching = true;
+        if (statusEl && !_summaryDispatchLoaded) statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSummaryDispatch');
+          const json = await res.json();
+          if (!json.success) {
+            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _summaryDispatchData = {
+            months: json.months || [],
+            actionPlanList: json.actionPlanList || [],
+            series: json.series || {},
+            picTable: json.picTable || []
+          };
+          _summaryDispatchLoaded = true;
+          _summaryDispatchLastFetch = Date.now();
+          saveDataCache('summaryDispatch', _summaryDispatchData);
+          _renderSummaryDispatchFilterBadges();
+          _renderSummaryDispatchChart();
+          _renderSummaryDispatchPicTable();
+          if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
+            ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+        } catch (err) {
+          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        } finally {
+          _summaryDispatchFetching = false;
         }
       }
 
