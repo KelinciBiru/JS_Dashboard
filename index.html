@@ -1710,6 +1710,30 @@
       </div>
     </div>
 
+    <!-- ============================================================
+         MODAL CONFIRM — pengganti window.confirm() bawaan browser.
+         Dipakai lewat showAppConfirm(message, options) yang me-return
+         Promise<boolean> (true = tombol konfirmasi diklik, false = Batal
+         atau klik area luar modal).
+    ============================================================ -->
+    <div id="app-confirm-modal" class="hidden fixed inset-0 z-[20003] flex items-center justify-center bg-black/40 p-4">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 text-center">
+        <div id="app-confirm-modal-icon" style="font-size:32px;line-height:1;margin-bottom:10px;">⚠️</div>
+        <p id="app-confirm-modal-message" class="text-sm text-slate-700 mb-5" style="white-space:pre-line;"></p>
+        <div class="flex gap-3">
+          <button id="app-confirm-modal-cancel"
+            class="btn-press flex-1 px-4 py-2.5 text-sm font-bold rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50">
+            Batal
+          </button>
+          <button id="app-confirm-modal-ok"
+            class="btn-press flex-1 px-4 py-2.5 text-sm font-bold rounded-lg text-white"
+            style="background: linear-gradient(135deg,#ef4444,#dc2626); box-shadow:0 4px 14px rgba(239,68,68,.45);">
+            Ya
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script>
       // =============================================
       // UI HELPER — TOAST & MODAL ALERT
@@ -1780,6 +1804,48 @@
       function closeAppAlert() {
         const modal = document.getElementById('app-alert-modal');
         if (modal) modal.classList.add('hidden');
+      }
+
+      // showAppConfirm(message, options) — pengganti window.confirm() bawaan
+      // browser supaya tampilannya konsisten dengan gaya modal alert di atas.
+      // Return Promise<boolean>: true kalau tombol konfirmasi (mis. "Ya")
+      // diklik, false kalau Batal / klik area luar modal (backdrop).
+      // options (semua opsional): { icon, okLabel, cancelLabel }
+      function showAppConfirm(message, options) {
+        options = options || {};
+        return new Promise(resolve => {
+          const modal = document.getElementById('app-confirm-modal');
+          const iconEl = document.getElementById('app-confirm-modal-icon');
+          const msgEl = document.getElementById('app-confirm-modal-message');
+          const okBtn = document.getElementById('app-confirm-modal-ok');
+          const cancelBtn = document.getElementById('app-confirm-modal-cancel');
+          if (!modal || !msgEl || !okBtn || !cancelBtn) {
+            // Fallback kalau markup modal belum ada di halaman ini.
+            resolve(window.confirm(message));
+            return;
+          }
+
+          iconEl.textContent = options.icon || '⚠️';
+          msgEl.textContent = message;
+          okBtn.textContent = options.okLabel || 'Ya';
+          cancelBtn.textContent = options.cancelLabel || 'Batal';
+          modal.classList.remove('hidden');
+
+          function cleanup(result) {
+            modal.classList.add('hidden');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            resolve(result);
+          }
+          function onOk() { cleanup(true); }
+          function onCancel() { cleanup(false); }
+          function onBackdrop(ev) { if (ev.target === modal) cleanup(false); }
+
+          okBtn.addEventListener('click', onOk);
+          cancelBtn.addEventListener('click', onCancel);
+          modal.addEventListener('click', onBackdrop);
+        });
       }
 
       // =============================================
@@ -3258,12 +3324,15 @@
       // Cancel di menu Task Team Prepare) dengan status 'Cancelled', supaya
       // tidak perlu action GAS baru — cukup ditandai di sheet "Task Machine
       // Preparation", lalu disembunyikan lewat _isTaskMprepHidden().
-      function removeTaskMachinePrep(rowNumber) {
+      async function removeTaskMachinePrep(rowNumber) {
         if (!rowNumber) {
           showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
           return;
         }
-        if (!confirm('Hapus task ini dari Task Machine Preparation?')) return;
+        const ok = await showAppConfirm('Hapus task ini dari Task Machine Preparation?', {
+          icon: '🗑️', okLabel: 'Ya, Hapus', cancelLabel: 'Batal'
+        });
+        if (!ok) return;
 
         _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' })
           .then(json => {
@@ -3271,7 +3340,7 @@
               showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
               return;
             }
-            showAppAlert('✅ Task berhasil dihapus.', 'success');
+            showToast('✅ Task berhasil dihapus.', 'success');
             loadTaskMachinePrepList(true);
           })
           .catch(err => {
