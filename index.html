@@ -4643,7 +4643,13 @@
       let _jabodetabekData = [];
       let _jabodetabekLoaded = false;
       let _jabodetabekAddTaskMode = false;
-      let _jabodetabekSelectedRows = new Set();
+      // Seleksi disimpan sebagai Map key -> row (BUKAN indeks hasil filter), sama
+      // seperti pola di List Machine Preparation (_mprepSelectedMap), supaya baris
+      // yang sudah dicentang TIDAK HILANG saat user pindah filter/badge SLA/kata kunci.
+      let _jabodetabekSelectedRows = new Map();
+      // Peta key -> row untuk baris yang SEDANG TAMPIL (hasil filter saat ini) — dipakai
+      // oleh handleJabodetabekSelectAll supaya tahu row lengkap dari key checkbox.
+      let _jabodetabekVisibleRowsByKey = {};
       // Filter badge SLA (hanya aktif saat mode "+ Add Task"): null = semua,
       // atau salah satu key dari JABODETABEK_SLA_FILTER_DEFS di bawah.
       let _jabodetabekSlaFilter = null;
@@ -5095,6 +5101,21 @@
         return true;
       }
 
+      // Kunci unik per baris Request BD (Jabodetabek/Event), dipakai supaya seleksi
+      // checkbox mode "+ Add Task" tetap dikenali sebagai baris yang sama walau
+      // tabel dirender ulang dengan filter/kata kunci/badge SLA berbeda — sama pola
+      // dengan _mprepRowKey() di List Machine Preparation. Kombinasi TIMESTAMP +
+      // LOCATION NAME + ACTION PLAN + DELIVERY/PICK UP ADDRESS dipakai karena baris
+      // Request BD tidak punya TICKET (TICKET baru dibuat saat masuk Plan Task).
+      function _requestBdRowKey(row, headers) {
+        const tsKey = _findHeaderKey(headers, 'TIMESTAMP');
+        const locKey = _findHeaderKey(headers, 'LOCATION NAME');
+        const apKey = _findHeaderKey(headers, 'ACTION PLAN');
+        const addrKey = _findHeaderKey(headers, 'DELIVERY / PICK UP ADDRESS');
+        return [row[tsKey], row[locKey], row[apKey], row[addrKey]]
+          .map(v => String(v ?? '').trim()).join('||');
+      }
+
       function _mapRowToInputTaskColumns(row, headers) {
         const obj = {};
         INPUT_TASK_COLUMNS.forEach(col => {
@@ -5132,17 +5153,22 @@
         renderJabodetabekTable();
       }
 
-      function handleJabodetabekRowCheck(checkbox, rowIndex) {
-        if (checkbox.checked) _jabodetabekSelectedRows.add(rowIndex);
-        else _jabodetabekSelectedRows.delete(rowIndex);
+      function handleJabodetabekRowCheck(checkbox, key, row) {
+        if (checkbox.checked) _jabodetabekSelectedRows.set(key, row);
+        else _jabodetabekSelectedRows.delete(key);
       }
 
+      // "Pilih semua" hanya berlaku untuk baris yang SEDANG TAMPIL (hasil filter saat
+      // ini) — baris lain yang sudah dicentang sebelumnya (di filter/badge SLA lain)
+      // tetap tersimpan di _jabodetabekSelectedRows dan tidak ikut berubah.
       function handleJabodetabekSelectAll(checkbox) {
         document.querySelectorAll('.jabodetabek-row-checkbox').forEach(cb => {
           cb.checked = checkbox.checked;
-          const idx = Number(cb.dataset.rowIndex);
-          if (checkbox.checked) _jabodetabekSelectedRows.add(idx);
-          else _jabodetabekSelectedRows.delete(idx);
+          const key = cb.dataset.rowKey;
+          const row = _jabodetabekVisibleRowsByKey[key];
+          if (!row) return;
+          if (checkbox.checked) _jabodetabekSelectedRows.set(key, row);
+          else _jabodetabekSelectedRows.delete(key);
         });
       }
 
@@ -5173,17 +5199,12 @@
           showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
           return;
         }
-        // Indeks di _jabodetabekSelectedRows mengacu pada hasil filter (pencarian +
-        // dropdown lokasi) saat checkbox dicentang, jadi pakai ulang filter yang sama
-        // supaya baris yang diambil tepat.
-        const filtered = _getFilteredJabodetabekData();
-
+        // _jabodetabekSelectedRows berisi row lengkap (Map key -> row), jadi baris yang
+        // dicentang di filter/badge SLA manapun ikut terambil, bukan cuma yang sedang
+        // tampil saat tombol Add diklik.
         // Data yang sudah ada di Input Task (mis. dikirim sebelumnya dari Jabodetabek/Event)
         // tidak ditimpa — baris baru ditambahkan setelah baris yang sudah ada.
-        const newRows = Array.from(_jabodetabekSelectedRows)
-          .sort((a, b) => a - b)
-          .map(i => filtered[i])
-          .filter(Boolean)
+        const newRows = Array.from(_jabodetabekSelectedRows.values())
           .map(row => _mapRowToInputTaskColumns(row, _jabodetabekHeaders));
 
         cancelJabodetabekAddTask();
@@ -5361,9 +5382,8 @@
       // Toggle salah satu badge filter SLA; klik badge yang sama saat aktif = matikan filter.
       function toggleJabodetabekSlaFilter(key) {
         _jabodetabekSlaFilter = (_jabodetabekSlaFilter === key) ? null : key;
-        // Kosongkan centang saat ganti filter — indeks baris tercentang mengacu ke
-        // hasil filter sebelumnya, supaya tidak salah baris kalau dipertahankan.
-        _jabodetabekSelectedRows.clear();
+        // Seleksi disimpan per key baris (bukan indeks), jadi centang yang sudah ada
+        // tetap dipertahankan walau badge SLA diganti.
         renderJabodetabekTable();
       }
 
@@ -5394,6 +5414,9 @@
 
         const filtered = _getFilteredJabodetabekData();
 
+        _jabodetabekVisibleRowsByKey = {};
+        filtered.forEach(row => { _jabodetabekVisibleRowsByKey[_requestBdRowKey(row, _jabodetabekHeaders)] = row; });
+
         if (filtered.length === 0) {
           tbody.innerHTML = '<tr><td colspan="' + (displayHeaders.length + (_jabodetabekAddTaskMode ? 1 : 0) || 1) +
             '" class="px-3 py-8 text-center text-slate-400">Tidak ada data.</td></tr>';
@@ -5401,11 +5424,12 @@
         }
 
         tbody.innerHTML = filtered.map((row, i) => {
+          const key = _requestBdRowKey(row, _jabodetabekHeaders);
           const checkboxTd = _jabodetabekAddTaskMode
             ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
-              '<input type="checkbox" class="jabodetabek-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-index="' + i + '" ' +
-              (_jabodetabekSelectedRows.has(i) ? 'checked ' : '') +
-              'onchange="handleJabodetabekRowCheck(this, ' + i + ')"></td>'
+              '<input type="checkbox" class="jabodetabek-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-key="' + key.replace(/"/g, '&quot;') + '" ' +
+              (_jabodetabekSelectedRows.has(key) ? 'checked ' : '') +
+              'onchange="handleJabodetabekRowCheck(this, \'' + key.replace(/'/g, "\\'") + '\', _jabodetabekVisibleRowsByKey[\'' + key.replace(/'/g, "\\'") + '\'])"></td>'
             : '';
           return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
             checkboxTd +
@@ -8274,7 +8298,12 @@
       let _eventData = [];
       let _eventLoaded = false;
       let _eventAddTaskMode = false;
-      let _eventSelectedRows = new Set();
+      // Seleksi disimpan sebagai Map key -> row (BUKAN indeks hasil filter) — pola
+      // sama dengan Jabodetabek (_jabodetabekSelectedRows) & List Machine Preparation,
+      // supaya baris yang sudah dicentang tidak hilang saat filter/kata kunci berubah.
+      let _eventSelectedRows = new Map();
+      // Peta key -> row untuk baris yang SEDANG TAMPIL (hasil filter saat ini).
+      let _eventVisibleRowsByKey = {};
       let _eventFetching = false;
       let _eventLastFetch = null;
 
@@ -8298,17 +8327,21 @@
         renderEventTable();
       }
 
-      function handleEventRowCheck(checkbox, rowIndex) {
-        if (checkbox.checked) _eventSelectedRows.add(rowIndex);
-        else _eventSelectedRows.delete(rowIndex);
+      function handleEventRowCheck(checkbox, key, row) {
+        if (checkbox.checked) _eventSelectedRows.set(key, row);
+        else _eventSelectedRows.delete(key);
       }
 
+      // "Pilih semua" hanya berlaku untuk baris yang sedang tampil — baris lain yang
+      // sudah dicentang di filter lain tetap tersimpan di _eventSelectedRows.
       function handleEventSelectAll(checkbox) {
         document.querySelectorAll('.event-row-checkbox').forEach(cb => {
           cb.checked = checkbox.checked;
-          const idx = Number(cb.dataset.rowIndex);
-          if (checkbox.checked) _eventSelectedRows.add(idx);
-          else _eventSelectedRows.delete(idx);
+          const key = cb.dataset.rowKey;
+          const row = _eventVisibleRowsByKey[key];
+          if (!row) return;
+          if (checkbox.checked) _eventSelectedRows.set(key, row);
+          else _eventSelectedRows.delete(key);
         });
       }
 
@@ -8331,14 +8364,9 @@
           showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
           return;
         }
-        // Indeks di _eventSelectedRows mengacu pada hasil filter (pencarian + dropdown
-        // lokasi) saat checkbox dicentang, jadi pakai ulang filter yang sama.
-        const filtered = _getFilteredEventData();
-
-        const newRows = Array.from(_eventSelectedRows)
-          .sort((a, b) => a - b)
-          .map(i => filtered[i])
-          .filter(Boolean)
+        // _eventSelectedRows berisi row lengkap (Map key -> row), jadi baris yang
+        // dicentang di filter manapun ikut terambil, bukan cuma yang sedang tampil.
+        const newRows = Array.from(_eventSelectedRows.values())
           .map(row => _mapRowToInputTaskColumns(row, _eventHeaders));
 
         cancelEventAddTask();
@@ -8421,6 +8449,9 @@
 
         const filtered = _getFilteredEventData();
 
+        _eventVisibleRowsByKey = {};
+        filtered.forEach(row => { _eventVisibleRowsByKey[_requestBdRowKey(row, _eventHeaders)] = row; });
+
         if (filtered.length === 0) {
           tbody.innerHTML = '<tr><td colspan="' + (_eventHeaders.length + (_eventAddTaskMode ? 1 : 0) || 1) +
             '" class="px-3 py-8 text-center text-slate-400">Tidak ada data.</td></tr>';
@@ -8428,11 +8459,12 @@
         }
 
         tbody.innerHTML = filtered.map((row, i) => {
+          const key = _requestBdRowKey(row, _eventHeaders);
           const checkboxTd = _eventAddTaskMode
             ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
-              '<input type="checkbox" class="event-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-index="' + i + '" ' +
-              (_eventSelectedRows.has(i) ? 'checked ' : '') +
-              'onchange="handleEventRowCheck(this, ' + i + ')"></td>'
+              '<input type="checkbox" class="event-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-key="' + key.replace(/"/g, '&quot;') + '" ' +
+              (_eventSelectedRows.has(key) ? 'checked ' : '') +
+              'onchange="handleEventRowCheck(this, \'' + key.replace(/'/g, "\\'") + '\', _eventVisibleRowsByKey[\'' + key.replace(/'/g, "\\'") + '\'])"></td>'
             : '';
           return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
             checkboxTd +
