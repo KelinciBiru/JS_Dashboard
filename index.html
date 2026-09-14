@@ -2473,6 +2473,7 @@
         btn.classList.remove('opacity-70', 'cursor-not-allowed');
       }
 
+      let _appAlertAutoCloseTimer = null;
       function showAppAlert(message, type) {
         const modal = document.getElementById('app-alert-modal');
         const iconEl = document.getElementById('app-alert-modal-icon');
@@ -2481,11 +2482,20 @@
         iconEl.textContent = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
         msgEl.textContent = message;
         modal.classList.remove('hidden');
+
+        // Untuk notifikasi sukses, tutup otomatis setelah beberapa detik
+        // (perilaku toast) supaya tidak perlu diklik manual. Error/warning
+        // tetap harus ditutup manual karena user perlu sempat membacanya.
+        if (_appAlertAutoCloseTimer) { clearTimeout(_appAlertAutoCloseTimer); _appAlertAutoCloseTimer = null; }
+        if (type === 'success') {
+          _appAlertAutoCloseTimer = setTimeout(() => { closeAppAlert(); }, 2200);
+        }
       }
 
       function closeAppAlert() {
         const modal = document.getElementById('app-alert-modal');
         if (modal) modal.classList.add('hidden');
+        if (_appAlertAutoCloseTimer) { clearTimeout(_appAlertAutoCloseTimer); _appAlertAutoCloseTimer = null; }
       }
 
       // showAppConfirm(message, options) — pengganti window.confirm() bawaan
@@ -6311,12 +6321,21 @@
       // getPlanTaskBatches_ juga sudah mengecualikan status 'Removed By Admin'
       // (selain 'Closed'/'Removed' lama) supaya task yang dihapus di sini juga
       // hilang dari Task Team Dispatch & menu Plan Task.
-      function removeTaskOnGoing(rowNumber) {
+      async function removeTaskOnGoing(rowNumber) {
         if (!rowNumber) {
           showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
           return;
         }
-        if (!confirm('Hapus task ini dari Task on Going?')) return;
+        // PENTING: pakai showAppConfirm (modal custom), BUKAN window.confirm()
+        // bawaan browser. Di beberapa WebView/PWA (mis. dibuka sebagai app
+        // dari homescreen HP), window.confirm() bisa langsung diblokir dan
+        // otomatis me-return false TANPA menampilkan dialog apa pun — akibatnya
+        // tombol "Remove" terkesan "tidak terjadi apa-apa" padahal kodenya
+        // langsung berhenti di baris confirm() ini.
+        const ok = await showAppConfirm('Hapus task ini dari Task on Going?', {
+          okLabel: 'Hapus', cancelLabel: 'Batal'
+        });
+        if (!ok) return;
 
         _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed By Admin' })
           .then(json => {
@@ -7661,14 +7680,20 @@
 
       // Tombol "Cancel" di card — langsung tandai STATUS "Cancelled" di sheet
       // "Task Machine Preparation" (tanpa membuka Popup), lalu refresh Cardview.
-      function handleTeamPrepareCancel(rowNumber) {
-        if (!confirm('Batalkan task ini? Task akan hilang dari daftar Task Team Prepare.')) return;
+      async function handleTeamPrepareCancel(rowNumber) {
+        // Sama seperti removeTaskOnGoing: pakai showAppConfirm, bukan
+        // window.confirm() bawaan yang bisa diam-diam gagal di beberapa WebView.
+        const ok = await showAppConfirm('Batalkan task ini? Task akan hilang dari daftar Task Team Prepare.', {
+          okLabel: 'Batalkan Task', cancelLabel: 'Batal'
+        });
+        if (!ok) return;
         _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' })
           .then(json => {
             if (!json.success) {
               showAppAlert('❌ ' + (json.message || 'Gagal membatalkan task'), 'error');
               return;
             }
+            showAppAlert('✅ Task berhasil dibatalkan.', 'success');
             loadTeamPrepareCards(true);
           })
           .catch(err => {
