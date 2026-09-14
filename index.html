@@ -2473,7 +2473,6 @@
         btn.classList.remove('opacity-70', 'cursor-not-allowed');
       }
 
-      let _appAlertAutoCloseTimer = null;
       function showAppAlert(message, type) {
         const modal = document.getElementById('app-alert-modal');
         const iconEl = document.getElementById('app-alert-modal-icon');
@@ -2482,20 +2481,11 @@
         iconEl.textContent = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
         msgEl.textContent = message;
         modal.classList.remove('hidden');
-
-        // Untuk notifikasi sukses, tutup otomatis setelah beberapa detik
-        // (perilaku toast) supaya tidak perlu diklik manual. Error/warning
-        // tetap harus ditutup manual karena user perlu sempat membacanya.
-        if (_appAlertAutoCloseTimer) { clearTimeout(_appAlertAutoCloseTimer); _appAlertAutoCloseTimer = null; }
-        if (type === 'success') {
-          _appAlertAutoCloseTimer = setTimeout(() => { closeAppAlert(); }, 2200);
-        }
       }
 
       function closeAppAlert() {
         const modal = document.getElementById('app-alert-modal');
         if (modal) modal.classList.add('hidden');
-        if (_appAlertAutoCloseTimer) { clearTimeout(_appAlertAutoCloseTimer); _appAlertAutoCloseTimer = null; }
       }
 
       // showAppConfirm(message, options) — pengganti window.confirm() bawaan
@@ -6305,7 +6295,18 @@
             '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
           ).join('') +
           '<td class="px-4 py-2.5 align-top">' +
-            '<button onclick="removeTaskOnGoing(' + JSON.stringify(String(row.rowNumber ?? '')) + ')" ' +
+            // PENTING: attribut onclick di sini SENGAJA pakai kutip TUNGGAL (') di
+            // HTML-nya, karena isinya (hasil JSON.stringify) memakai kutip GANDA (").
+            // Sebelumnya dua-duanya sama-sama kutip ganda ("onclick=\"...\"" dibungkus
+            // JSON.stringify yang juga menghasilkan "..."), sehingga browser membaca
+            // atribut onclick cuma sampai kutip ganda PERTAMA yang muncul (persis
+            // setelah tanda kurung buka) -- isi onclick yang benar-benar tersimpan
+            // jadi cuma "removeTaskOnGoing(" (JS tidak lengkap/invalid), jadi ketika
+            // tombol diklik browser gagal menjalankannya TANPA pesan apapun yang
+            // terlihat user -- persis gejala "tombol tidak bereaksi sama sekali".
+            '<button onclick=\'removeTaskOnGoing(' +
+              JSON.stringify(String(row.rowNumber ?? '')).replace(/&/g, '&amp;').replace(/'/g, '&#39;') +
+              ')\' ' +
               'class="btn-press px-2.5 py-1 text-xs font-semibold rounded-md border border-red-300 text-red-600 hover:bg-red-50 whitespace-nowrap">Remove</button>' +
           '</td>' +
           '</tr>'
@@ -6343,7 +6344,7 @@
               showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
               return;
             }
-            showAppAlert('✅ Task berhasil dihapus.', 'success');
+            showToast('✅ Task berhasil dihapus.', 'success');
             loadTaskOnGoing(true);
             if (typeof loadTeamDispatchTasks === 'function') loadTeamDispatchTasks(true);
           })
@@ -7693,7 +7694,7 @@
               showAppAlert('❌ ' + (json.message || 'Gagal membatalkan task'), 'error');
               return;
             }
-            showAppAlert('✅ Task berhasil dibatalkan.', 'success');
+            showToast('✅ Task berhasil dibatalkan.', 'success');
             loadTeamPrepareCards(true);
           })
           .catch(err => {
