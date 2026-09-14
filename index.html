@@ -6233,7 +6233,9 @@
 
       // =============================================
       // TASK ON GOING (menu Plan Task > Task on Going)
-      // Menampilkan task sheet "Plan Task" yang Status-nya (kolom R) = "Open".
+      // Menampilkan task sheet "Plan Task" yang Status-nya (kolom R) = "Open"
+      // atau "On Delivery" (task yang sudah di-Start di Team Dispatch tetap
+      // tampil di sini, tidak hilang).
       // =============================================
       const TASK_ONGOING_COLUMNS = ['Divisi', 'PIC', 'No. Kendaraan', 'NO VMC JUMPSTART', 'ACTION PLAN', 'LOCATION NAME'];
       const TASK_ONGOING_DISPLAY_COLUMNS = TASK_ONGOING_COLUMNS.concat(['AKSI']);
@@ -6254,7 +6256,10 @@
             statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
             return;
           }
-          _taskOnGoingRows = (json.rows || []).filter(r => String(r['Status'] || '').trim().toLowerCase() === 'open');
+          _taskOnGoingRows = (json.rows || []).filter(r => {
+            const st = String(r['Status'] || '').trim().toLowerCase();
+            return st === 'open' || st === 'on delivery';
+          });
           saveTaskOnGoingRows();
           statusEl.textContent = _taskOnGoingRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTaskOnGoingTable();
@@ -6299,14 +6304,13 @@
 
       // Hapus task dari menu Task on Going. Reuse action GAS 'updatePlanTaskStatus'
       // yang sudah ada (dipakai juga oleh tombol Start/Cancel di Task Team
-      // Dispatch) dengan status baru 'Removed', supaya tidak perlu action GAS
-      // baru. CATATAN: task on Going hanya menampilkan Status === 'Open' (filter
-      // client-side di loadTaskOnGoing), jadi status apa pun selain 'Open' otomatis
-      // hilang dari sini. Task Team Dispatch sendiri sudah memfilter 'Closed' di
-      // server (getPlanTaskActive) — kalau server BELUM ikut mengecualikan status
-      // 'Removed', task yang dihapus di sini bisa saja masih muncul di Task Team
-      // Dispatch, jadi baiknya backend getPlanTaskActive_ juga diupdate supaya
-      // mengecualikan status 'Removed' selain 'Closed'.
+      // Dispatch) dengan status baru 'Removed By Admin', supaya tidak perlu action
+      // GAS baru. CATATAN: task on Going menampilkan Status === 'Open' ATAU
+      // 'On Delivery' (filter client-side di loadTaskOnGoing), jadi status apa pun
+      // selain kedua itu otomatis hilang dari sini. Backend getPlanTaskActive_ dan
+      // getPlanTaskBatches_ juga sudah mengecualikan status 'Removed By Admin'
+      // (selain 'Closed'/'Removed' lama) supaya task yang dihapus di sini juga
+      // hilang dari Task Team Dispatch & menu Plan Task.
       function removeTaskOnGoing(rowNumber) {
         if (!rowNumber) {
           showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
@@ -6314,7 +6318,7 @@
         }
         if (!confirm('Hapus task ini dari Task on Going?')) return;
 
-        _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed' })
+        _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed By Admin' })
           .then(json => {
             if (!json.success) {
               showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
