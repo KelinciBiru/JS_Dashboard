@@ -7320,7 +7320,7 @@
           )
           : (
             '<div class="mt-2">' +
-              '<button onclick="handleDispatchStart(' + row.rowNumber + ', ' + JSON.stringify(addressForEta) + ', this)" ' +
+              '<button onclick="handleDispatchStart(' + row.rowNumber + ', ' + _escapeHtmlAttr_(JSON.stringify(addressForEta)) + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>' +
             '</div>'
           );
