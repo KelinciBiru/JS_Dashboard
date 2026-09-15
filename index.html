@@ -6475,7 +6475,7 @@
       // =============================================
       const TASK_ONGOING_COLUMNS = [
         'Divisi', 'PIC', 'No. Kendaraan', 'NO VMC JUMPSTART', 'ACTION PLAN', 'LOCATION NAME',
-        'Status', 'Jam Berangkat', 'Jam Tiba', 'Jam Delivered'
+        'Status', 'Jam Berangkat', 'Estimasi Tiba', 'Jam Tiba', 'Jam Delivered'
       ];
       const TASK_ONGOING_DISPLAY_COLUMNS = TASK_ONGOING_COLUMNS.concat(['AKSI']);
       let _taskOnGoingRows = [];
@@ -7118,13 +7118,17 @@
 
       // Baris "Jam Berangkat" / "Estimasi Tiba" / "Jam Tiba" ditampilkan di bawah
       // "Comment" pada Cardview Task Team Dispatch (lihat _buildTeamDispatchCardHTML).
+      // "Estimasi Tiba" dibaca dari row['Estimasi Tiba'] (kolom X sheet "Plan Task",
+      // diisi oleh recordDispatchBerangkat_ saat tombol Start diklik) supaya nilainya
+      // tetap tampil walau kartu/tabelnya di-reload dari server, bukan lagi dari field
+      // sementara di browser yang hilang begitu data difetch ulang.
       function _buildDispatchTimingRowsHtml_(row) {
         let html = '';
         if (row['Jam Berangkat']) {
           html += '<div class="break-words"><span class="font-semibold text-slate-500">Jam Berangkat:</span> ' + row['Jam Berangkat'] + '</div>';
         }
-        if (row['_estimasiTiba'] && !row['Jam Tiba']) {
-          html += '<div class="break-words"><span class="font-semibold text-slate-500">Estimasi Tiba:</span> ' + row['_estimasiTiba'] + '</div>';
+        if (row['Estimasi Tiba'] && !row['Jam Tiba']) {
+          html += '<div class="break-words"><span class="font-semibold text-slate-500">Estimasi Tiba:</span> ' + row['Estimasi Tiba'] + '</div>';
         }
         if (row['Jam Tiba']) {
           html += '<div class="break-words"><span class="font-semibold text-slate-500">Jam Tiba:</span> ' + row['Jam Tiba'] + '</div>';
