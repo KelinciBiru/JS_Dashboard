@@ -5638,11 +5638,26 @@
       // =============================================
       // INPUT TASK (data dikirim dari Request BD - Jabodetabek)
       // =============================================
-      // Tombol "🔄 Refresh": muat ulang halaman penuh. Data _inputTaskRows sudah
-      // dipersist ke localStorage (lihat saveInputTaskRows/restoreInputTaskRows),
-      // jadi refresh halaman tidak menghilangkan data yang sudah ada.
-      function refreshInputTaskPage() {
-        location.reload();
+      // Tombol "🔄 Refresh": dulu memakai location.reload() (muat ulang
+      // halaman penuh). Masalahnya, tidak ada state yang menyimpan menu mana
+      // yang terakhir dibuka, jadi begitu halaman reload, aplikasi kembali ke
+      // menu utama alih-alih tetap di Input Task. Sekarang diganti jadi
+      // refresh data in-place saja (tanpa reload browser): muat ulang dropdown
+      // Plan Task, VMC NO, lalu render ulang tabel — persis seperti saat menu
+      // Input Task pertama kali dibuka (lihat showInventory), tapi tanpa
+      // pindah halaman. Data _inputTaskRows sendiri tidak hilang karena hanya
+      // disimpan di memori/localStorage, tidak disentuh oleh proses ini.
+      async function refreshInputTaskPage() {
+        try {
+          await Promise.all([
+            loadPlanTaskDropdowns(true),
+            refreshInputTaskVmcNo()
+          ]);
+          renderInputTaskTable();
+          showToast('Data Input Task diperbarui', 'success');
+        } catch (e) {
+          showToast('Gagal memperbarui data Input Task', 'error');
+        }
       }
 
       // Update kolom COMMENT (diisi manual oleh User) untuk baris Input Task ke-i.
