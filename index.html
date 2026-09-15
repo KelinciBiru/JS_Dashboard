@@ -16,6 +16,28 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <!--
+    SECURITY: Content-Security-Policy dasar. 'unsafe-inline'/'unsafe-eval' pada
+    script-src TERPAKSA masih diizinkan karena seluruh logika aplikasi ini
+    ditulis sebagai inline <script> di file yang sama (arsitektur single-file
+    index.html) dan Tailwind CDN men-generate <style> lewat JS saat runtime —
+    memblokir keduanya akan membuat Dashboard blank. CSP ini tetap berguna
+    untuk memblokir script/frame dari domain asing yang TIDAK ada di daftar
+    ini (mis. kalau ada yang menyisipkan tag <script src="domain-jahat">).
+  -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com;
+    img-src 'self' data: blob: https:;
+    media-src 'self' blob: https:;
+    connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com;
+    font-src 'self' data: https://cdnjs.cloudflare.com;
+    frame-ancestors 'self';
+    base-uri 'self';
+    form-action 'self';
+    object-src 'none';
+  ">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2748,6 +2770,194 @@
       const INVENTORY_JS_GAS_URL = 'https://script.google.com/macros/s/AKfycbxJZfuP2HeBTX4qVwLnYLXehmGAwgx2Z0LoOpNbSDmo61ArKjQ3T4OovQWAlc1KwRZ5/exec';
       // Stock Opname sekarang disimpan lewat GAS backend yang sama (INVENTORY_JS_GAS_URL),
       // action doPost baru: 'saveStockOpname'. Tidak perlu GAS URL terpisah lagi.
+
+      // ============================================================
+      //  NOD RESILIENCE + SECURITY LAYER
+      // ------------------------------------------------------------
+      //  Dipasang SEKALI di sini (menimpa window.fetch bawaan browser) supaya
+      //  SEMUA pemanggilan fetch(INVENTORY_JS_GAS_URL, ...) di seluruh file ini
+      //  — ada ratusan titik, tersebar dari menu Dashboard sampai Service
+      //  Center — otomatis mendapat 3 hal tanpa perlu mengubah satu-satu:
+      //
+      //  1) AUTO-RECOVERY ("agentic"): kalau GAS sedang lambat/timeout/down,
+      //     request dicoba ulang otomatis dengan jeda yang makin panjang
+      //     (backoff), sambil menampilkan pil kecil "Sedang memulihkan
+      //     koneksi..." di pojok bawah layar — user tidak melihat Dashboard
+      //     macet/blank, cukup menunggu sebentar dan data tetap muncul.
+      //  2) ANTI-DOUBLE-SUBMIT: setiap "percobaan submit" (klik tombol Simpan,
+      //     dsb.) diberi satu requestId. requestId yang sama dipakai ulang
+      //     kalau lapisan ini retry sendiri karena koneksi lambat, dan kalau
+      //     user sempat klik dua kali dengan sangat cepat sebelum request
+      //     pertama selesai, klik kedua akan "menumpang" ke request pertama
+      //     (single-flight) — bukan mengirim request baru. requestId ini
+      //     dicek lagi di server (lihat _isDuplicateRequest_/_handleGuardedWrite_
+      //     di Code.gs) sebagai lapisan kedua, jadi data di sheet "Dashboard
+      //     Dispatch V2" & sheet lain tidak pernah tercatat dobel walau
+      //     jaringan HP user tidak stabil.
+      //  3) SANITASI DASAR: window.nodEscapeHtml(...) tersedia secara global
+      //     untuk dipakai saat menampilkan teks hasil input user (REMARKS,
+      //     COMMENT, dll) lewat innerHTML, supaya karakter seperti <script>
+      //     tidak ikut tereksekusi kalau suatu saat ada yang mencoba
+      //     menyisipkannya (mencegah stored-XSS).
+      // ============================================================
+      (function () {
+        const NATIVE_FETCH = window.fetch.bind(window);
+        // Action yang MENULIS data — hanya action ini yang diberi requestId
+        // anti-double-submit (action baca tidak perlu & tidak boleh, supaya
+        // tidak mengubah perilaku cache-nya).
+        const NOD_WRITE_ACTIONS = [
+          'submitPlanTask', 'submitTaskMachinePrep', 'saveStockOpname',
+          'saveDispatchDelivered', 'recordDispatchBerangkat', 'recordDispatchTiba',
+          'saveTeamPrepareTask', 'updateTaskMachinePrepStatus',
+          'updatePlanTaskStatus', 'updateNoVmcJumpstart'
+        ];
+        const inFlight = Object.create(null); // requestId -> Promise (single-flight)
+        let recoveryBanner = null;
+        let recoveryCount = 0;
+
+        function ensureBannerStyle() {
+          if (document.getElementById('_nodRecoveryStyle')) return;
+          const style = document.createElement('style');
+          style.id = '_nodRecoveryStyle';
+          style.textContent = '@keyframes _nodPulse{0%,100%{opacity:1}50%{opacity:.35}}';
+          document.head.appendChild(style);
+        }
+        function showRecovering(msg) {
+          recoveryCount++;
+          ensureBannerStyle();
+          if (!recoveryBanner) {
+            recoveryBanner = document.createElement('div');
+            recoveryBanner.id = '_nodRecoveryBanner';
+            recoveryBanner.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);' +
+              'background:#1f2937;color:#fff;padding:10px 16px;border-radius:999px;' +
+              'font:13px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+              'z-index:99999;box-shadow:0 6px 20px rgba(0,0,0,.28);display:flex;align-items:center;' +
+              'gap:8px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:88vw;text-align:center;';
+            recoveryBanner.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#facc15;' +
+              'display:inline-block;flex:none;animation:_nodPulse 1s infinite"></span>' +
+              '<span id="_nodRecoveryText"></span>';
+            document.body.appendChild(recoveryBanner);
+          }
+          const txt = document.getElementById('_nodRecoveryText');
+          if (txt) txt.textContent = msg;
+          recoveryBanner.style.opacity = '1';
+        }
+        function hideRecovering() {
+          recoveryCount = Math.max(0, recoveryCount - 1);
+          if (recoveryCount === 0 && recoveryBanner) recoveryBanner.style.opacity = '0';
+        }
+        function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+        // Baca action dari body JSON (POST) atau dari query string (GET),
+        // dan siapkan requestId yang konsisten (dipakai ulang tiap retry).
+        function prepareRequest(url, options) {
+          let action = '';
+          let jsonBody = null;
+          if (options && typeof options.body === 'string') {
+            try {
+              jsonBody = JSON.parse(options.body);
+              action = jsonBody.action || '';
+            } catch (e) { /* body bukan JSON action GAS, biarkan apa adanya */ }
+          }
+          if (!action && url.indexOf('action=') !== -1) {
+            try { action = new URL(url, window.location.href).searchParams.get('action') || ''; }
+            catch (e) { /* abaikan */ }
+          }
+
+          const rid = 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+          if (NOD_WRITE_ACTIONS.indexOf(action) === -1) {
+            return { url, options, rid: '', action };
+          }
+
+          if (jsonBody) {
+            jsonBody.requestId = rid;
+            if (jsonBody.data && typeof jsonBody.data === 'object') jsonBody.data.requestId = rid;
+            options = Object.assign({}, options, { body: JSON.stringify(jsonBody) });
+          } else if (url.indexOf('data=') !== -1) {
+            // Action tulis lewat GET (fallback anti-CORS): data ada di query
+            // string ?data=<json-encoded>. Sisipkan requestId ke dalam objek
+            // data tsb, bukan langsung ke URL.
+            try {
+              const u = new URL(url, window.location.href);
+              const dataParam = u.searchParams.get('data');
+              if (dataParam) {
+                const dObj = JSON.parse(dataParam);
+                dObj.requestId = rid;
+                u.searchParams.set('data', JSON.stringify(dObj));
+                url = u.toString();
+              }
+            } catch (e) { /* format tidak terduga, lewati penyisipan requestId */ }
+          }
+          return { url, options, rid, action };
+        }
+
+        window.fetch = function (url, options) {
+          options = options || {};
+          if (typeof url !== 'string' || url.indexOf('script.google.com') === -1) {
+            return NATIVE_FETCH(url, options); // bukan panggilan ke GAS NOD, lewatkan apa adanya
+          }
+
+          const prepared = prepareRequest(url, options);
+          const finalUrl = prepared.url;
+          const finalOptions = prepared.options;
+          const rid = prepared.rid;
+
+          // Single-flight: request tulis dengan requestId yang sama yang masih
+          // berjalan -> kembalikan promise yang sama, jangan kirim dua kali.
+          if (rid && inFlight[rid]) return inFlight[rid];
+
+          const MAX_RETRY = 3;
+          const BASE_DELAY = 900; // ms, dikali 2^percobaan (backoff)
+
+          function attempt(n) {
+            const controller = new AbortController();
+            const timeoutMs = 20000 + n * 6000; // makin toleran tiap retry
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            const opts = Object.assign({}, finalOptions, { signal: controller.signal });
+
+            return NATIVE_FETCH(finalUrl, opts)
+              .then(res => {
+                clearTimeout(timer);
+                if (!res.ok && res.status >= 500 && n < MAX_RETRY) {
+                  showRecovering('Server sedang lambat, mencoba lagi\u2026');
+                  return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
+                }
+                if (recoveryCount > 0) hideRecovering();
+                return res;
+              })
+              .catch(err => {
+                clearTimeout(timer);
+                if (n < MAX_RETRY) {
+                  showRecovering(err && err.name === 'AbortError'
+                    ? 'Koneksi ke server lambat, mencoba lagi\u2026'
+                    : 'Koneksi terputus, menyambung ulang\u2026');
+                  return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
+                }
+                hideRecovering();
+                throw err;
+              });
+          }
+
+          const p = attempt(0).finally(() => { if (rid) delete inFlight[rid]; });
+          if (rid) inFlight[rid] = p;
+          return p;
+        };
+
+        // Sanitasi ringan untuk teks hasil input user yang ditampilkan lewat
+        // innerHTML di berbagai menu (REMARKS, COMMENT, dll) — mencegah
+        // stored-XSS. Pakai: elemen.innerHTML = nodEscapeHtml(teksUser).
+        window.nodEscapeHtml = function (str) {
+          return String(str == null ? '' : str).replace(/[&<>"']/g, c => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+          ));
+        };
+
+        // Anti-clickjacking: kalau Dashboard ini pernah dimuat di dalam
+        // <iframe> milik domain lain, keluar paksa ke halaman aslinya.
+        try {
+          if (window.top !== window.self) window.top.location = window.self.location;
+        } catch (e) { /* beda origin -> browser sudah otomatis blokir akses, aman */ }
+      })();
 
       let currentRole = '';
       let selectedRole = '';
