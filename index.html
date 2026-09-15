@@ -290,32 +290,123 @@
       gap: 12px;
     }
 
+    .td-fan-nav { display: none; }
+
+    /* ============================================================
+       Mode HP: cardview Task Team Dispatch bertumpuk (fan-stack)
+       yang bisa di-slide, menggantikan carousel horizontal
+       scroll-snap sebelumnya. Kartu paling depan
+       (data-fan-pos="0") tetap position:relative di alur dokumen
+       normal supaya tingginya menentukan tinggi container secara
+       otomatis; kartu di belakangnya (fan-pos 1/2) di-absolute-kan
+       mengikuti kotak kartu depan (inset:0; height:100%) sehingga
+       TIDAK butuh tinggi tetap/hardcode -> aman terhadap konten
+       kartu yang panjangnya berbeda-beda antar Task (tanpa ini,
+       posisi absolute semua kartu akan butuh tinggi container
+       tetap dan bisa memotong/menabrak konten kartu yang lebih
+       panjang).
+    ============================================================ */
     @media (max-width: 768px) {
-      .td-team-cards {
-        display: flex;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        gap: 12px;
-        padding: 14px 4px 18px;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: thin;
+      .td-team-cards,
+      #team-prepare-cards {
+        display: block;
+        position: relative;
+        padding: 4px 2px 2px;
+        touch-action: pan-y;
       }
 
-      /* Kartu tetap di posisi/lebar aslinya untuk keperluan layout &
-         scroll-snap (browser menghitung snap-point dari box asli) —
-         efek "tumpuk/fan" (scale mengecil + geser ke tengah + memudar
-         utk kartu yang tidak fokus) murni ditambahkan lewat transform
-         + opacity dari JS (_updateTeamDispatchStackVisual_), supaya
-         lebar total scroll (scrollWidth) tidak berubah dan swipe tetap
-         presisi. Transisi di sini yang bikin perubahan transform
-         terasa halus saat kartu digeser.
-      */
-      .td-team-cards > .td-card {
-        flex: 0 0 84%;
-        scroll-snap-align: center;
-        transform-origin: center center;
-        transition: transform 0.18s ease, opacity 0.18s ease;
-        will-change: transform, opacity;
+      .td-team-cards > .td-card,
+      #team-prepare-cards > .tp-card {
+        transition: transform .35s cubic-bezier(.22,.9,.32,1), opacity .3s ease, box-shadow .3s ease;
+        will-change: transform;
+      }
+
+      .td-team-cards > .td-card[data-fan-pos="0"],
+      #team-prepare-cards > .tp-card[data-fan-pos="0"] {
+        position: relative;
+        z-index: 30;
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        opacity: 1;
+      }
+
+      .td-team-cards > .td-card[data-fan-pos="1"],
+      #team-prepare-cards > .tp-card[data-fan-pos="1"] {
+        position: absolute;
+        inset: 0;
+        height: 100%;
+        z-index: 20;
+        transform: translate(10px, 12px) rotate(3deg) scale(.96);
+        opacity: .85;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .td-team-cards > .td-card[data-fan-pos="2"],
+      #team-prepare-cards > .tp-card[data-fan-pos="2"] {
+        position: absolute;
+        inset: 0;
+        height: 100%;
+        z-index: 10;
+        transform: translate(18px, 22px) rotate(6deg) scale(.92);
+        opacity: .55;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .td-team-cards > .td-card[data-fan-pos="hidden"],
+      #team-prepare-cards > .tp-card[data-fan-pos="hidden"] {
+        position: absolute;
+        inset: 0;
+        height: 100%;
+        z-index: 0;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(18px, 22px) scale(.9);
+      }
+
+      /* Selama drag aktif, matikan transition supaya kartu mengikuti
+         jari secara langsung (tanpa lag), lalu dinyalakan lagi begitu
+         drag selesai (lihat _initFanStackGestures_ / _initTeamPrepareFanGestures_). */
+      .td-team-cards > .td-card.td-fan-dragging,
+      #team-prepare-cards > .tp-card.td-fan-dragging {
+        transition: none;
+      }
+
+      .td-fan-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        margin-top: 12px;
+        padding-bottom: 4px;
+      }
+
+      .td-fan-nav-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        border: none;
+        background: var(--neu-bg);
+        box-shadow: 4px 4px 8px var(--neu-shadow-dark), -4px -4px 8px var(--neu-shadow-light);
+        color: #475569;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .td-fan-nav-btn:disabled {
+        opacity: .35;
+      }
+
+      .td-fan-nav-count {
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+        min-width: 46px;
+        text-align: center;
       }
     }
 
@@ -3183,6 +3274,8 @@
         renderTaskOnGoingTable();
         renderHistorycalDispatchTable();
         renderTeamDispatchCards();
+        _initFanStackGestures_();
+        _initTeamPrepareFanGestures_();
         restorePlanTaskFormDraft();
 
         const btn = document.getElementById('menu-btn');
@@ -7166,6 +7259,165 @@
         renderTeamDispatchCards();
       }
 
+      // ============================================================
+      // FAN-STACK (Cardview Task Team Dispatch mode HP) — index kartu
+      // "paling depan" per Team, disimpan di luar fungsi render supaya
+      // tetap "nempel" saat refresh data (loadTeamDispatchTasks /
+      // auto-refresh), sama seperti pola _teamDispatchActiveKey di atas.
+      // _teamDispatchGroupSizes menyimpan jumlah Task terakhir per Team
+      // supaya tombol nav (_advanceFanStack_) & gesture geser tahu batas
+      // tanpa harus menghitung ulang groups dari _teamDispatchRows.
+      // ============================================================
+      let _teamDispatchFanIndex = {};
+      let _teamDispatchGroupSizes = {};
+
+      // offset = posisi kartu (index-nya di array Task Team ini) dikurangi
+      // index kartu yang sedang di depan. 0 = paling depan (aktif & bisa
+      // ditekan tombolnya), 1/2 = mengintip di belakangnya (fan), selain
+      // itu disembunyikan (tidak perlu dirender terlihat, tapi tetap ada
+      // di DOM supaya index-nya konsisten saat di-geser maju/mundur).
+      function _fanPosForOffset_(offset) {
+        if (offset === 0) return '0';
+        if (offset === 1) return '1';
+        if (offset === 2) return '2';
+        return 'hidden';
+      }
+
+      function _buildFanNavHtml_(groupKey, currentIdx, total) {
+        const keyAttr = _escapeHtmlAttr_(groupKey);
+        return '<div class="td-fan-nav" data-fan-nav-key="' + keyAttr + '">' +
+          '<button type="button" class="td-fan-nav-btn" onclick="_advanceFanStack_(\'' + keyAttr + '\', -1)"' +
+            (currentIdx <= 0 ? ' disabled' : '') + '>&lsaquo;</button>' +
+          '<span class="td-fan-nav-count">' + (currentIdx + 1) + ' / ' + total + '</span>' +
+          '<button type="button" class="td-fan-nav-btn" onclick="_advanceFanStack_(\'' + keyAttr + '\', 1)"' +
+            (currentIdx >= total - 1 ? ' disabled' : '') + '>&rsaquo;</button>' +
+        '</div>';
+      }
+
+      // Update posisi fan (atribut data-fan-pos) + counter nav SECARA
+      // LANGSUNG di DOM yang sudah ada (tanpa membangun ulang seluruh
+      // innerHTML lewat renderTeamDispatchCards), supaya pindah kartu
+      // terasa instan/mulus dan tidak mengganggu state Team/grup lain.
+      // Dicocokkan lewat dataset (bukan CSS attribute-selector dengan
+      // groupKey mentah) supaya aman walau nama Team/PIC mengandung
+      // karakter yang bisa merusak selector CSS (kutip, tanda kurung,
+      // dsb) — groupKey tidak pernah dipakai langsung sebagai selector.
+      function _applyFanPositions_(groupKey) {
+        const cur = _teamDispatchFanIndex[groupKey] || 0;
+        const total = _teamDispatchGroupSizes[groupKey] || 0;
+
+        document.querySelectorAll('.td-team-cards').forEach(stackEl => {
+          if (stackEl.dataset.groupKey !== groupKey) return;
+          stackEl.querySelectorAll('.td-card').forEach(cardEl => {
+            const idx = parseInt(cardEl.dataset.fanIdx, 10);
+            if (isNaN(idx)) return;
+            cardEl.dataset.fanPos = _fanPosForOffset_(idx - cur);
+          });
+        });
+
+        document.querySelectorAll('.td-fan-nav').forEach(navEl => {
+          if (navEl.dataset.fanNavKey !== groupKey) return;
+          const countEl = navEl.querySelector('.td-fan-nav-count');
+          if (countEl) countEl.textContent = (cur + 1) + ' / ' + total;
+          const btns = navEl.querySelectorAll('.td-fan-nav-btn');
+          if (btns[0]) btns[0].disabled = cur <= 0;
+          if (btns[1]) btns[1].disabled = cur >= total - 1;
+        });
+      }
+
+      // Dipanggil oleh tombol ‹ › di bawah stack (alternatif non-geser,
+      // juga dipakai sebagai fallback kalau perangkat tidak mendukung
+      // touch/pointer). dir = -1 (mundur) atau 1 (maju), tidak muter
+      // (clamp di awal/akhir) supaya posisi "Task ke berapa" tetap jelas.
+      function _advanceFanStack_(groupKey, dir) {
+        const total = _teamDispatchGroupSizes[groupKey] || 0;
+        if (!total) return;
+        const cur = _teamDispatchFanIndex[groupKey] || 0;
+        let next = cur + dir;
+        if (next < 0) next = 0;
+        if (next > total - 1) next = total - 1;
+        if (next === cur) return;
+        _teamDispatchFanIndex[groupKey] = next;
+        _applyFanPositions_(groupKey);
+      }
+
+      // Geser (swipe) kartu paling depan (data-fan-pos="0") ke kiri/kanan
+      // untuk pindah ke Task berikutnya/sebelumnya dalam stack Team yang
+      // sama. Geser TIDAK menghapus/menutup Task (beda dari pola "swipe to
+      // dismiss") — hanya memindahkan Task lain ke depan supaya tombol
+      // Start/Tiba/Delivered/Cancel-nya bisa ditekan. Dipasang SEKALI lewat
+      // event delegation di wrapper #team-dispatch-cards (bukan per kartu)
+      // supaya tetap berfungsi walau renderTeamDispatchCards() membangun
+      // ulang innerHTML setiap refresh — wrapper-nya sendiri tidak pernah
+      // diganti/dihapus, jadi listener tidak pernah lepas maupun dobel
+      // terpasang (dijaga dengan flag _fanGesturesBound).
+      let _fanDrag = null;
+      const FAN_DRAG_THRESHOLD = 10; // px, batas gerak sebelum dianggap geser (bukan tap tombol)
+      const FAN_SWIPE_COMMIT = 60;   // px, batas gerak untuk commit pindah kartu
+
+      function _initFanStackGestures_() {
+        const wrapEl = document.getElementById('team-dispatch-cards');
+        if (!wrapEl || wrapEl._fanGesturesBound) return;
+        wrapEl._fanGesturesBound = true;
+
+        wrapEl.addEventListener('pointerdown', (e) => {
+          if (window.innerWidth > 768) return; // fan-stack cuma aktif mode HP
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          // Jangan mulai geser kalau tap-nya langsung di tombol/link aksi
+          // (Start/Tiba/Delivered/Cancel/Maps/WhatsApp) supaya tap tetap
+          // berfungsi normal seperti biasa.
+          if (e.target.closest('button, a')) return;
+          const cardEl = e.target.closest('.td-card[data-fan-pos="0"]');
+          if (!cardEl) return;
+          const stackEl = cardEl.closest('.td-team-cards');
+          if (!stackEl) return;
+          _fanDrag = {
+            stackEl, cardEl,
+            startX: e.clientX, startY: e.clientY,
+            dx: 0, dragging: false,
+            groupKey: stackEl.dataset.groupKey || '',
+            pointerId: e.pointerId
+          };
+        }, { passive: true });
+
+        wrapEl.addEventListener('pointermove', (e) => {
+          if (!_fanDrag || e.pointerId !== _fanDrag.pointerId) return;
+          const dx = e.clientX - _fanDrag.startX;
+          const dy = e.clientY - _fanDrag.startY;
+          if (!_fanDrag.dragging) {
+            if (Math.abs(dx) < FAN_DRAG_THRESHOLD && Math.abs(dy) < FAN_DRAG_THRESHOLD) return;
+            if (Math.abs(dy) > Math.abs(dx)) { _fanDrag = null; return; } // scroll vertikal, bukan geser kartu
+            _fanDrag.dragging = true;
+            _fanDrag.cardEl.classList.add('td-fan-dragging');
+            try { _fanDrag.cardEl.setPointerCapture(e.pointerId); } catch (err) { /* abaikan */ }
+          }
+          e.preventDefault();
+          _fanDrag.dx = dx;
+          const rotate = Math.max(-14, Math.min(14, dx / 12));
+          _fanDrag.cardEl.style.transform = 'translate(' + dx + 'px, 0) rotate(' + rotate + 'deg)';
+        }, { passive: false });
+
+        const endDrag = (e) => {
+          if (!_fanDrag || (e.pointerId !== undefined && e.pointerId !== _fanDrag.pointerId)) return;
+          const drag = _fanDrag;
+          _fanDrag = null;
+          if (!drag.dragging) return;
+          drag.cardEl.classList.remove('td-fan-dragging');
+          drag.cardEl.style.transform = '';
+          const total = _teamDispatchGroupSizes[drag.groupKey] || 0;
+          const cur = _teamDispatchFanIndex[drag.groupKey] || 0;
+          if (drag.dx <= -FAN_SWIPE_COMMIT && cur < total - 1) {
+            _teamDispatchFanIndex[drag.groupKey] = cur + 1;
+            _applyFanPositions_(drag.groupKey);
+          } else if (drag.dx >= FAN_SWIPE_COMMIT && cur > 0) {
+            _teamDispatchFanIndex[drag.groupKey] = cur - 1;
+            _applyFanPositions_(drag.groupKey);
+          }
+        };
+        wrapEl.addEventListener('pointerup', endDrag, { passive: true });
+        wrapEl.addEventListener('pointercancel', endDrag, { passive: true });
+      }
+
       function _escapeHtmlAttr_(str) {
         return String(str == null ? '' : str)
           .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
@@ -7230,7 +7482,25 @@
           : groups;
 
         wrapEl.innerHTML = visibleGroups.map(group => {
-          const cardsHtml = group.rows.map(row => _buildTeamDispatchCardHTML(row)).join('');
+          // Index kartu "paling depan" fan-stack (mode HP) untuk Team ini.
+          // Di-clamp ke jumlah Task terbaru supaya tidak "nyasar" ke index
+          // yang sudah tidak ada lagi kalau jumlah Task berubah (mis. ada
+          // yang Closed) saat auto-refresh — sumber crash paling mungkin
+          // kalau tidak di-clamp (index tersisa lebih besar dari
+          // rows.length - 1, bikin semua kartu ke-render dengan fan-pos
+          // "hidden" / tidak ada kartu depan yang bisa ditekan).
+          let fanIdx = _teamDispatchFanIndex[group.key] || 0;
+          if (fanIdx > group.rows.length - 1) fanIdx = Math.max(0, group.rows.length - 1);
+          if (fanIdx < 0) fanIdx = 0;
+          _teamDispatchFanIndex[group.key] = fanIdx;
+          _teamDispatchGroupSizes[group.key] = group.rows.length;
+
+          const cardsHtml = group.rows.map((row, i) =>
+            _buildTeamDispatchCardHTML(row, _fanPosForOffset_(i - fanIdx), i)
+          ).join('');
+          const fanNavHtml = group.rows.length > 1
+            ? _buildFanNavHtml_(group.key, fanIdx, group.rows.length)
+            : '';
           return (
             '<div class="td-team-group">' +
               '<div class="bg-slate-800 text-white rounded-lg px-4 py-2.5 mb-3 overflow-hidden flex flex-wrap items-center gap-x-4 gap-y-1.5">' +
@@ -7244,87 +7514,12 @@
                 '<span class="text-sm font-semibold break-words">' + group.noKendaraan + '</span></span>' +
                 '<span class="ml-auto shrink-0 text-[10px] bg-white/10 px-2 py-1 rounded-full whitespace-nowrap">' + group.rows.length + ' task</span>' +
               '</div>' +
-              '<div class="td-team-cards">' + cardsHtml + '</div>' +
+              '<div class="td-team-cards" data-group-key="' + _escapeHtmlAttr_(group.key) + '">' + cardsHtml + '</div>' +
+              fanNavHtml +
             '</div>'
           );
         }).join('');
-
-        // Aktifkan efek "tumpukan kartu" (scale/depth/overlap) per grup
-        // Team — hanya berefek di mode HP (<=768px), lihat
-        // _updateTeamDispatchStackVisual_.
-        wrapEl.querySelectorAll('.td-team-cards').forEach(_bindTeamDispatchStackScroll_);
       }
-
-      // ============================================================
-      // Efek visual "tumpukan kartu" (stacked/fan) — HANYA mode HP.
-      // Ditambahkan murni lewat transform (scale/translateX/translateY)
-      // + opacity berdasarkan jarak tiap kartu ke titik tengah
-      // container saat digeser; kartu itu sendiri TIDAK diubah lebar
-      // atau posisi flex-nya (jadi scrollWidth & titik snap dari
-      // scroll-snap tetap presisi seperti sebelumnya, swipe untuk
-      // pilih Task tidak terganggu). Di mode Desktop (>768px) semua
-      // inline style hasil efek ini dikosongkan lagi supaya grid
-      // Desktop tidak pernah ikut ke-scale/geser.
-      // ============================================================
-      function _isTeamDispatchMobileStack_() {
-        return window.innerWidth <= 768;
-      }
-
-      function _updateTeamDispatchStackVisual_(container) {
-        if (!container) return;
-        const cards = container.querySelectorAll(':scope > .td-card');
-        if (!_isTeamDispatchMobileStack_()) {
-          cards.forEach(card => {
-            card.style.transform = '';
-            card.style.opacity = '';
-            card.style.zIndex = '';
-          });
-          return;
-        }
-        const rect = container.getBoundingClientRect();
-        if (!rect.width) return; // container belum ke-layout (mis. menu masih hidden)
-        const centerX = rect.left + rect.width / 2;
-        const half = rect.width / 2;
-        cards.forEach(card => {
-          const cRect = card.getBoundingClientRect();
-          const cardCenter = cRect.left + cRect.width / 2;
-          const delta = cardCenter - centerX;
-          const norm = Math.min(Math.abs(delta) / half, 1); // 0 = fokus di tengah, 1 = paling tepi
-          const scale = 1 - norm * 0.14;
-          const translateY = norm * 16;
-          const translateX = (delta < 0 ? 1 : -1) * norm * 22; // tarik kartu non-fokus ke tengah -> efek tumpuk/fan
-          const opacity = 1 - norm * 0.35;
-          card.style.transform =
-            'translateX(' + translateX.toFixed(1) + 'px) translateY(' + translateY.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
-          card.style.opacity = opacity.toFixed(2);
-          card.style.zIndex = String(100 - Math.round(norm * 100));
-        });
-      }
-
-      // Listener scroll di-throttle pakai requestAnimationFrame supaya
-      // tidak menghitung ulang layout tiap event scroll (hindari lag di
-      // HP low-end saat kartu digeser cepat).
-      function _bindTeamDispatchStackScroll_(container) {
-        if (!container) return;
-        let ticking = false;
-        container.addEventListener('scroll', () => {
-          if (ticking) return;
-          ticking = true;
-          requestAnimationFrame(() => {
-            _updateTeamDispatchStackVisual_(container);
-            ticking = false;
-          });
-        }, { passive: true });
-        // Hitung posisi awal begitu browser selesai layout kartu barusan.
-        requestAnimationFrame(() => requestAnimationFrame(() => _updateTeamDispatchStackVisual_(container)));
-      }
-
-      // Rotasi layar / resize jendela (termasuk saat lebar geser
-      // melewati breakpoint 768px HP<->Desktop): hitung ulang atau
-      // bersihkan efek tumpuk di semua grup Team yang sedang tampil.
-      window.addEventListener('resize', () => {
-        document.querySelectorAll('#team-dispatch-cards .td-team-cards').forEach(_updateTeamDispatchStackVisual_);
-      });
 
       // Format nomor telepon Indonesia (0xxx / +62xxx / 62xxx / dengan
       // spasi-strip-tanda kurung) menjadi link chat WhatsApp (wa.me/62xxx).
@@ -7524,8 +7719,11 @@
       }
 
       // Render satu Task Card (dipakai di dalam tiap kelompok Team pada
-      // renderTeamDispatchCards()).
-      function _buildTeamDispatchCardHTML(row) {
+      // renderTeamDispatchCards()). fanPos/fanIdx dipakai CSS+JS fan-stack
+      // mode HP (lihat _fanPosForOffset_/_applyFanPositions_) — di mode
+      // Desktop kedua atribut ini tidak berpengaruh apa-apa (CSS Desktop
+      // tetap grid biasa, atribut data-fan-* diabaikan begitu saja).
+      function _buildTeamDispatchCardHTML(row, fanPos, fanIdx) {
         const status = (String(row['Status'] || '').trim()) || 'Open';
         const statusLower = status.toLowerCase();
         const isOnDelivery = statusLower === 'on delivery'; // sudah Start, belum Tiba
@@ -7609,7 +7807,8 @@
         // Badge status ditaruh di bawahnya, rata kiri.
         // Class "td-card" dipakai CSS .td-team-cards (mode HP) untuk
         // menjadikan kartu ini satu "slide" penuh dalam carousel horizontal.
-        return '<div class="td-card bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
+        return '<div class="td-card bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0" ' +
+            'data-fan-pos="' + _escapeHtmlAttr_(fanPos != null ? fanPos : '0') + '" data-fan-idx="' + (fanIdx != null ? fanIdx : 0) + '">' +
           '<div class="flex flex-col gap-1.5">' +
             '<span class="text-sm font-bold text-slate-800 break-words leading-snug">' + (row['LOCATION NAME'] || '-') + '</span>' +
             '<span class="self-start text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
@@ -8526,11 +8725,37 @@
         }
         emptyEl.classList.add('hidden');
 
-        wrapEl.innerHTML = _teamPrepareCards.map(row => _buildTeamPrepareCardHTML(row)).join('');
+        // Fan-stack (mode HP) — index kartu "paling depan", di-clamp ke
+        // jumlah Task terbaru supaya tidak nyasar ke index yang sudah
+        // tidak ada lagi kalau jumlah Task berubah (mis. ada yang
+        // di-Cancel/Start) saat refresh — sama seperti pola clamp di
+        // renderTeamDispatchCards(). Berbeda dari Task Team Dispatch,
+        // Task Team Prepare TIDAK dikelompokkan per Team (satu daftar
+        // datar), jadi cukup satu index tunggal (_teamPrepareFanIndex),
+        // bukan object per-groupKey.
+        if (_teamPrepareFanIndex > _teamPrepareCards.length - 1) {
+          _teamPrepareFanIndex = Math.max(0, _teamPrepareCards.length - 1);
+        }
+        if (_teamPrepareFanIndex < 0) _teamPrepareFanIndex = 0;
+
+        const cardsHtml = _teamPrepareCards.map((row, i) =>
+          _buildTeamPrepareCardHTML(row, _fanPosForOffset_(i - _teamPrepareFanIndex), i)
+        ).join('');
+        const fanNavHtml = _teamPrepareCards.length > 1
+          ? _buildTeamPrepareFanNavHtml_(_teamPrepareFanIndex, _teamPrepareCards.length)
+          : '';
+        // Nav ‹ › ditaruh sebagai child biasa (bukan .tp-card) di dalam
+        // #team-prepare-cards yang sama — aman karena selector fan-pos
+        // hanya menyasar "> .tp-card", dan di mode HP nav ini otomatis
+        // ikut alur dokumen normal tepat di bawah kotak kartu depan
+        // (kartu di belakangnya di-absolute-kan jadi tidak menambah
+        // tinggi). Di mode Desktop nav disembunyikan (lihat .td-fan-nav).
+        wrapEl.innerHTML = cardsHtml + fanNavHtml;
       }
 
-      function _buildTeamPrepareCardHTML(row) {
-        return '<div class="bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0">' +
+      function _buildTeamPrepareCardHTML(row, fanPos, fanIdx) {
+        return '<div class="tp-card bg-white rounded-lg shadow p-4 flex flex-col gap-2 overflow-hidden min-w-0" ' +
+            'data-fan-pos="' + _escapeHtmlAttr_(fanPos != null ? fanPos : '0') + '" data-fan-idx="' + (fanIdx != null ? fanIdx : 0) + '">' +
           '<div class="text-sm font-bold text-slate-800 break-words leading-snug">' + (row.noVMC || '-') + '</div>' +
           '<div class="text-xs text-slate-600 space-y-1.5 min-w-0">' +
             '<div class="break-words"><span class="font-semibold text-slate-500">Serial Number:</span> ' + (row.serialNumber || '-') + '</div>' +
@@ -8546,6 +8771,118 @@
               'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
           '</div>' +
         '</div>';
+      }
+
+      // ============================================================
+      // FAN-STACK — Task Team Prepare (mode HP). Pola sama seperti
+      // fan-stack Task Team Dispatch (lihat _fanPosForOffset_,
+      // _initFanStackGestures_ di atas), tapi dibuatkan fungsi
+      // tersendiri karena Task Team Prepare adalah satu daftar datar
+      // (tidak dikelompokkan per Team) sehingga cukup satu index
+      // tunggal (bukan object per-groupKey seperti Team Dispatch).
+      // Konstanta FAN_DRAG_THRESHOLD/FAN_SWIPE_COMMIT & fungsi
+      // _fanPosForOffset_ dipakai bersama (sudah dideklarasikan di
+      // bagian Task Team Dispatch, sama-sama dipakai di sini).
+      // ============================================================
+      let _teamPrepareFanIndex = 0;
+
+      function _buildTeamPrepareFanNavHtml_(currentIdx, total) {
+        return '<div class="td-fan-nav">' +
+          '<button type="button" class="td-fan-nav-btn" onclick="_advanceTeamPrepareFan_(-1)"' +
+            (currentIdx <= 0 ? ' disabled' : '') + '>&lsaquo;</button>' +
+          '<span class="td-fan-nav-count">' + (currentIdx + 1) + ' / ' + total + '</span>' +
+          '<button type="button" class="td-fan-nav-btn" onclick="_advanceTeamPrepareFan_(1)"' +
+            (currentIdx >= total - 1 ? ' disabled' : '') + '>&rsaquo;</button>' +
+        '</div>';
+      }
+
+      // Update posisi fan + counter nav SECARA LANGSUNG di DOM yang sudah
+      // ada (tanpa membangun ulang seluruh innerHTML lewat
+      // renderTeamPrepareCards), supaya pindah kartu terasa instan/mulus.
+      function _applyTeamPrepareFanPositions_() {
+        const wrapEl = document.getElementById('team-prepare-cards');
+        if (!wrapEl) return;
+        const total = _teamPrepareCards.length;
+
+        wrapEl.querySelectorAll('.tp-card').forEach(cardEl => {
+          const idx = parseInt(cardEl.dataset.fanIdx, 10);
+          if (isNaN(idx)) return;
+          cardEl.dataset.fanPos = _fanPosForOffset_(idx - _teamPrepareFanIndex);
+        });
+
+        const navEl = wrapEl.querySelector('.td-fan-nav');
+        if (navEl) {
+          const countEl = navEl.querySelector('.td-fan-nav-count');
+          if (countEl) countEl.textContent = (_teamPrepareFanIndex + 1) + ' / ' + total;
+          const btns = navEl.querySelectorAll('.td-fan-nav-btn');
+          if (btns[0]) btns[0].disabled = _teamPrepareFanIndex <= 0;
+          if (btns[1]) btns[1].disabled = _teamPrepareFanIndex >= total - 1;
+        }
+      }
+
+      // Dipanggil oleh tombol ‹ › di bawah stack. dir = -1 (mundur) atau
+      // 1 (maju), tidak muter (clamp di awal/akhir).
+      function _advanceTeamPrepareFan_(dir) {
+        const total = _teamPrepareCards.length;
+        if (!total) return;
+        let next = _teamPrepareFanIndex + dir;
+        if (next < 0) next = 0;
+        if (next > total - 1) next = total - 1;
+        if (next === _teamPrepareFanIndex) return;
+        _teamPrepareFanIndex = next;
+        _applyTeamPrepareFanPositions_();
+      }
+
+      // Geser (swipe) kartu paling depan Task Team Prepare — pola sama
+      // seperti _initFanStackGestures_ (Team Dispatch), dipasang SEKALI
+      // lewat event delegation di wrapper #team-prepare-cards (wrapper-nya
+      // sendiri tidak pernah diganti/dihapus walau innerHTML-nya dibangun
+      // ulang tiap refresh, dijaga dengan flag _fanGesturesBound).
+      let _tpFanDrag = null;
+
+      function _initTeamPrepareFanGestures_() {
+        const wrapEl = document.getElementById('team-prepare-cards');
+        if (!wrapEl || wrapEl._fanGesturesBound) return;
+        wrapEl._fanGesturesBound = true;
+
+        wrapEl.addEventListener('pointerdown', (e) => {
+          if (window.innerWidth > 768) return; // fan-stack cuma aktif mode HP
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          if (e.target.closest('button, a')) return;
+          const cardEl = e.target.closest('.tp-card[data-fan-pos="0"]');
+          if (!cardEl) return;
+          _tpFanDrag = { cardEl, startX: e.clientX, startY: e.clientY, dx: 0, dragging: false, pointerId: e.pointerId };
+        }, { passive: true });
+
+        wrapEl.addEventListener('pointermove', (e) => {
+          if (!_tpFanDrag || e.pointerId !== _tpFanDrag.pointerId) return;
+          const dx = e.clientX - _tpFanDrag.startX;
+          const dy = e.clientY - _tpFanDrag.startY;
+          if (!_tpFanDrag.dragging) {
+            if (Math.abs(dx) < FAN_DRAG_THRESHOLD && Math.abs(dy) < FAN_DRAG_THRESHOLD) return;
+            if (Math.abs(dy) > Math.abs(dx)) { _tpFanDrag = null; return; }
+            _tpFanDrag.dragging = true;
+            _tpFanDrag.cardEl.classList.add('td-fan-dragging');
+            try { _tpFanDrag.cardEl.setPointerCapture(e.pointerId); } catch (err) { /* abaikan */ }
+          }
+          e.preventDefault();
+          _tpFanDrag.dx = dx;
+          const rotate = Math.max(-14, Math.min(14, dx / 12));
+          _tpFanDrag.cardEl.style.transform = 'translate(' + dx + 'px, 0) rotate(' + rotate + 'deg)';
+        }, { passive: false });
+
+        const endDrag = (e) => {
+          if (!_tpFanDrag || (e.pointerId !== undefined && e.pointerId !== _tpFanDrag.pointerId)) return;
+          const drag = _tpFanDrag;
+          _tpFanDrag = null;
+          if (!drag.dragging) return;
+          drag.cardEl.classList.remove('td-fan-dragging');
+          drag.cardEl.style.transform = '';
+          if (drag.dx <= -FAN_SWIPE_COMMIT) _advanceTeamPrepareFan_(1);
+          else if (drag.dx >= FAN_SWIPE_COMMIT) _advanceTeamPrepareFan_(-1);
+        };
+        wrapEl.addEventListener('pointerup', endDrag, { passive: true });
+        wrapEl.addEventListener('pointercancel', endDrag, { passive: true });
       }
 
       // Tombol "Cancel" di card — langsung tandai STATUS "Cancelled" di sheet
