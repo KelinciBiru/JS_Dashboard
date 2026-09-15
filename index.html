@@ -31,8 +31,8 @@
     style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com;
     img-src 'self' data: blob: https:;
     media-src 'self' blob: https:;
-    connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cdnjs.cloudflare.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com;
-    font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com;
+    connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cdnjs.cloudflare.com;
+    font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com;
     manifest-src 'self' data:;
     frame-ancestors 'self';
     base-uri 'self';
@@ -1465,7 +1465,7 @@
       <div id="content-Dashboard" class="page-content active-page">
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
-          <button onclick="refreshDashboardAll()"
+          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true);"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
             🔄 Refresh
           </button>
@@ -2851,6 +2851,12 @@
 
         // Baca action dari body JSON (POST) atau dari query string (GET),
         // dan siapkan requestId yang konsisten (dipakai ulang tiap retry).
+        // Kalau pemanggil (mis. _postToGasWithRetry_/_getFromGasWithRetry_)
+        // SUDAH menyisipkan requestId sendiri sebelum retry loop-nya sendiri
+        // berjalan, requestId itu DIHORMATI apa adanya (tidak dibuat baru di
+        // sini) — supaya requestId tetap SAMA di semua percobaan ulang milik
+        // fungsi tsb, dan dedup di server (Code.gs) benar-benar bekerja untuk
+        // alur yang paling berisiko dobel (Delivered, Team Prepare, dll).
         function prepareRequest(url, options) {
           let action = '';
           let jsonBody = null;
@@ -2865,11 +2871,24 @@
             catch (e) { /* abaikan */ }
           }
 
-          const rid = 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
           if (NOD_WRITE_ACTIONS.indexOf(action) === -1) {
             return { url, options, rid: '', action };
           }
 
+          // Cek apakah requestId sudah disisipkan pemanggil sebelumnya.
+          let existingRid = '';
+          if (jsonBody) {
+            existingRid = jsonBody.requestId || (jsonBody.data && jsonBody.data.requestId) || '';
+          } else if (url.indexOf('data=') !== -1) {
+            try {
+              const u0 = new URL(url, window.location.href);
+              const dp0 = u0.searchParams.get('data');
+              if (dp0) existingRid = (JSON.parse(dp0) || {}).requestId || '';
+            } catch (e) { /* abaikan */ }
+          }
+          if (existingRid) return { url, options, rid: existingRid, action };
+
+          const rid = 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
           if (jsonBody) {
             jsonBody.requestId = rid;
             if (jsonBody.data && typeof jsonBody.data === 'object') jsonBody.data.requestId = rid;
@@ -2907,22 +2926,20 @@
           // berjalan -> kembalikan promise yang sama, jangan kirim dua kali.
           if (rid && inFlight[rid]) return inFlight[rid];
 
-          // MAX_RETRY & timeout diturunkan (sebelumnya bisa menunggu >100 detik
-          // sebelum akhirnya gagal, membuat Menu Utama terasa "stuck loading").
-          // Sekarang worst-case ±55 detik untuk 3 percobaan, cukup toleran untuk
-          // GAS yang lambat/cold-start tapi tidak membuat UI menggantung lama.
-          const MAX_RETRY = 2;
+          // PENTING: TIDAK ada AbortController/timeout buatan di sini. Beberapa
+          // menu (mis. Menu Utama -> Summary Dispatch) memang butuh waktu lebih
+          // dari beberapa belas detik untuk selesai membaca spreadsheet — kalau
+          // dipotong paksa oleh timeout, request itu SEBENARNYA akan berhasil
+          // kalau ditunggu, tapi keburu dianggap gagal ("signal is aborted
+          // without reason") dan loading terlihat macet. Jadi retry di sini
+          // HANYA terjadi kalau fetch benar-benar gagal (jaringan putus/CORS)
+          // atau server balas error 5xx — bukan karena "kelamaan".
+          const MAX_RETRY = 3;
           const BASE_DELAY = 900; // ms, dikali 2^percobaan (backoff)
 
           function attempt(n) {
-            const controller = new AbortController();
-            const timeoutMs = 12000 + n * 5000; // makin toleran tiap retry
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            const opts = Object.assign({}, finalOptions, { signal: controller.signal });
-
-            return NATIVE_FETCH(finalUrl, opts)
+            return NATIVE_FETCH(finalUrl, finalOptions)
               .then(res => {
-                clearTimeout(timer);
                 if (!res.ok && res.status >= 500 && n < MAX_RETRY) {
                   showRecovering('Server sedang lambat, mencoba lagi\u2026');
                   return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
@@ -2931,23 +2948,12 @@
                 return res;
               })
               .catch(err => {
-                clearTimeout(timer);
                 if (n < MAX_RETRY) {
-                  showRecovering(err && err.name === 'AbortError'
-                    ? 'Koneksi ke server lambat, mencoba lagi\u2026'
-                    : 'Koneksi terputus, menyambung ulang\u2026');
+                  showRecovering('Koneksi terputus, menyambung ulang\u2026');
                   return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
                 }
                 hideRecovering();
-                // Setelah retry habis, ganti error teknis (mis. "signal is aborted
-                // without reason") dengan pesan yang jelas bagi pengguna, supaya
-                // status di layar tidak menampilkan istilah low-level browser.
-                const friendly = (err && err.name === 'AbortError')
-                  ? new Error('Waktu tunggu ke server habis setelah beberapa percobaan. Periksa koneksi internet Anda, lalu tekan Refresh.')
-                  : new Error('Tidak bisa terhubung ke server. Periksa koneksi internet Anda, lalu tekan Refresh.');
-                friendly.name = (err && err.name) || 'FetchError';
-                friendly.cause = err;
-                throw friendly;
+                throw err;
               });
           }
 
@@ -3653,31 +3659,13 @@
         });
       }
 
-      // Menu Utama memuat 4 data ringkasan sekaligus (Dashboard Summary, BD
-      // Status, Action Plan, Summary Dispatch). Kalau ke-4nya ditembak
-      // BERSAMAAN ke GAS web app yang sama, Google Apps Script sering
-      // mengantre/mengunci eksekusinya sehingga masing-masing jadi lambat dan
-      // gampang timeout ("Gagal terhubung ke server: signal is aborted
-      // without reason") — inilah penyebab utama loading Menu Utama stuck.
-      // Solusi: urutkan permintaannya — Dashboard Summary (cardview utama)
-      // ditunggu dulu, baru 3 lainnya ditembak dengan jeda kecil supaya tidak
-      // rebutan slot eksekusi GAS di saat bersamaan.
-      async function showDashboard() {
+      function showDashboard() {
         showPage('Dashboard');
         initDashSectionToggles();
-        await loadDashboardSummary(false);
+        loadDashboardSummary(false);
         loadBDStatusSummary(false);
-        setTimeout(() => loadActionPlanSummary(false), 350);
-        setTimeout(() => loadSummaryDispatch(false), 700);
-      }
-
-      // Dipakai tombol "🔄 Refresh" di Menu Utama — sama seperti showDashboard(),
-      // permintaan diurutkan/diberi jeda supaya tidak membebani GAS bersamaan.
-      async function refreshDashboardAll() {
-        await loadDashboardSummary(true);
-        loadBDStatusSummary(true);
-        setTimeout(() => loadActionPlanSummary(true), 350);
-        setTimeout(() => loadSummaryDispatch(true), 700);
+        loadActionPlanSummary(false);
+        loadSummaryDispatch(false);
       }
 
       // =============================================
@@ -8641,9 +8629,17 @@
        */
       async function _getFromGasWithRetry_(actionName, data, maxRetries) {
         if (maxRetries === undefined) maxRetries = 2;
+        // requestId dibuat SEKALI di sini (bukan di dalam window.fetch), lalu
+        // dipakai ulang di SETIAP percobaan retry di bawah — supaya kalau
+        // percobaan pertama sebenarnya sudah tersimpan di server tapi
+        // balasannya terputus, percobaan berikutnya dengan requestId yang
+        // sama tidak akan membuat data dobel (lihat _handleGuardedWrite_ di
+        // Code.gs).
+        const requestId = 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        const dataWithRid = Object.assign({}, data, { requestId: requestId });
         const url = INVENTORY_JS_GAS_URL +
           '?action=' + encodeURIComponent(actionName) +
-          '&data=' + encodeURIComponent(JSON.stringify(data));
+          '&data=' + encodeURIComponent(JSON.stringify(dataWithRid));
         let lastErr = null;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
@@ -8671,12 +8667,15 @@
        */
       async function _postToGasWithRetry_(actionName, data, maxRetries) {
         if (maxRetries === undefined) maxRetries = 2;
+        // requestId sekali pakai per PANGGILAN (bukan per percobaan retry) —
+        // lihat catatan yang sama di _getFromGasWithRetry_ di atas.
+        const requestId = 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
         let lastErr = null;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
             const res = await fetch(INVENTORY_JS_GAS_URL, {
               method: 'POST',
-              body: JSON.stringify({ action: actionName, data: data }),
+              body: JSON.stringify({ action: actionName, data: data, requestId: requestId }),
             });
             const json = await res.json();
             const isEmptyActionQuirk = json && json.success === false &&
