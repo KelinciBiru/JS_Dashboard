@@ -1733,8 +1733,8 @@
               <div id="dd-checklist-foto-list" class="space-y-2 border border-slate-200 rounded-md p-3"></div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Foto Bukti Selesai</label>
-              <input id="dd-photo-input" type="file" accept="image/*" multiple
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Foto/Video Bukti Selesai</label>
+              <input id="dd-photo-input" type="file" accept="image/*,video/*" multiple
                 onchange="handleDispatchDeliveredPhotoInput(this)"
                 class="w-full text-xs text-slate-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-amber-500 file:text-white file:text-xs file:font-semibold hover:file:bg-amber-600">
               <div id="dd-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
@@ -7208,50 +7208,78 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       }
 
+      // Cache hasil geocode per alamat (in-memory, sekali per sesi halaman) —
+      // alamat tujuan tugas biasanya sama berulang kali (site yang sama), jadi
+      // ini menghindari pemanggilan Nominatim yang lambat berulang-ulang untuk
+      // alamat yang sudah pernah dicari, sekaligus mengurangi risiko kena
+      // rate-limit Nominatim (yang jadi salah satu penyebab estimasi gagal).
+      const _geocodeCache_ = {};
+
       // Geocoding alamat tujuan (gratis, tanpa API key) lewat Nominatim OpenStreetMap,
       // dipakai HANYA untuk menghitung estimasi jarak/waktu tiba (Haversine + asumsi
       // kecepatan rata-rata dalam kota) — bukan rute jalan sebenarnya, jadi hasilnya
-      // perkiraan kasar saja. Kalau gagal (alamat tidak ketemu/offline), estimasi
-      // dilewati dan hanya Jam Berangkat yang tercatat.
+      // perkiraan kasar saja. Kalau gagal (alamat tidak ketemu/offline/timeout),
+      // estimasi dilewati dan hanya Jam Berangkat yang tercatat.
       function _geocodeAddress_(address) {
+        const key = String(address || '').trim().toLowerCase();
+        if (!key) return Promise.resolve(null);
+        if (_geocodeCache_[key] !== undefined) return Promise.resolve(_geocodeCache_[key]);
         const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(address);
-        return fetch(url).then(res => res.json()).then(arr => {
-          if (arr && arr[0]) return { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
-          return null;
-        }).catch(() => null);
+        const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 6000) : null;
+        return fetch(url, controller ? { signal: controller.signal } : {}).then(res => res.json()).then(arr => {
+          if (timer) clearTimeout(timer);
+          const result = (arr && arr[0]) ? { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) } : null;
+          _geocodeCache_[key] = result; // cache termasuk null, supaya alamat yang tidak ketemu tidak dicoba berulang tiap Start
+          return result;
+        }).catch(() => { if (timer) clearTimeout(timer); return null; });
       }
 
       // Ambil posisi geolocation user saat ini (Promise). Kalau browser
-      // menolak/tidak mendukung, resolve(null) alih-alih menggagalkan alur.
+      // menolak/tidak mendukung/timeout, resolve(null) alih-alih menggagalkan
+      // alur — timeout dinaikkan ke 15 detik dan maximumAge diberi toleransi,
+      // karena di lapangan (dalam gedung/sinyal GPS lemah) 8 detik sebelumnya
+      // sering keburu timeout duluan sebelum GPS Hp sempat mendapat fix,
+      // sehingga estimasi selalu kosong.
       function _getCurrentGeolocation_() {
         return new Promise(resolve => {
           if (!navigator.geolocation) { resolve(null); return; }
           navigator.geolocation.getCurrentPosition(
             pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
             () => resolve(null),
-            { timeout: 8000 }
+            { timeout: 15000, maximumAge: 60000, enableHighAccuracy: false }
           );
         });
       }
 
       // Tombol "Start" diklik: catat Jam Berangkat = sekarang + hitung estimasi jam
-      // tiba dari titik lokasi user saat ini ke alamat tujuan Task (Haversine, asumsi
-      // kecepatan rata-rata kota AVG_TRAVEL_SPEED_KMH). Status berubah jadi
-      // "On Delivery" dan tombol berganti jadi "Tiba".
+      // tiba dari titik lokasi user saat ini ke alamat tujuan Task (Haversine +
+      // faktor koreksi rute jalan ROAD_DISTANCE_FACTOR, asumsi kecepatan
+      // rata-rata kota AVG_TRAVEL_SPEED_KMH). Status berubah jadi "On Delivery"
+      // dan tombol berganti jadi "Tiba". Kalau estimasi gagal dihitung (izin
+      // lokasi ditolak/alamat tidak ketemu), Jam Berangkat TETAP tercatat dan
+      // user diberi tahu supaya jelas kenapa Estimasi Tiba tidak muncul —
+      // sebelumnya gagal senyap tanpa pemberitahuan apa pun.
       const AVG_TRAVEL_SPEED_KMH = 30;
+      const ROAD_DISTANCE_FACTOR = 1.3; // jarak lurus (Haversine) dikali faktor ini untuk mendekati jarak tempuh jalan sebenarnya
       async function handleDispatchStart(rowNumber, addressText, btnEl) {
         _setBtnLoading_(btnEl, 'Memulai...');
         const now = new Date();
         const jamBerangkat = _formatJamWIB_(now);
         let estimasiTiba = '';
+        let etaFailReason = '';
         try {
           const [userPos, destPos] = await Promise.all([_getCurrentGeolocation_(), _geocodeAddress_(addressText)]);
           if (userPos && destPos) {
-            const distanceKm = _haversineKm_(userPos.lat, userPos.lng, destPos.lat, destPos.lng);
+            const distanceKm = _haversineKm_(userPos.lat, userPos.lng, destPos.lat, destPos.lng) * ROAD_DISTANCE_FACTOR;
             const etaMinutes = Math.max(5, Math.round(distanceKm / AVG_TRAVEL_SPEED_KMH * 60));
             estimasiTiba = _formatJamWIB_(new Date(now.getTime() + etaMinutes * 60000));
+          } else if (!userPos) {
+            etaFailReason = 'lokasi Hp tidak didapat (cek izin lokasi/GPS)';
+          } else {
+            etaFailReason = 'alamat tujuan tidak ditemukan';
           }
-        } catch (e) { /* estimasi opsional, gagal tetap lanjut catat Jam Berangkat */ }
+        } catch (e) { etaFailReason = 'terjadi kesalahan saat menghitung estimasi'; }
 
         _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba })
           .then(json => {
@@ -7259,6 +7287,9 @@
               showAppAlert('❌ ' + (json.message || 'Gagal mencatat Jam Berangkat'), 'error');
               _clearBtnLoading_(btnEl);
               return;
+            }
+            if (!estimasiTiba && etaFailReason) {
+              showAppAlert('⚠️ Jam Berangkat tercatat, tapi Estimasi Tiba tidak bisa dihitung (' + etaFailReason + ').', 'warning');
             }
             loadTeamDispatchTasks(true);
             if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
@@ -7462,14 +7493,18 @@
         { key: 'vmOnSpot', label: 'VM on the Spot' },
         { key: 'routerSimcard', label: 'Router+Simcard' },
         { key: 'noVmc', label: 'No. VMC' },
-        { key: 'hargaProduk', label: 'Harga Produk (Hanya untuk Coffee Machine)' },
+        { key: 'hargaProduk', label: 'Harga Produk (Hanya untuk Coffee Machine)', optional: true },
         { key: 'sku', label: 'SKU' },
-        { key: 'suhuCompressor', label: 'Suhu Compressor (Hanya untuk Mart Machine)' },
+        { key: 'suhuCompressor', label: 'Suhu Compressor (Hanya untuk Mart Machine)', optional: true },
         { key: 'qr', label: 'QR' },
         { key: 'testTransaksi', label: 'Test Transaksi Berhasil' },
         { key: 'fullBody', label: 'Full Body' },
         { key: 'areaSekitar', label: 'Area Sekitar VM' }
       ];
+      // Item dengan optional:true (Harga Produk & Suhu Compressor) hanya relevan
+      // untuk salah satu jenis mesin (Coffee/Mart), jadi TIDAK wajib diisi radio
+      // maupun fotonya — lihat renderDispatchChecklistFotoFields (label ditandai
+      // "(Opsional)") dan _collectDispatchChecklistFoto_ (validasi dilewati).
 
       // ACTION PLAN yang tersimpan di data task bisa punya variasi kapitalisasi/
       // spasi/imbuhan teks lain (sama seperti pengecekan ACTION PLAN lain di file
@@ -7500,7 +7535,8 @@
         const listEl = document.getElementById('dd-checklist-foto-list');
         listEl.innerHTML = DISPATCH_CHECKLIST_FOTO_ITEMS.map(item =>
           '<div class="flex items-center justify-between gap-2 text-xs">' +
-            '<span class="text-slate-700">' + item.label + '</span>' +
+            '<span class="text-slate-700">' + item.label +
+              (item.optional ? ' <span class="text-slate-400 font-normal">(Opsional)</span>' : '') + '</span>' +
             '<div class="flex items-center gap-2 shrink-0">' +
               '<label class="flex items-center gap-1 cursor-pointer">' +
                 '<input type="radio" name="dd-cf-' + item.key + '" value="OK"> OK</label>' +
@@ -7534,14 +7570,22 @@
       }
 
       // Kumpulkan jawaban Checklist Foto jadi object { key: 'OK'|'Not OK' }.
-      // Mengembalikan null kalau ada item yang belum dijawab ATAU belum
-      // dilampirkan foto (keduanya wajib, dipakai untuk validasi sebelum Simpan).
+      // Mengembalikan null kalau ada item WAJIB yang belum dijawab ATAU belum
+      // dilampirkan foto (dipakai untuk validasi sebelum Simpan). Item dengan
+      // optional:true (Harga Produk & Suhu Compressor) dilewati dari validasi
+      // ini — kalau memang diisi (radio + foto lengkap) tetap disertakan di
+      // hasil, tapi kalau kosong tidak menggagalkan Simpan.
       function _collectDispatchChecklistFoto_() {
         const result = {};
         for (const item of DISPATCH_CHECKLIST_FOTO_ITEMS) {
           const checked = document.querySelector('input[name="dd-cf-' + item.key + '"]:checked');
+          const hasPhoto = !!_ddChecklistFotoPhotos[item.key];
+          if (item.optional) {
+            if (checked && hasPhoto) result[item.key] = checked.value;
+            continue;
+          }
           if (!checked) return null;
-          if (!_ddChecklistFotoPhotos[item.key]) return null;
+          if (!hasPhoto) return null;
           result[item.key] = checked.value;
         }
         return result;
@@ -7803,23 +7847,111 @@
         });
       }
 
-      // Baca file gambar yang dipilih (dari galeri Hp / file picker), kompres
-      // dulu (lihat _compressDispatchPhoto_), baru disimpan sebagai base64 di
-      // memori (_ddPhotos) untuk dikirim ke GAS lewat fetch (JSON).
+      // Kompres video: gambar ulang tiap frame ke <canvas> berukuran lebih
+      // kecil (maxDim) sambil merekamnya lewat MediaRecorder (canvas.captureStream),
+      // supaya ukuran file video jauh lebih kecil dan proses upload tidak lama —
+      // sama seperti _compressDispatchPhoto_ untuk foto. Audio TIDAK disertakan
+      // (video jadi bisu) supaya prosesnya sederhana & konsisten di berbagai HP;
+      // untuk foto bukti selesai ini cukup karena yang penting gambarnya.
+      // Kalau browser tidak mendukung MediaRecorder/captureStream (fallback
+      // ditangani oleh pemanggilnya), video ASLI diunggah apa adanya supaya
+      // user tetap bisa menyelesaikan tugas.
+      function _compressDispatchVideo_(file, maxDim) {
+        return new Promise((resolve, reject) => {
+          if (!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream)) {
+            reject(new Error('Browser tidak mendukung kompresi video'));
+            return;
+          }
+          const videoEl = document.createElement('video');
+          videoEl.muted = true;
+          videoEl.playsInline = true;
+          const objectUrl = URL.createObjectURL(file);
+          let finished = false;
+          const cleanup = () => { if (!finished) { finished = true; URL.revokeObjectURL(objectUrl); } };
+
+          videoEl.onloadedmetadata = () => {
+            let width = videoEl.videoWidth, height = videoEl.videoHeight;
+            if (!width || !height) { cleanup(); reject(new Error('Tidak bisa membaca video')); return; }
+            if (width > maxDim || height > maxDim) {
+              if (width > height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+              else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            let mimeType = 'video/webm;codecs=vp8';
+            if (!(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mimeType))) mimeType = 'video/webm';
+
+            let recorder;
+            try {
+              recorder = new MediaRecorder(canvas.captureStream(24), { mimeType: mimeType, videoBitsPerSecond: 800000 });
+            } catch (e) { cleanup(); reject(e); return; }
+
+            const chunks = [];
+            recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+            recorder.onerror = e => { cleanup(); reject(e.error || new Error('Gagal merekam video')); };
+            recorder.onstop = () => {
+              cleanup();
+              const blob = new Blob(chunks, { type: 'video/webm' });
+              const reader = new FileReader();
+              reader.onload = e => resolve({ base64: (e.target.result.split(',')[1] || ''), mimeType: 'video/webm' });
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(blob);
+            };
+
+            let rafId;
+            function drawFrame() {
+              if (videoEl.paused || videoEl.ended) return;
+              ctx.drawImage(videoEl, 0, 0, width, height);
+              rafId = requestAnimationFrame(drawFrame);
+            }
+            videoEl.onended = () => { cancelAnimationFrame(rafId); if (recorder.state !== 'inactive') recorder.stop(); };
+            videoEl.onplay = () => { recorder.start(); drawFrame(); };
+            videoEl.play().catch(err => { cleanup(); reject(err); });
+          };
+          videoEl.onerror = () => { cleanup(); reject(new Error('Gagal memuat video')); };
+          videoEl.src = objectUrl;
+        });
+      }
+
+      // Baca file gambar/video yang dipilih (dari galeri Hp / file picker),
+      // kompres dulu (foto lewat _compressDispatchPhoto_, video lewat
+      // _compressDispatchVideo_), baru disimpan sebagai base64 di memori
+      // (_ddPhotos) untuk dikirim ke GAS lewat fetch (JSON). Kalau kompresi
+      // video gagal (browser tidak mendukung), file video ASLI tetap
+      // diunggah apa adanya supaya user tidak terblokir.
       function handleDispatchDeliveredPhotoInput(inputEl) {
         const files = Array.from(inputEl.files || []);
         if (!files.length) return;
 
         const statusEl = document.getElementById('dd-status');
-        statusEl.textContent = 'Memproses foto...';
+        statusEl.textContent = 'Memproses foto/video...';
 
-        const tasks = files.map(file =>
-          _compressDispatchPhoto_(file, 1600, 0.7).then(result => ({
+        const tasks = files.map(file => {
+          const isVideo = (file.type || '').indexOf('video/') === 0;
+          if (isVideo) {
+            return _compressDispatchVideo_(file, 640).catch(() => {
+              // Fallback: browser tidak mendukung kompresi video -> baca file asli
+              return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve({ base64: (e.target.result.split(',')[1] || ''), mimeType: file.type || 'video/mp4' });
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(file);
+              });
+            }).then(result => ({
+              name: result.mimeType === 'video/webm' ? file.name.replace(/\.[^./]+$/, '') + '.webm' : file.name,
+              mimeType: result.mimeType,
+              base64: result.base64,
+              isVideo: true
+            }));
+          }
+          return _compressDispatchPhoto_(file, 1600, 0.7).then(result => ({
             name: file.name,
             mimeType: result.mimeType,
             base64: result.base64
-          }))
-        );
+          }));
+        });
 
         Promise.all(tasks).then(results => {
           _ddPhotos = _ddPhotos.concat(results);
@@ -7827,7 +7959,7 @@
           statusEl.textContent = '';
         }).catch(err => {
           statusEl.textContent = '';
-          showAppAlert('❌ Gagal memproses foto: ' + err.message, 'error');
+          showAppAlert('❌ Gagal memproses foto/video: ' + err.message, 'error');
         });
 
         inputEl.value = ''; // reset supaya file yang sama bisa dipilih lagi kalau perlu
@@ -7842,7 +7974,9 @@
         const wrap = document.getElementById('dd-photo-preview');
         wrap.innerHTML = _ddPhotos.map((p, idx) =>
           '<div class="relative">' +
-            '<img src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200">' +
+            (p.isVideo
+              ? '<video src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200" muted></video>'
+              : '<img src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200">') +
             '<button type="button" onclick="removeDispatchDeliveredPhoto(' + idx + ')" ' +
               'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">&times;</button>' +
           '</div>'
