@@ -28,11 +28,12 @@
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com;
-    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://fonts.googleapis.com;
     img-src 'self' data: blob: https:;
     media-src 'self' blob: https:;
-    connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com;
-    font-src 'self' data: https://cdnjs.cloudflare.com;
+    connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cdnjs.cloudflare.com https://nominatim.openstreetmap.org https://fonts.googleapis.com https://fonts.gstatic.com;
+    font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com;
+    manifest-src 'self' data:;
     frame-ancestors 'self';
     base-uri 'self';
     form-action 'self';
@@ -1464,7 +1465,7 @@
       <div id="content-Dashboard" class="page-content active-page">
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
-          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true);"
+          <button onclick="refreshDashboardAll()"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
             🔄 Refresh
           </button>
@@ -2906,12 +2907,16 @@
           // berjalan -> kembalikan promise yang sama, jangan kirim dua kali.
           if (rid && inFlight[rid]) return inFlight[rid];
 
-          const MAX_RETRY = 3;
+          // MAX_RETRY & timeout diturunkan (sebelumnya bisa menunggu >100 detik
+          // sebelum akhirnya gagal, membuat Menu Utama terasa "stuck loading").
+          // Sekarang worst-case ±55 detik untuk 3 percobaan, cukup toleran untuk
+          // GAS yang lambat/cold-start tapi tidak membuat UI menggantung lama.
+          const MAX_RETRY = 2;
           const BASE_DELAY = 900; // ms, dikali 2^percobaan (backoff)
 
           function attempt(n) {
             const controller = new AbortController();
-            const timeoutMs = 20000 + n * 6000; // makin toleran tiap retry
+            const timeoutMs = 12000 + n * 5000; // makin toleran tiap retry
             const timer = setTimeout(() => controller.abort(), timeoutMs);
             const opts = Object.assign({}, finalOptions, { signal: controller.signal });
 
@@ -2934,7 +2939,15 @@
                   return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
                 }
                 hideRecovering();
-                throw err;
+                // Setelah retry habis, ganti error teknis (mis. "signal is aborted
+                // without reason") dengan pesan yang jelas bagi pengguna, supaya
+                // status di layar tidak menampilkan istilah low-level browser.
+                const friendly = (err && err.name === 'AbortError')
+                  ? new Error('Waktu tunggu ke server habis setelah beberapa percobaan. Periksa koneksi internet Anda, lalu tekan Refresh.')
+                  : new Error('Tidak bisa terhubung ke server. Periksa koneksi internet Anda, lalu tekan Refresh.');
+                friendly.name = (err && err.name) || 'FetchError';
+                friendly.cause = err;
+                throw friendly;
               });
           }
 
@@ -3640,13 +3653,31 @@
         });
       }
 
-      function showDashboard() {
+      // Menu Utama memuat 4 data ringkasan sekaligus (Dashboard Summary, BD
+      // Status, Action Plan, Summary Dispatch). Kalau ke-4nya ditembak
+      // BERSAMAAN ke GAS web app yang sama, Google Apps Script sering
+      // mengantre/mengunci eksekusinya sehingga masing-masing jadi lambat dan
+      // gampang timeout ("Gagal terhubung ke server: signal is aborted
+      // without reason") — inilah penyebab utama loading Menu Utama stuck.
+      // Solusi: urutkan permintaannya — Dashboard Summary (cardview utama)
+      // ditunggu dulu, baru 3 lainnya ditembak dengan jeda kecil supaya tidak
+      // rebutan slot eksekusi GAS di saat bersamaan.
+      async function showDashboard() {
         showPage('Dashboard');
         initDashSectionToggles();
-        loadDashboardSummary(false);
+        await loadDashboardSummary(false);
         loadBDStatusSummary(false);
-        loadActionPlanSummary(false);
-        loadSummaryDispatch(false);
+        setTimeout(() => loadActionPlanSummary(false), 350);
+        setTimeout(() => loadSummaryDispatch(false), 700);
+      }
+
+      // Dipakai tombol "🔄 Refresh" di Menu Utama — sama seperti showDashboard(),
+      // permintaan diurutkan/diberi jeda supaya tidak membebani GAS bersamaan.
+      async function refreshDashboardAll() {
+        await loadDashboardSummary(true);
+        loadBDStatusSummary(true);
+        setTimeout(() => loadActionPlanSummary(true), 350);
+        setTimeout(() => loadSummaryDispatch(true), 700);
       }
 
       // =============================================
@@ -8860,7 +8891,7 @@
           // Inventory JS secara sinkron di server (tidak lewat antrian lagi,
           // lihat catatan saveDispatchDelivered_ di Code.gs) — begitu balasan
           // ini diterima, datanya sudah benar-benar tercatat.
-          showToast('Data berhasil disimpan.', 'success');
+          showToast('✅ Task Team Dispatch berhasil diselesaikan!', 'success');
         } catch (err) {
           statusEl.textContent = '❌ ' + err.message;
         } finally {
@@ -9420,7 +9451,7 @@
 
           closeTeamPrepareModal();
           loadTeamPrepareCards(true);
-          showToast(json.message || 'Data pengerjaan berhasil disimpan.', 'success');
+          showToast('✅ Task Team Prepare berhasil diselesaikan!', 'success');
         } catch (err) {
           statusEl.textContent = '❌ ' + err.message;
         } finally {
