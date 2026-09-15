@@ -296,14 +296,26 @@
         overflow-x: auto;
         scroll-snap-type: x mandatory;
         gap: 12px;
-        padding: 2px 2px 10px;
+        padding: 14px 4px 18px;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: thin;
       }
 
+      /* Kartu tetap di posisi/lebar aslinya untuk keperluan layout &
+         scroll-snap (browser menghitung snap-point dari box asli) —
+         efek "tumpuk/fan" (scale mengecil + geser ke tengah + memudar
+         utk kartu yang tidak fokus) murni ditambahkan lewat transform
+         + opacity dari JS (_updateTeamDispatchStackVisual_), supaya
+         lebar total scroll (scrollWidth) tidak berubah dan swipe tetap
+         presisi. Transisi di sini yang bikin perubahan transform
+         terasa halus saat kartu digeser.
+      */
       .td-team-cards > .td-card {
         flex: 0 0 84%;
         scroll-snap-align: center;
+        transform-origin: center center;
+        transition: transform 0.18s ease, opacity 0.18s ease;
+        will-change: transform, opacity;
       }
     }
 
@@ -7236,7 +7248,83 @@
             '</div>'
           );
         }).join('');
+
+        // Aktifkan efek "tumpukan kartu" (scale/depth/overlap) per grup
+        // Team — hanya berefek di mode HP (<=768px), lihat
+        // _updateTeamDispatchStackVisual_.
+        wrapEl.querySelectorAll('.td-team-cards').forEach(_bindTeamDispatchStackScroll_);
       }
+
+      // ============================================================
+      // Efek visual "tumpukan kartu" (stacked/fan) — HANYA mode HP.
+      // Ditambahkan murni lewat transform (scale/translateX/translateY)
+      // + opacity berdasarkan jarak tiap kartu ke titik tengah
+      // container saat digeser; kartu itu sendiri TIDAK diubah lebar
+      // atau posisi flex-nya (jadi scrollWidth & titik snap dari
+      // scroll-snap tetap presisi seperti sebelumnya, swipe untuk
+      // pilih Task tidak terganggu). Di mode Desktop (>768px) semua
+      // inline style hasil efek ini dikosongkan lagi supaya grid
+      // Desktop tidak pernah ikut ke-scale/geser.
+      // ============================================================
+      function _isTeamDispatchMobileStack_() {
+        return window.innerWidth <= 768;
+      }
+
+      function _updateTeamDispatchStackVisual_(container) {
+        if (!container) return;
+        const cards = container.querySelectorAll(':scope > .td-card');
+        if (!_isTeamDispatchMobileStack_()) {
+          cards.forEach(card => {
+            card.style.transform = '';
+            card.style.opacity = '';
+            card.style.zIndex = '';
+          });
+          return;
+        }
+        const rect = container.getBoundingClientRect();
+        if (!rect.width) return; // container belum ke-layout (mis. menu masih hidden)
+        const centerX = rect.left + rect.width / 2;
+        const half = rect.width / 2;
+        cards.forEach(card => {
+          const cRect = card.getBoundingClientRect();
+          const cardCenter = cRect.left + cRect.width / 2;
+          const delta = cardCenter - centerX;
+          const norm = Math.min(Math.abs(delta) / half, 1); // 0 = fokus di tengah, 1 = paling tepi
+          const scale = 1 - norm * 0.14;
+          const translateY = norm * 16;
+          const translateX = (delta < 0 ? 1 : -1) * norm * 22; // tarik kartu non-fokus ke tengah -> efek tumpuk/fan
+          const opacity = 1 - norm * 0.35;
+          card.style.transform =
+            'translateX(' + translateX.toFixed(1) + 'px) translateY(' + translateY.toFixed(1) + 'px) scale(' + scale.toFixed(3) + ')';
+          card.style.opacity = opacity.toFixed(2);
+          card.style.zIndex = String(100 - Math.round(norm * 100));
+        });
+      }
+
+      // Listener scroll di-throttle pakai requestAnimationFrame supaya
+      // tidak menghitung ulang layout tiap event scroll (hindari lag di
+      // HP low-end saat kartu digeser cepat).
+      function _bindTeamDispatchStackScroll_(container) {
+        if (!container) return;
+        let ticking = false;
+        container.addEventListener('scroll', () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            _updateTeamDispatchStackVisual_(container);
+            ticking = false;
+          });
+        }, { passive: true });
+        // Hitung posisi awal begitu browser selesai layout kartu barusan.
+        requestAnimationFrame(() => requestAnimationFrame(() => _updateTeamDispatchStackVisual_(container)));
+      }
+
+      // Rotasi layar / resize jendela (termasuk saat lebar geser
+      // melewati breakpoint 768px HP<->Desktop): hitung ulang atau
+      // bersihkan efek tumpuk di semua grup Team yang sedang tampil.
+      window.addEventListener('resize', () => {
+        document.querySelectorAll('#team-dispatch-cards .td-team-cards').forEach(_updateTeamDispatchStackVisual_);
+      });
 
       // Format nomor telepon Indonesia (0xxx / +62xxx / 62xxx / dengan
       // spasi-strip-tanda kurung) menjadi link chat WhatsApp (wa.me/62xxx).
