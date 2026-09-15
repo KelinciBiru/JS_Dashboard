@@ -1307,7 +1307,7 @@
           border-radius:10px;padding:8px 10px;
           margin-bottom:10px;text-align:center;">
           </div>
-          <button onclick="doLogout()" style="
+          <button onclick="openLogoutConfirmModal()" style="
           width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
           padding:9px;border-radius:8px;border:none;
           background:#fff1f2;color:#ef4444;font-size:12px;font-weight:700;
@@ -1615,6 +1615,20 @@
               <thead id="plan-task-preview-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
               <tbody id="plan-task-preview-tbody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Konfirmasi Logout -->
+      <div id="logout-confirm-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
+          <h3 class="text-sm font-bold text-slate-800 mb-1">Konfirmasi Logout</h3>
+          <p class="text-xs text-slate-500 mb-4">Yakin ingin keluar dari NOD Dashboard?</p>
+          <div class="flex justify-end gap-2">
+            <button onclick="closeLogoutConfirmModal()"
+              class="px-3 py-1.5 text-xs font-semibold text-slate-600">Batal</button>
+            <button onclick="confirmLogoutModal()"
+              class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-md">Ya, Logout</button>
           </div>
         </div>
       </div>
@@ -2557,6 +2571,75 @@
       };
 
       // =============================================
+      // SESSION TIMEOUT — auto kembali ke Login setelah
+      // 6 jam tidak online/standby, sekaligus memaksa
+      // browser ambil ulang aset terbaru (bypass cache)
+      // supaya device yang tertinggal versi lama otomatis
+      // ter-update tanpa perlu hard-refresh manual.
+      // =============================================
+      const SESSION_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 jam
+      const LS_LAST_ACTIVE_KEY = 'nod_lastActiveAt';
+      let _lastActivityTouchAt = 0;
+
+      /**
+       * Catat waktu aktivitas terakhir ke localStorage (throttle 30 detik
+       * supaya tidak menulis localStorage di setiap gerakan mouse).
+       * `force=true` dipakai saat login/restore sesi supaya langsung tercatat.
+       */
+      function _touchLastActive_(force) {
+        const now = Date.now();
+        if (!force && now - _lastActivityTouchAt < 30000) return;
+        _lastActivityTouchAt = now;
+        localStorage.setItem(LS_LAST_ACTIVE_KEY, String(now));
+      }
+
+      /**
+       * True kalau sudah lebih dari SESSION_TIMEOUT_MS sejak aktivitas
+       * terakhir tercatat. Berbasis selisih jam dinding (Date.now()),
+       * jadi tetap terdeteksi walau laptop/HP standby (timer JS berhenti
+       * saat standby, tapi jam tetap jalan begitu perangkat aktif lagi).
+       */
+      function _isSessionExpired_() {
+        const last = parseInt(localStorage.getItem(LS_LAST_ACTIVE_KEY) || '0', 10);
+        if (!last) return false;
+        return (Date.now() - last) > SESSION_TIMEOUT_MS;
+      }
+
+      /**
+       * Sesi habis (6 jam tidak online/standby) -> hapus sesi tersimpan
+       * lalu navigasi ulang ke URL yang sama dengan query cache-buster,
+       * supaya browser mengambil ulang index.html terbaru dari server
+       * (bukan dari cache lama) dan user mendarat di halaman Login.
+       */
+      function _forceSessionExpiredReturnToLogin_() {
+        localStorage.removeItem('nod_currentRole');
+        localStorage.removeItem(LS_LAST_ACTIVE_KEY);
+        const baseUrl = window.location.href.split('#')[0].split('?')[0];
+        window.location.href = baseUrl + '?_r=' + Date.now();
+      }
+
+      // Cek tiap 1 menit selagi app terbuka (menangkap kasus tab
+      // dibiarkan terbuka lama tanpa pernah di-reload manual).
+      setInterval(() => {
+        if (currentRole && _isSessionExpired_()) _forceSessionExpiredReturnToLogin_();
+      }, 60 * 1000);
+
+      // Cek juga begitu tab kembali aktif (menangkap kasus HP/laptop
+      // standby / tab background lama, di mana setInterval bisa ikut
+      // "tertidur" dan baru jalan lagi setelah tab difokuskan ulang).
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && currentRole && _isSessionExpired_()) {
+          _forceSessionExpiredReturnToLogin_();
+        }
+      });
+
+      // Aktivitas user (klik, ketik, sentuh, scroll, gerak mouse) menandakan
+      // dashboard "online/tidak standby" -> reset penghitung 6 jam.
+      ['click', 'keydown', 'touchstart', 'mousemove', 'scroll'].forEach(evt => {
+        document.addEventListener(evt, () => _touchLastActive_(false), { passive: true });
+      });
+
+      // =============================================
       // KONFIGURASI GAS BACKEND
       // =============================================
       const INVENTORY_JS_GAS_URL = 'https://script.google.com/macros/s/AKfycbxJZfuP2HeBTX4qVwLnYLXehmGAwgx2Z0LoOpNbSDmo61ArKjQ3T4OovQWAlc1KwRZ5/exec';
@@ -2631,6 +2714,7 @@
         currentRole = selectedRole;
 
         localStorage.setItem('nod_currentRole', currentRole);
+        _touchLastActive_(true);
 
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('app-wrapper').style.display = 'block';
@@ -2641,10 +2725,30 @@
         applyRoleAccess();
       }
 
+      /**
+       * Modal konfirmasi sebelum benar-benar logout, supaya user tidak
+       * ter-logout tidak sengaja karena salah sentuh/klik tombol Logout.
+       */
+      function openLogoutConfirmModal() {
+        const modal = document.getElementById('logout-confirm-modal');
+        if (modal) modal.classList.remove('hidden');
+      }
+
+      function closeLogoutConfirmModal() {
+        const modal = document.getElementById('logout-confirm-modal');
+        if (modal) modal.classList.add('hidden');
+      }
+
+      function confirmLogoutModal() {
+        closeLogoutConfirmModal();
+        doLogout();
+      }
+
       function doLogout() {
         currentRole = '';
         selectedRole = '';
         localStorage.removeItem('nod_currentRole');
+        localStorage.removeItem(LS_LAST_ACTIVE_KEY);
         document.getElementById('loginPassword').value = '';
         document.getElementById('login-error').style.display = 'none';
         ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
@@ -2665,9 +2769,19 @@
        * Cek sesi tersimpan di localStorage saat halaman dimuat/refresh.
        */
       function restoreSession() {
+        // Sesi sudah lewat 6 jam tidak online/standby -> jangan dipulihkan,
+        // biarkan user mendarat di halaman Login (dan otomatis dapat aset
+        // index.html terbaru karena ini request baru dari server).
+        if (_isSessionExpired_()) {
+          localStorage.removeItem('nod_currentRole');
+          localStorage.removeItem(LS_LAST_ACTIVE_KEY);
+          return;
+        }
+
         const savedRole = localStorage.getItem('nod_currentRole');
         if (savedRole && PASSWORDS.hasOwnProperty(savedRole)) {
           currentRole = savedRole;
+          _touchLastActive_(true);
 
           document.getElementById('login-page').style.display = 'none';
           document.getElementById('app-wrapper').style.display = 'block';
@@ -3097,7 +3211,7 @@
           else { renderMobileHome(); showToast('Homescreen diperbarui', 'success'); }
         });
         if (dockRole) dockRole.addEventListener('click', () => showToast('Login sebagai ' + currentRole, 'info'));
-        if (dockLogout) dockLogout.addEventListener('click', () => doLogout());
+        if (dockLogout) dockLogout.addEventListener('click', () => openLogoutConfirmModal());
         if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', () => closeMobileSidebar());
 
         startAutoRefresh();
