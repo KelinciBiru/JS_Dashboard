@@ -1396,6 +1396,7 @@
 
         <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Summary Dispatch</h2>
         <div id="summary-dispatch-status" class="text-xs text-slate-500 mb-2"></div>
+        <div id="summary-dispatch-granularity" class="flex flex-wrap gap-2 mb-3"></div>
 
         <div class="rounded-2xl border-2 border-slate-100 bg-white p-4 mb-4">
           <h3 class="text-xs font-bold text-slate-600 mb-2">Summary Activity Dispatch (Done)</h3>
@@ -1407,7 +1408,7 @@
 
         <div class="rounded-2xl border-2 border-slate-100 bg-white p-4">
           <h3 class="text-xs font-bold text-slate-600 mb-1">Tabel PIC Dispatch</h3>
-          <p class="text-[11px] text-slate-400 mb-2">Qty activity Done per bulan (Januari s.d. bulan berjalan), supaya kelihatan naik/turunnya.</p>
+          <p class="text-[11px] text-slate-400 mb-2">Qty activity Done, breakdown sesuai periode terpilih (Bulan/Per-Minggu/Per-Hari) di atas.</p>
           <div class="overflow-auto border border-slate-100 rounded-lg">
             <table class="min-w-full text-xs">
               <thead id="summary-dispatch-pic-thead" class="sticky top-0" style="background-color:#0b1f3a;color:#ffffff;"></thead>
@@ -1493,8 +1494,12 @@
       <div id="content-InputTask" class="page-content">
         <div class="flex items-center justify-between mb-4 gap-2">
           <h1 class="text-lg font-bold text-slate-800">Input Task</h1>
-          <button id="input-task-clear-btn" onclick="clearInputTaskPage()"
-            class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">Bersihkan Halaman</button>
+          <div class="flex items-center gap-2">
+            <button id="input-task-refresh-btn" onclick="refreshInputTaskPage()"
+              class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">🔄 Refresh</button>
+            <button id="input-task-clear-btn" onclick="clearInputTaskPage()"
+              class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">Bersihkan Halaman</button>
+          </div>
         </div>
         <div id="input-task-empty" class="placeholder-box">Belum ada data yang dikirim dari menu Jabodetabek. Buka menu Request BD &gt; Jabodetabek, centang data, lalu klik tombol "Add".</div>
         <div id="input-task-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
@@ -3715,11 +3720,18 @@
       // Withdrawal), (2) tabel PIC Dispatch — qty activity Done per nama PIC.
       // =============================================
       let _summaryDispatchLoaded = false;
-      let _summaryDispatchData = { months: [], actionPlanList: [], series: {}, picTable: [] };
+      let _summaryDispatchData = { months: [], actionPlanList: [], series: {}, picTable: [], rawRows: [] };
       let _summaryDispatchFetching = false;
       let _summaryDispatchLastFetch = null;
       let _summaryDispatchActiveFilter = 'Semua';
       let _summaryDispatchChart = null;
+      // Granularitas grafik "Summary Activity Dispatch (Done)" & tabel "PIC
+      // Dispatch": 'month' (default, Jan s.d. bulan berjalan — sama seperti
+      // sebelumnya), 'week' (12 minggu terakhir), 'day' (30 hari terakhir).
+      // Dihitung ulang di CLIENT dari _summaryDispatchData.rawRows (dikirim
+      // server sekali lewat action getSummaryDispatch) — tidak perlu round-trip
+      // ke server tiap ganti granularitas. Lihat _summaryDispatchBuildBuckets_().
+      let _summaryDispatchGranularity = 'month';
 
       const SUMMARY_DISPATCH_FILTER_COLORS = {
         'Semua': '#0b1f3a',
@@ -3728,6 +3740,119 @@
         'Relocation': '#a855f7',
         'Withdrawal': '#f59e0b'
       };
+
+      function _setSummaryDispatchGranularity(g) {
+        _summaryDispatchGranularity = g;
+        _renderSummaryDispatchGranularityBadges();
+        _renderSummaryDispatchChart();
+        _renderSummaryDispatchPicTable();
+      }
+
+      function _renderSummaryDispatchGranularityBadges() {
+        const wrap = document.getElementById('summary-dispatch-granularity');
+        if (!wrap) return;
+        const opts = [['month', 'Bulan'], ['week', 'Per-Minggu'], ['day', 'Per-Hari']];
+        wrap.innerHTML = opts.map(([key, label]) => {
+          const active = _summaryDispatchGranularity === key;
+          return '<button onclick="_setSummaryDispatchGranularity(\'' + key + '\')" ' +
+            'class="btn-press px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-colors" ' +
+            'style="' + (active
+              ? 'background-color:#0b1f3a;color:#ffffff;border-color:#0b1f3a;'
+              : 'background-color:#ffffff;color:#334155;border-color:#e2e8f0;') + '">' + label + '</button>';
+        }).join('');
+      }
+
+      function _summaryDispatchFmtDDMM_(d) {
+        return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+      }
+
+      function _summaryDispatchMondayOf_(d) {
+        const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const day = dd.getDay(); // 0=Minggu..6=Sabtu
+        const diff = (day === 0 ? -6 : 1 - day); // geser ke Senin
+        dd.setDate(dd.getDate() + diff);
+        return dd;
+      }
+
+      // Parse dateStr "yyyy-MM-dd" (dari server) jadi Date lokal (hindari
+      // pergeseran zona waktu kalau di-parse langsung via `new Date(str)`).
+      function _summaryDispatchParseDate_(dateStr) {
+        const [y, m, d] = String(dateStr).split('-').map(Number);
+        return new Date(y, m - 1, d);
+      }
+
+      // Bangun bucket label + isi (series per ACTION PLAN & per PIC) sesuai
+      // granularitas aktif, dari data mentah rawRows (dikirim server, lihat
+      // getSummaryDispatch_ di Code.gs). Untuk 'month', tetap pakai months/series/
+      // picTable yang sudah dihitung server (Jan s.d. bulan berjalan) supaya
+      // hasilnya identik seperti sebelum fitur ini ditambahkan.
+      function _summaryDispatchBuildBuckets_() {
+        const g = _summaryDispatchGranularity;
+        const actionPlanList = _summaryDispatchData.actionPlanList || [];
+
+        if (g === 'month' || !(_summaryDispatchData.rawRows && _summaryDispatchData.rawRows.length)) {
+          const months = _summaryDispatchData.months || [];
+          const seriesByAp = {};
+          actionPlanList.forEach(ap => { seriesByAp[ap] = (_summaryDispatchData.series || {})[ap] || months.map(() => 0); });
+          const picRows = (_summaryDispatchData.picTable || []).map(r => ({ pic: r.pic, values: r.monthly || months.map(() => 0), total: r.total || 0 }));
+          return { labels: months, seriesByAp, picRows };
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let bucketStarts = []; // tanggal awal tiap bucket, dipakai untuk mencocokkan baris data
+        let labels = [];
+        if (g === 'day') {
+          for (let i = 29; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            bucketStarts.push(d);
+            labels.push(_summaryDispatchFmtDDMM_(d));
+          }
+        } else { // 'week' — 12 minggu terakhir, bucket = Senin tiap minggu
+          const thisMonday = _summaryDispatchMondayOf_(today);
+          for (let i = 11; i >= 0; i--) {
+            const d = new Date(thisMonday);
+            d.setDate(d.getDate() - i * 7);
+            bucketStarts.push(d);
+            labels.push(_summaryDispatchFmtDDMM_(d));
+          }
+        }
+
+        const bucketKey = (dateObj) => g === 'day'
+          ? _summaryDispatchFmtDDMM_(dateObj) + '/' + dateObj.getFullYear()
+          : _summaryDispatchFmtDDMM_(_summaryDispatchMondayOf_(dateObj)) + '/' + dateObj.getFullYear();
+        const bucketKeys = bucketStarts.map(d => bucketKey(g === 'day' ? d : d));
+        const bucketIndexByKey = {};
+        bucketKeys.forEach((k, i) => { bucketIndexByKey[k] = i; });
+
+        const seriesByAp = {};
+        actionPlanList.forEach(ap => { seriesByAp[ap] = labels.map(() => 0); });
+        const picBuckets = {};
+
+        (_summaryDispatchData.rawRows || []).forEach(r => {
+          if (!r.dateStr) return;
+          const dateObj = _summaryDispatchParseDate_(r.dateStr);
+          const key = bucketKey(g === 'day' ? dateObj : dateObj);
+          const idx = bucketIndexByKey[key];
+          if (idx === undefined) return; // di luar rentang 30 hari / 12 minggu terakhir
+          if (seriesByAp[r.actionPlan]) seriesByAp[r.actionPlan][idx]++;
+          if (r.picRaw) {
+            r.picRaw.split(',').forEach(name => {
+              const n = name.trim();
+              if (!n) return;
+              if (!picBuckets[n]) picBuckets[n] = labels.map(() => 0);
+              picBuckets[n][idx]++;
+            });
+          }
+        });
+
+        const picRows = Object.keys(picBuckets)
+          .map(name => ({ pic: name, values: picBuckets[name], total: picBuckets[name].reduce((s, v) => s + v, 0) }))
+          .sort((a, b) => b.total - a.total || a.pic.localeCompare(b.pic));
+
+        return { labels, seriesByAp, picRows };
+      }
 
       function _renderSummaryDispatchFilterBadges() {
         const wrap = document.getElementById('summary-dispatch-filter');
@@ -3766,14 +3891,13 @@
           return;
         }
 
-        const months = _summaryDispatchData.months || [];
+        const { labels, seriesByAp } = _summaryDispatchBuildBuckets_();
         const actionPlanList = _summaryDispatchData.actionPlanList || [];
-        const series = _summaryDispatchData.series || {};
 
         let datasets;
         if (_summaryDispatchActiveFilter === 'Semua') {
-          const totals = months.map((_, i) =>
-            actionPlanList.reduce((sum, ap) => sum + ((series[ap] || [])[i] || 0), 0));
+          const totals = labels.map((_, i) =>
+            actionPlanList.reduce((sum, ap) => sum + ((seriesByAp[ap] || [])[i] || 0), 0));
           datasets = [{
             label: 'Semua Activity',
             data: totals,
@@ -3787,7 +3911,7 @@
           const color = SUMMARY_DISPATCH_FILTER_COLORS[ap] || '#64748b';
           datasets = [{
             label: ap,
-            data: (series[ap] || months.map(() => 0)),
+            data: (seriesByAp[ap] || labels.map(() => 0)),
             borderColor: color,
             backgroundColor: color,
             tension: 0.3,
@@ -3796,7 +3920,7 @@
         }
 
         if (_summaryDispatchChart) {
-          _summaryDispatchChart.data.labels = months;
+          _summaryDispatchChart.data.labels = labels;
           _summaryDispatchChart.data.datasets = datasets;
           _summaryDispatchChart.update();
           return;
@@ -3804,7 +3928,7 @@
 
         _summaryDispatchChart = new Chart(canvas.getContext('2d'), {
           type: 'line',
-          data: { labels: months, datasets: datasets },
+          data: { labels: labels, datasets: datasets },
           options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -3814,17 +3938,17 @@
         });
       }
 
-      // Tabel PIC Dispatch — breakdown per bulan (Jan s.d. bulan berjalan),
-      // supaya kelihatan naik/turunnya qty tiap PIC per bulan (bukan cuma
-      // total keseluruhan). Kolom bulan terakhir (bulan berjalan) dikasih
-      // panah tren dibanding bulan sebelumnya.
+      // Tabel PIC Dispatch — breakdown per bulan/minggu/hari (sesuai
+      // _summaryDispatchGranularity), supaya kelihatan naik/turunnya qty tiap
+      // PIC dari waktu ke waktu (bukan cuma total keseluruhan). Kolom
+      // terakhir (periode terbaru) dikasih panah tren dibanding periode sebelumnya.
       function _renderSummaryDispatchPicTableHead() {
         const thead = document.getElementById('summary-dispatch-pic-thead');
         if (!thead) return;
-        const months = _summaryDispatchData.months || [];
+        const { labels } = _summaryDispatchBuildBuckets_();
         thead.innerHTML = '<tr>' +
           '<th class="px-3 py-2 text-left font-semibold sticky left-0" style="background-color:#0b1f3a;">PIC Dispatch</th>' +
-          months.map(m => '<th class="px-3 py-2 text-center font-semibold whitespace-nowrap">' + m + '</th>').join('') +
+          labels.map(m => '<th class="px-3 py-2 text-center font-semibold whitespace-nowrap">' + m + '</th>').join('') +
           '<th class="px-3 py-2 text-center font-semibold whitespace-nowrap">Total</th>' +
           '</tr>';
       }
@@ -3840,22 +3964,21 @@
         _renderSummaryDispatchPicTableHead();
         const tbody = document.getElementById('summary-dispatch-pic-tbody');
         if (!tbody) return;
-        const months = _summaryDispatchData.months || [];
-        const rows = _summaryDispatchData.picTable || [];
-        const colspan = months.length + 2;
+        const { labels, picRows } = _summaryDispatchBuildBuckets_();
+        const colspan = labels.length + 2;
 
-        tbody.innerHTML = rows.length === 0
+        tbody.innerHTML = picRows.length === 0
           ? '<tr><td colspan="' + colspan + '" class="px-3 py-6 text-center text-slate-400">Tidak ada data.</td></tr>'
-          : rows.map(r => {
-              const monthly = r.monthly || months.map(() => 0);
-              const lastIdx = monthly.length - 1;
-              const monthCells = monthly.map((qty, i) => {
-                const arrow = i === lastIdx ? _summaryDispatchTrendArrow_(qty, monthly[i - 1]) : '';
+          : picRows.map(r => {
+              const values = r.values || labels.map(() => 0);
+              const lastIdx = values.length - 1;
+              const cells = values.map((qty, i) => {
+                const arrow = i === lastIdx ? _summaryDispatchTrendArrow_(qty, values[i - 1]) : '';
                 return '<td class="px-3 py-2 text-center">' + (qty || 0) + arrow + '</td>';
               }).join('');
               return '<tr class="border-b border-slate-100 hover:bg-amber-50">' +
                 '<td class="px-3 py-2 font-semibold sticky left-0 bg-white">' + (r.pic || '-') + '</td>' +
-                monthCells +
+                cells +
                 '<td class="px-3 py-2 text-center font-bold">' + (r.total || 0) + '</td>' +
                 '</tr>';
             }).join('');
@@ -3871,10 +3994,12 @@
               months: cached.payload.months || [],
               actionPlanList: cached.payload.actionPlanList || [],
               series: cached.payload.series || {},
-              picTable: cached.payload.picTable || []
+              picTable: cached.payload.picTable || [],
+              rawRows: cached.payload.rawRows || []
             };
             _summaryDispatchLoaded = true;
             _renderSummaryDispatchFilterBadges();
+            _renderSummaryDispatchGranularityBadges();
             _renderSummaryDispatchChart();
             _renderSummaryDispatchPicTable();
             if (statusEl) statusEl.textContent = 'Data (cache) — memuat data terbaru...';
@@ -3903,12 +4028,14 @@
             months: json.months || [],
             actionPlanList: json.actionPlanList || [],
             series: json.series || {},
-            picTable: json.picTable || []
+            picTable: json.picTable || [],
+            rawRows: json.rawRows || []
           };
           _summaryDispatchLoaded = true;
           _summaryDispatchLastFetch = Date.now();
           saveDataCache('summaryDispatch', _summaryDispatchData);
           _renderSummaryDispatchFilterBadges();
+          _renderSummaryDispatchGranularityBadges();
           _renderSummaryDispatchChart();
           _renderSummaryDispatchPicTable();
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
@@ -4670,7 +4797,7 @@
       // refreshInputTaskVmcNo() & renderInputTaskTable().
       const INPUT_TASK_COLUMNS = [
         'TICKET', 'ACTION PLAN', 'VMC NO', 'PROPOSED VM TYPE',
-        'LOCATION NAME', 'VM TYPE ON SITE', 'DELIVERY / PICK UP ADDRESS'
+        'LOCATION NAME', 'VM TYPE ON SITE', 'DELIVERY / PICK UP ADDRESS', 'COMMENT'
       ];
       let _inputTaskRows = [];
 
@@ -5466,7 +5593,7 @@
 
         thead.innerHTML = '<tr>' + checkboxTh + displayHeaders.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
-          (h || '') + '</th>'
+          ((h === 'SLA' ? 'Remaining' : h) || '') + '</th>'
         ).join('') + '</tr>';
 
         const filtered = _getFilteredJabodetabekData();
@@ -5511,6 +5638,20 @@
       // =============================================
       // INPUT TASK (data dikirim dari Request BD - Jabodetabek)
       // =============================================
+      // Tombol "🔄 Refresh": muat ulang halaman penuh. Data _inputTaskRows sudah
+      // dipersist ke localStorage (lihat saveInputTaskRows/restoreInputTaskRows),
+      // jadi refresh halaman tidak menghilangkan data yang sudah ada.
+      function refreshInputTaskPage() {
+        location.reload();
+      }
+
+      // Update kolom COMMENT (diisi manual oleh User) untuk baris Input Task ke-i.
+      function handleInputTaskCommentChange(i, value) {
+        if (!_inputTaskRows[i]) return;
+        _inputTaskRows[i]['COMMENT'] = value;
+        saveInputTaskRows();
+      }
+
       function renderInputTaskTable() {
         // Setiap kali tabel Input Task dirender ulang, simpan state-nya ke
         // localStorage — titik tunggal ini otomatis meng-cover semua aksi yang
@@ -5546,6 +5687,13 @@
             if (h === 'VMC NO') {
               return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
                 _buildInputTaskVmcNoCell(row, i) + '</td>';
+            }
+            if (h === 'COMMENT') {
+              return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
+                '<textarea rows="2" placeholder="Tulis komentar..." ' +
+                'class="w-full border border-slate-300 rounded-md px-2 py-1 text-xs sm:text-sm resize-y" ' +
+                'onchange="handleInputTaskCommentChange(' + i + ', this.value)">' +
+                _escapeHtmlAttr_(row['COMMENT'] || '') + '</textarea></td>';
             }
             return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>';
           }).join('') +
@@ -5836,11 +5984,16 @@
       // (lookup TICKET ke sheet "Event" di spreadsheet "Logistic Request 2026",
       // kolom F, dilakukan di server saat submitPlanTask_); task dari Jabodetabek
       // akan tampil kosong pada kolom ini.
+      // 'COMMENT' dan 'Jam Berangkat'/'Jam Tiba'/'Jam Delivered' sengaja ditaruh PALING
+      // TERAKHIR (setelah 'PRODUCT TYPE') — bukan disisipkan sebelum 'REMARKS' — supaya
+      // posisi kolom 'Status' (R) di sheet tidak bergeser dan data lama tidak rusak,
+      // sama seperti pola 'PRODUCT TYPE' sebelumnya. Kolom sheet: ...S=PRODUCT TYPE,
+      // T=Jam Berangkat, U=Jam Tiba, V=Jam Delivered, W=COMMENT.
       const PLAN_TASK_DISPLAY_COLUMNS = [
         'Plan Date', 'TICKET', 'NO VMC JUMPSTART', 'LOCATION NAME', 'ACTION PLAN',
         'PROPOSED VM TYPE', 'VM TYPE ON SITE', 'MACHINE SET UP', 'PRICE SETTINGS',
         'SITE PIC', 'SITE PIC PHONE NO.', 'DELIVERY / PICK UP ADDRESS', 'REMARKS',
-        'PRODUCT TYPE'
+        'PRODUCT TYPE', 'Jam Berangkat', 'Jam Tiba', 'Jam Delivered', 'COMMENT'
       ];
       // Satu elemen array = satu batch hasil submit Plan Task (satu team/PIC),
       // berbentuk { divisi, pic, noKendaraan, rows }. Batch baru ditambahkan
@@ -6320,7 +6473,10 @@
       // atau "On Delivery" (task yang sudah di-Start di Team Dispatch tetap
       // tampil di sini, tidak hilang).
       // =============================================
-      const TASK_ONGOING_COLUMNS = ['Divisi', 'PIC', 'No. Kendaraan', 'NO VMC JUMPSTART', 'ACTION PLAN', 'LOCATION NAME'];
+      const TASK_ONGOING_COLUMNS = [
+        'Divisi', 'PIC', 'No. Kendaraan', 'NO VMC JUMPSTART', 'ACTION PLAN', 'LOCATION NAME',
+        'Status', 'Jam Berangkat', 'Jam Tiba', 'Jam Delivered'
+      ];
       const TASK_ONGOING_DISPLAY_COLUMNS = TASK_ONGOING_COLUMNS.concat(['AKSI']);
       let _taskOnGoingRows = [];
 
@@ -6341,7 +6497,7 @@
           }
           _taskOnGoingRows = (json.rows || []).filter(r => {
             const st = String(r['Status'] || '').trim().toLowerCase();
-            return st === 'open' || st === 'on delivery';
+            return st === 'open' || st === 'on delivery' || st === 'arrived';
           });
           saveTaskOnGoingRows();
           statusEl.textContent = _taskOnGoingRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
@@ -6450,7 +6606,7 @@
       // Location Name), lihat HISTORYCAL_DISPATCH_CHECKLIST_COLUMNS di bawah.
       const HISTORYCAL_DISPATCH_COLUMNS = [
         'Timestamp', 'Action Plan', 'Loading Date (Actual)', 'Location Name',
-        'MACHINE TYPE (sent from WH)', 'NO VMC JUMPSTART', 'PIC Dispatch'
+        'MACHINE TYPE (sent from WH)', 'NO VMC JUMPSTART', 'PIC Dispatch', 'Checklist'
       ];
       // Kolom checklist (10 item) yang dulu tampil di tabel utama — sekarang
       // dirender di dalam popup saat Location Name diklik. Label harus sama
@@ -6535,6 +6691,17 @@
         return id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w1000') : url;
       }
 
+      // Kolom "Checklist" di tabel utama Historycal Dispatch — HANYA
+      // menampilkan item Checklist Foto yang jawabannya "Not OK" (bukan
+      // seluruh 10 item seperti di popup), supaya langsung kelihatan task
+      // mana yang ada temuan tanpa perlu buka popup dulu.
+      function _historycalDispatchNotOkList_(row) {
+        const notOk = HISTORYCAL_DISPATCH_CHECKLIST_COLUMNS.filter(label =>
+          String(row[label] ?? '').trim().toLowerCase() === 'not ok');
+        if (!notOk.length) return '<span class="text-emerald-600 font-semibold">Semua OK</span>';
+        return '<span class="text-red-600">' + notOk.join(', ') + '</span>';
+      }
+
       function renderHistorycalDispatchTable() {
         const emptyEl = document.getElementById('historycal-dispatch-empty');
         const wrapEl = document.getElementById('historycal-dispatch-table-wrap');
@@ -6564,6 +6731,9 @@
                 '<button type="button" onclick="openHistorycalDispatchChecklistModal(' + i + ')" ' +
                 'class="text-blue-600 hover:underline font-semibold text-left">' + (row[h] ?? '') + '</button>' +
                 '</td>';
+            }
+            if (h === 'Checklist') {
+              return '<td class="px-4 py-2.5 align-top text-xs whitespace-normal break-words leading-snug">' + _historycalDispatchNotOkList_(row) + '</td>';
             }
             const val = (h === 'Loading Date (Actual)') ? _historycalDispatchFormatDMY_(row[h]) : (row[h] ?? '');
             return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + val + '</td>';
@@ -6600,13 +6770,29 @@
 
         const photosEl = document.getElementById('hd-checklist-photos');
         const raw = String(row['Foto Bukti'] ?? '').trim();
-        const urls = raw ? raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
-        photosEl.innerHTML = urls.length ? urls.map(u =>
-          '<a href="' + u + '" target="_blank" rel="noopener" class="block rounded-md overflow-hidden border border-slate-200 hover:opacity-90">' +
-          '<img src="' + _driveThumbnailSrc_(u) + '" loading="lazy" class="w-full h-28 object-cover" ' +
-          'onerror="this.parentElement.outerHTML=\'<a href=&quot;' + u + '&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot; class=&quot;flex items-center justify-center h-28 rounded-md border border-slate-200 text-xs text-blue-600 hover:underline&quot;>Buka Foto</a>\';">' +
-          '</a>'
-        ).join('') : '<div class="col-span-full text-xs text-slate-400">Tidak ada foto bukti.</div>';
+        // Baris "Foto Bukti" bisa berisi 2 bentuk: foto umum polos ("<url>")
+        // dan foto per-item Checklist Foto yang ditandai labelnya
+        // ("<label>::<url>", ditulis oleh _recordTaskTeamDispatch_ di Code.gs).
+        // Yang bertanda ditampilkan sebagai gambar + label di bawahnya; yang
+        // polos tetap tampil sebagai galeri foto biasa tanpa label.
+        const lines = raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        const tagged = [];
+        const plain = [];
+        lines.forEach(line => {
+          const idx = line.indexOf('::');
+          if (idx !== -1) tagged.push({ label: line.slice(0, idx), url: line.slice(idx + 2) });
+          else plain.push(line);
+        });
+        const photoCardHtml = (u, label) =>
+          '<div class="flex flex-col gap-1">' +
+            '<a href="' + u + '" target="_blank" rel="noopener" class="block rounded-md overflow-hidden border border-slate-200 hover:opacity-90">' +
+            '<img src="' + _driveThumbnailSrc_(u) + '" loading="lazy" class="w-full h-28 object-cover" ' +
+            'onerror="this.parentElement.outerHTML=\'<a href=&quot;' + u + '&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot; class=&quot;flex items-center justify-center h-28 rounded-md border border-slate-200 text-xs text-blue-600 hover:underline&quot;>Buka Foto</a>\';">' +
+            '</a>' +
+            (label ? '<span class="text-[11px] text-slate-600 text-center break-words">' + label + '</span>' : '') +
+          '</div>';
+        const allCards = tagged.map(t => photoCardHtml(t.url, t.label)).concat(plain.map(u => photoCardHtml(u, '')));
+        photosEl.innerHTML = allCards.length ? allCards.join('') : '<div class="col-span-full text-xs text-slate-400">Tidak ada foto bukti.</div>';
 
         document.getElementById('historycal-dispatch-checklist-modal').classList.remove('hidden');
       }
@@ -6930,12 +7116,130 @@
         return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address);
       }
 
+      // Baris "Jam Berangkat" / "Estimasi Tiba" / "Jam Tiba" ditampilkan di bawah
+      // "Comment" pada Cardview Task Team Dispatch (lihat _buildTeamDispatchCardHTML).
+      function _buildDispatchTimingRowsHtml_(row) {
+        let html = '';
+        if (row['Jam Berangkat']) {
+          html += '<div class="break-words"><span class="font-semibold text-slate-500">Jam Berangkat:</span> ' + row['Jam Berangkat'] + '</div>';
+        }
+        if (row['_estimasiTiba'] && !row['Jam Tiba']) {
+          html += '<div class="break-words"><span class="font-semibold text-slate-500">Estimasi Tiba:</span> ' + row['_estimasiTiba'] + '</div>';
+        }
+        if (row['Jam Tiba']) {
+          html += '<div class="break-words"><span class="font-semibold text-slate-500">Jam Tiba:</span> ' + row['Jam Tiba'] + '</div>';
+        }
+        return html;
+      }
+
+      // Format Date -> "HH:mm" zona Asia/Jakarta (jam Indonesia / WIB), dipakai
+      // saat mencatat Jam Berangkat/Jam Tiba dari sisi client sebelum dikirim ke server.
+      function _formatJamWIB_(date) {
+        return new Intl.DateTimeFormat('id-ID', {
+          timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false
+        }).format(date) + ' WIB';
+      }
+
+      // Jarak lurus (Haversine) antara 2 titik koordinat, dalam km.
+      function _haversineKm_(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const toRad = d => d * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      // Geocoding alamat tujuan (gratis, tanpa API key) lewat Nominatim OpenStreetMap,
+      // dipakai HANYA untuk menghitung estimasi jarak/waktu tiba (Haversine + asumsi
+      // kecepatan rata-rata dalam kota) — bukan rute jalan sebenarnya, jadi hasilnya
+      // perkiraan kasar saja. Kalau gagal (alamat tidak ketemu/offline), estimasi
+      // dilewati dan hanya Jam Berangkat yang tercatat.
+      function _geocodeAddress_(address) {
+        const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(address);
+        return fetch(url).then(res => res.json()).then(arr => {
+          if (arr && arr[0]) return { lat: parseFloat(arr[0].lat), lng: parseFloat(arr[0].lon) };
+          return null;
+        }).catch(() => null);
+      }
+
+      // Ambil posisi geolocation user saat ini (Promise). Kalau browser
+      // menolak/tidak mendukung, resolve(null) alih-alih menggagalkan alur.
+      function _getCurrentGeolocation_() {
+        return new Promise(resolve => {
+          if (!navigator.geolocation) { resolve(null); return; }
+          navigator.geolocation.getCurrentPosition(
+            pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            () => resolve(null),
+            { timeout: 8000 }
+          );
+        });
+      }
+
+      // Tombol "Start" diklik: catat Jam Berangkat = sekarang + hitung estimasi jam
+      // tiba dari titik lokasi user saat ini ke alamat tujuan Task (Haversine, asumsi
+      // kecepatan rata-rata kota AVG_TRAVEL_SPEED_KMH). Status berubah jadi
+      // "On Delivery" dan tombol berganti jadi "Tiba".
+      const AVG_TRAVEL_SPEED_KMH = 30;
+      async function handleDispatchStart(rowNumber, addressText, btnEl) {
+        _setBtnLoading_(btnEl, 'Memulai...');
+        const now = new Date();
+        const jamBerangkat = _formatJamWIB_(now);
+        let estimasiTiba = '';
+        try {
+          const [userPos, destPos] = await Promise.all([_getCurrentGeolocation_(), _geocodeAddress_(addressText)]);
+          if (userPos && destPos) {
+            const distanceKm = _haversineKm_(userPos.lat, userPos.lng, destPos.lat, destPos.lng);
+            const etaMinutes = Math.max(5, Math.round(distanceKm / AVG_TRAVEL_SPEED_KMH * 60));
+            estimasiTiba = _formatJamWIB_(new Date(now.getTime() + etaMinutes * 60000));
+          }
+        } catch (e) { /* estimasi opsional, gagal tetap lanjut catat Jam Berangkat */ }
+
+        _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba })
+          .then(json => {
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal mencatat Jam Berangkat'), 'error');
+              _clearBtnLoading_(btnEl);
+              return;
+            }
+            loadTeamDispatchTasks(true);
+            if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
+          })
+          .catch(err => {
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+            _clearBtnLoading_(btnEl);
+          });
+      }
+
+      // Tombol "Tiba" diklik: catat Jam Tiba = sekarang, status berubah jadi
+      // "Arrived", tombol berganti jadi "Delivered".
+      function handleDispatchTiba(rowNumber, btnEl) {
+        _setBtnLoading_(btnEl, 'Mencatat...');
+        const jamTiba = _formatJamWIB_(new Date());
+        _getFromGasWithRetry_('recordDispatchTiba', { rowNumber: rowNumber, jamTiba: jamTiba })
+          .then(json => {
+            if (!json.success) {
+              showAppAlert('❌ ' + (json.message || 'Gagal mencatat Jam Tiba'), 'error');
+              _clearBtnLoading_(btnEl);
+              return;
+            }
+            loadTeamDispatchTasks(true);
+            if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
+          })
+          .catch(err => {
+            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+            _clearBtnLoading_(btnEl);
+          });
+      }
+
       // Render satu Task Card (dipakai di dalam tiap kelompok Team pada
       // renderTeamDispatchCards()).
       function _buildTeamDispatchCardHTML(row) {
         const status = (String(row['Status'] || '').trim()) || 'Open';
-        const isOnDelivery = status.toLowerCase() === 'on delivery';
-        const badgeClass = isOnDelivery ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
+        const statusLower = status.toLowerCase();
+        const isOnDelivery = statusLower === 'on delivery'; // sudah Start, belum Tiba
+        const isArrived = statusLower === 'arrived'; // sudah Tiba, belum Delivered
+        const badgeClass = (isOnDelivery || isArrived) ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
 
         // Baris VM Type ditentukan dari ACTION PLAN:
         //   Delivery Approval          -> tampilkan Proposed VM Type
@@ -6968,12 +7272,16 @@
           '</div>';
 
         // Status "Open": hanya tombol Start yang tampil.
-        // Status "On Delivery" (setelah Start diklik): tombol berganti jadi Cancel + Delivered.
+        // Status "On Delivery" (setelah Start diklik, mencatat Jam Berangkat +
+        // estimasi tiba): tombol berganti jadi "Tiba" + Cancel.
+        // Status "Arrived" (setelah Tiba diklik, mencatat Jam Tiba): tombol
+        // berganti jadi "Delivered" + Cancel.
         // Ditumpuk vertikal (full-width) bukan berdampingan, supaya label
-        // "Delivered" selalu muat dalam satu baris dan tidak pernah
-        // terpotong oleh overflow-hidden pada card, walau card sedang sempit
+        // selalu muat dalam satu baris dan tidak pernah terpotong oleh
+        // overflow-hidden pada card, walau card sedang sempit
         // (mode 2-3 kolom di layar kecil/menengah).
-        const actionButtons = isOnDelivery
+        const addressForEta = row['DELIVERY / PICK UP ADDRESS'] || '';
+        const actionButtons = isArrived
           ? (
             '<div class="flex flex-col gap-2 mt-2">' +
               '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ', this)" ' +
@@ -6982,9 +7290,18 @@
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
             '</div>'
           )
+          : isOnDelivery
+          ? (
+            '<div class="flex flex-col gap-2 mt-2">' +
+              '<button onclick="handleDispatchTiba(' + row.rowNumber + ', this)" ' +
+                'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Tiba</button>' +
+              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\', this)" ' +
+                'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
+            '</div>'
+          )
           : (
             '<div class="mt-2">' +
-              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'On Delivery\', this)" ' +
+              '<button onclick="handleDispatchStart(' + row.rowNumber + ', ' + JSON.stringify(addressForEta) + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700">Start</button>' +
             '</div>'
           );
@@ -7007,6 +7324,8 @@
             '<div class="break-words"><span class="font-semibold text-slate-500">No. VMC Jumpstart:</span> ' + (row['NO VMC JUMPSTART'] || '-') + '</div>' +
             '<div class="break-words"><span class="font-semibold text-slate-500">Site PIC:</span> ' + (row['SITE PIC'] || '-') + '</div>' +
             '<div class="break-words"><span class="font-semibold text-slate-500">Site PIC Phone:</span> ' + (row['SITE PIC PHONE NO.'] || '-') + '</div>' +
+            (row['COMMENT'] ? '<div class="break-words"><span class="font-semibold text-slate-500">Comment:</span> ' + row['COMMENT'] + '</div>' : '') +
+            _buildDispatchTimingRowsHtml_(row) +
           '</div>' +
           quickLinksHtml +
           actionButtons +
@@ -7105,31 +7424,59 @@
         return String(actionPlan || '').trim().toLowerCase().indexOf('exchange') !== -1;
       }
 
-      // Render ulang (reset) daftar radio Checklist Foto ke kondisi belum
-      // dijawab — dipanggil tiap kali popup Delivered dibuka.
+      // Render ulang (reset) daftar radio + input foto Checklist Foto ke kondisi
+      // belum dijawab — dipanggil tiap kali popup Delivered dibuka.
+      // Tiap item WAJIB melampirkan 1 foto (dari galeri device) selain jawaban
+      // radio OK/Not OK (lihat _collectDispatchChecklistFoto_) — kalau foto
+      // sudah dipilih, tombol foto diganti jadi tanda centang ✅.
+      let _ddChecklistFotoPhotos = {}; // { key: { name, mimeType, base64 } }
+
       function renderDispatchChecklistFotoFields() {
         const listEl = document.getElementById('dd-checklist-foto-list');
         listEl.innerHTML = DISPATCH_CHECKLIST_FOTO_ITEMS.map(item =>
           '<div class="flex items-center justify-between gap-2 text-xs">' +
             '<span class="text-slate-700">' + item.label + '</span>' +
-            '<div class="flex items-center gap-3 shrink-0">' +
+            '<div class="flex items-center gap-2 shrink-0">' +
               '<label class="flex items-center gap-1 cursor-pointer">' +
                 '<input type="radio" name="dd-cf-' + item.key + '" value="OK"> OK</label>' +
               '<label class="flex items-center gap-1 cursor-pointer">' +
                 '<input type="radio" name="dd-cf-' + item.key + '" value="Not OK"> Not OK</label>' +
+              '<span id="dd-cf-photo-btn-' + item.key + '">' +
+                '<label class="cursor-pointer px-1.5 py-1 rounded-md border border-slate-300 bg-white text-slate-500" title="Lampirkan foto">' +
+                  '📷<input type="file" accept="image/*" class="hidden" onchange="handleDispatchChecklistFotoInput(\'' + item.key + '\', this)">' +
+                '</label>' +
+              '</span>' +
             '</div>' +
           '</div>'
         ).join('');
       }
 
+      // Item Checklist Foto ke-`key` dipilih fotonya: kompres (reuse
+      // _compressDispatchPhoto_ seperti foto Delivered umum) lalu simpan di
+      // _ddChecklistFotoPhotos, tombol 📷 diganti jadi tanda centang ✅.
+      function handleDispatchChecklistFotoInput(key, inputEl) {
+        const file = (inputEl.files || [])[0];
+        if (!file) return;
+        const btnWrap = document.getElementById('dd-cf-photo-btn-' + key);
+        if (btnWrap) btnWrap.innerHTML = '<span class="text-slate-400">...</span>';
+        _compressDispatchPhoto_(file, 1600, 0.7).then(result => {
+          _ddChecklistFotoPhotos[key] = { name: file.name, mimeType: result.mimeType, base64: result.base64 };
+          if (btnWrap) btnWrap.innerHTML = '<span class="text-emerald-600 font-bold" title="Foto sudah dilampirkan">✅</span>';
+        }).catch(err => {
+          if (btnWrap) btnWrap.innerHTML = '<span class="text-red-500" title="Gagal memproses foto">⚠️</span>';
+          showAppAlert('❌ Gagal memproses foto: ' + err.message, 'error');
+        });
+      }
+
       // Kumpulkan jawaban Checklist Foto jadi object { key: 'OK'|'Not OK' }.
-      // Mengembalikan null kalau ada item yang belum dijawab (dipakai untuk
-      // validasi wajib isi sebelum Simpan).
+      // Mengembalikan null kalau ada item yang belum dijawab ATAU belum
+      // dilampirkan foto (keduanya wajib, dipakai untuk validasi sebelum Simpan).
       function _collectDispatchChecklistFoto_() {
         const result = {};
         for (const item of DISPATCH_CHECKLIST_FOTO_ITEMS) {
           const checked = document.querySelector('input[name="dd-cf-' + item.key + '"]:checked');
           if (!checked) return null;
+          if (!_ddChecklistFotoPhotos[item.key]) return null;
           result[item.key] = checked.value;
         }
         return result;
@@ -7151,6 +7498,7 @@
         // -> perilaku lama seperti sebelumnya). Lihat _saveDispatchDeliveredNow_ di Code.gs.
         _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '' };
         _ddPhotos = [];
+        _ddChecklistFotoPhotos = {};
 
         document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
         document.getElementById('dd-no-vmc').value = row['NO VMC JUMPSTART'] || '';
@@ -7539,13 +7887,14 @@
         const saveBtn = document.getElementById('dd-save-btn');
 
         // Kalau section Checklist Foto sedang tampil (ACTION PLAN "Delivery
-        // Approval"), seluruh 10 item wajib dijawab OK/Not OK dulu sebelum Simpan.
+        // Approval"), seluruh 10 item wajib dijawab OK/Not OK DAN wajib
+        // dilampirkan foto masing-masing sebelum Simpan.
         let checklistFoto = null;
         const checklistVisible = !document.getElementById('dd-checklist-foto-section').classList.contains('hidden');
         if (checklistVisible) {
           checklistFoto = _collectDispatchChecklistFoto_();
           if (!checklistFoto) {
-            statusEl.textContent = '❌ Checklist Foto wajib diisi semua (OK / Not OK) sebelum Simpan.';
+            statusEl.textContent = '❌ Checklist Foto wajib diisi (OK / Not OK) dan dilampirkan foto untuk semua item sebelum Simpan.';
             return;
           }
         }
@@ -7584,7 +7933,7 @@
           // fetch" di flow ini: (1) izin Google Drive script belum di-approve
           // ulang setelah fitur foto ditambahkan -> pesan jelas & solusinya,
           // vs (2) benar-benar putus koneksi saat itu -> retry seperti biasa.
-          if (_ddPhotos.length > 0) {
+          if (_ddPhotos.length > 0 || checklistVisible) {
             statusEl.textContent = 'Memeriksa akses penyimpanan foto...';
             let driveCheck;
             try {
@@ -7617,6 +7966,35 @@
             photoUrls.push(uploadJson.url);
           }
 
+          // Upload foto per-item Checklist Foto (wajib, satu foto per item) —
+          // hasilnya dikirim sebagai { key: url } supaya GAS bisa menandainya
+          // dengan LABEL item masing-masing di kolom "Foto Bukti" (lihat
+          // _recordTaskTeamDispatch_ di Code.gs, tag "<label>::<url>").
+          const checklistFotoUrls = {};
+          if (checklistVisible && checklistFoto) {
+            const items = DISPATCH_CHECKLIST_FOTO_ITEMS;
+            for (let i = 0; i < items.length; i++) {
+              const key = items[i].key;
+              const photo = _ddChecklistFotoPhotos[key];
+              if (!photo) continue;
+              statusEl.textContent = 'Mengunggah foto checklist ' + (i + 1) + ' dari ' + items.length + '...';
+              let uploadJson;
+              try {
+                uploadJson = await _postToGasWithRetry_(
+                  'uploadDispatchPhoto',
+                  { ticket: _ddContext.ticket, photo: photo },
+                  3
+                );
+              } catch (err) {
+                throw new Error('Gagal mengunggah foto checklist "' + items[i].label + '": koneksi terputus (Failed to fetch). Coba lagi.');
+              }
+              if (!uploadJson.success) {
+                throw new Error(uploadJson.message || ('Gagal mengunggah foto checklist "' + items[i].label + '"'));
+              }
+              checklistFotoUrls[key] = uploadJson.url;
+            }
+          }
+
           statusEl.textContent = 'Menyimpan data...';
           const payload = {
             rowNumber: _ddContext.rowNumber,
@@ -7641,11 +8019,18 @@
             // _isDispatchActionPlanDeliveryApproval_); dicatat GAS ke sheet
             // "Task Team Dispatch" (lihat _recordTaskTeamDispatch_ di Code.gs).
             checklistFoto: checklistFoto,
+            // URL foto per-item Checklist Foto (key sesuai DISPATCH_CHECKLIST_FOTO_ITEMS),
+            // dicatat GAS ditandai labelnya ke kolom "Foto Bukti" (lihat
+            // _recordTaskTeamDispatch_ di Code.gs).
+            checklistFotoUrls: checklistFotoUrls,
             // Hanya terisi kalau ACTION PLAN "Machine Exchange" (lihat
             // _isDispatchActionPlanMachineExchange_); dicatat GAS sebagai
             // baris baru ke salah satu sheet Stock Opname, lihat
             // _recordMachineExchangeInventory_ di Code.gs.
-            machineExchange: machineExchange
+            machineExchange: machineExchange,
+            // Jam Delivered (kolom V sheet "Plan Task"), diformat jam Indonesia (WIB)
+            // di sisi client sebelum dikirim — lihat _formatJamWIB_.
+            jamDelivered: _formatJamWIB_(new Date())
           };
 
           let saveJson;
