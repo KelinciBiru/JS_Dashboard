@@ -2691,6 +2691,86 @@
         btn.classList.remove('opacity-70', 'cursor-not-allowed');
       }
 
+      // =============================================
+      // OPTIMISTIC UI HELPER — "NOD Instant Save Layer"
+      // Dipakai untuk aksi simpan/menyelesaikan/menghapus task supaya
+      // TERASA INSTAN buat user: UI (card/list/modal) di-update SEKARANG
+      // JUGA seolah sudah tersimpan, baru permintaan sebenarnya ke GAS
+      // dikirim di belakang layar (tidak perlu ditunggu user).
+      //
+      // Ini AMAN dipakai bareng _getFromGasWithRetry_/_postToGasWithRetry_
+      // karena keduanya sudah membawa requestId sekali-pakai yang di-guard
+      // di server lewat _handleGuardedWrite_ (lihat Code.gs) — jadi retry
+      // otomatis di jaringan lambat TIDAK akan membuat data dobel, dan
+      // hasil akhirnya tetap dicek betul-betul success:true dari server
+      // sebelum dianggap valid.
+      //
+      // Alur:
+      //  1) config.apply()   -> ubah UI SEKARANG (hilangkan card, tutup
+      //                         modal, dll), lalu toast sukses ditampilkan.
+      //  2) config.request() -> Promise ke GAS, jalan di belakang layar.
+      //  3) Kalau server balas success:true  -> config.onSuccess(json),
+      //     biasanya reconcile diam-diam (reload list dari server) supaya
+      //     data yang tampil selalu sama persis dengan sheet.
+      //  4) Kalau GAGAL (server balas success:false ATAU koneksi putus
+      //     setelah semua retry) -> config.rollback() mengembalikan UI
+      //     seperti semula, LALU user diberi tahu lewat modal alert (bukan
+      //     toast, supaya tidak terlewat) bahwa data BELUM tercatat, plus
+      //     tombol "Coba Lagi" yang mengulang persis config.request() yang
+      //     sama (tanpa perlu isi ulang form/upload ulang foto).
+      // =============================================
+      async function _optimisticRun_(config) {
+        try { config.apply(); } catch (e) { /* update UI tidak boleh menghentikan proses simpan */ }
+        if (config.successMessage) showToast(config.successMessage, 'success');
+
+        const attempt = async () => {
+          let json;
+          try {
+            json = await config.request();
+          } catch (err) {
+            throw new Error(err && err.message ? err.message : 'Koneksi ke server terputus (Failed to fetch).');
+          }
+          if (!json || !json.success) {
+            throw new Error((json && json.message) || 'Server menolak permintaan (tidak ada pesan detail).');
+          }
+          return json;
+        };
+
+        try {
+          const json = await attempt();
+          if (typeof config.onSuccess === 'function') {
+            try { config.onSuccess(json); } catch (e) { /* abaikan error reconcile ringan */ }
+          }
+        } catch (err) {
+          if (typeof config.rollback === 'function') {
+            try { config.rollback(); } catch (e) { /* abaikan */ }
+          }
+          const retryLabel = 'retry_' + Date.now();
+          window['_optimisticRetry_' + retryLabel] = () => {
+            closeAppAlert();
+            _optimisticRun_(config);
+          };
+          const msgEl = document.getElementById('app-alert-modal-message');
+          showAppAlert(
+            (config.errorPrefix || '⚠️ Perubahan tadi BELUM tercatat di server: ') + err.message +
+            '\n\nTampilan sudah dikembalikan seperti semula supaya datanya tidak salah. Silakan coba lagi.',
+            'error'
+          );
+          // Tambahkan tombol "Coba Lagi" di bawah pesan alert (sekali pakai,
+          // dibuang otomatis begitu modal alert ditutup lewat closeAppAlert()).
+          if (msgEl && msgEl.parentElement) {
+            const oldRetryBtn = document.getElementById('app-alert-retry-btn');
+            if (oldRetryBtn) oldRetryBtn.remove();
+            const retryBtn = document.createElement('button');
+            retryBtn.id = 'app-alert-retry-btn';
+            retryBtn.className = 'btn-press w-full mb-2 px-4 py-2 text-sm font-bold rounded-lg border border-amber-400 text-amber-700 hover:bg-amber-50';
+            retryBtn.textContent = '🔄 Coba Lagi';
+            retryBtn.onclick = window['_optimisticRetry_' + retryLabel];
+            msgEl.insertAdjacentElement('afterend', retryBtn);
+          }
+        }
+      }
+
       function showAppAlert(message, type) {
         const modal = document.getElementById('app-alert-modal');
         const iconEl = document.getElementById('app-alert-modal-icon');
@@ -2704,6 +2784,10 @@
       function closeAppAlert() {
         const modal = document.getElementById('app-alert-modal');
         if (modal) modal.classList.add('hidden');
+        // Buang tombol "Coba Lagi" (kalau ada, lihat _optimisticRun_) supaya
+        // tidak nyangkut/dobel di alert berikutnya yang tidak berkaitan.
+        const retryBtn = document.getElementById('app-alert-retry-btn');
+        if (retryBtn) retryBtn.remove();
       }
 
       // showAppConfirm(message, options) — pengganti window.confirm() bawaan
@@ -5248,18 +5332,29 @@
         });
         if (!ok) return;
 
-        _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' })
-          .then(json => {
-            if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
-              return;
+        // OPTIMISTIC: card langsung hilang dari tabel SEKARANG (tanpa nunggu
+        // server), permintaan hapus sebenarnya jalan di belakang layar. Kalau
+        // ternyata gagal, baris dikembalikan (rollback) + user diberi tombol
+        // "Coba Lagi" — lihat _optimisticRun_ di atas.
+        const idxRemoved = _taskMprepData.findIndex(r => Number(r.rowNumber) === Number(rowNumber));
+        const rowRemoved = idxRemoved >= 0 ? _taskMprepData[idxRemoved] : null;
+
+        _optimisticRun_({
+          apply: () => {
+            if (idxRemoved >= 0) _taskMprepData.splice(idxRemoved, 1);
+            renderTaskMachinePrepTable();
+          },
+          successMessage: '✅ Task berhasil dihapus.',
+          request: () => _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' }, 3),
+          onSuccess: () => { loadTaskMachinePrepList(true); },
+          rollback: () => {
+            if (rowRemoved && idxRemoved >= 0) {
+              _taskMprepData.splice(idxRemoved, 0, rowRemoved);
+              renderTaskMachinePrepTable();
             }
-            showToast('✅ Task berhasil dihapus.', 'success');
-            loadTaskMachinePrepList(true);
-          })
-          .catch(err => {
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
-          });
+          },
+          errorPrefix: '⚠️ Task BELUM benar-benar terhapus di server: '
+        });
       }
 
       // Ringkasan teks (dipakai sbg caption navigator.share, juga fallback kalau
@@ -7308,19 +7403,33 @@
         });
         if (!ok) return;
 
-        _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed By Admin' })
-          .then(json => {
-            if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal menghapus task'), 'error');
-              return;
-            }
-            showToast('✅ Task berhasil dihapus.', 'success');
+        // OPTIMISTIC (sama seperti removeTaskMachinePrep di atas): baris
+        // langsung hilang dari tabel Task on Going SEKARANG, request hapus
+        // sebenarnya jalan di belakang layar dan di-rollback kalau gagal.
+        const idxRemoved = _taskOnGoingRows.findIndex(r => Number(r.rowNumber) === Number(rowNumber));
+        const rowRemoved = idxRemoved >= 0 ? _taskOnGoingRows[idxRemoved] : null;
+
+        _optimisticRun_({
+          apply: () => {
+            if (idxRemoved >= 0) _taskOnGoingRows.splice(idxRemoved, 1);
+            saveTaskOnGoingRows();
+            renderTaskOnGoingTable();
+          },
+          successMessage: '✅ Task berhasil dihapus.',
+          request: () => _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed By Admin' }, 3),
+          onSuccess: () => {
             loadTaskOnGoing(true);
             if (typeof loadTeamDispatchTasks === 'function') loadTeamDispatchTasks(true);
-          })
-          .catch(err => {
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
-          });
+          },
+          rollback: () => {
+            if (rowRemoved && idxRemoved >= 0) {
+              _taskOnGoingRows.splice(idxRemoved, 0, rowRemoved);
+              saveTaskOnGoingRows();
+              renderTaskOnGoingTable();
+            }
+          },
+          errorPrefix: '⚠️ Task BELUM benar-benar terhapus di server: '
+        });
       }
 
       // =============================================
@@ -8136,44 +8245,61 @@
           }
         } catch (e) { etaFailReason = 'terjadi kesalahan saat menghitung estimasi'; }
 
-        _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba })
-          .then(json => {
-            if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal mencatat Jam Berangkat'), 'error');
-              _clearBtnLoading_(btnEl);
-              return;
-            }
+        // OPTIMISTIC: status kartu langsung berubah jadi "On Delivery" (tombol
+        // langsung ganti jadi "Tiba") SEKARANG, tanpa menunggu balasan server —
+        // pencatatan Jam Berangkat yang sebenarnya jalan di belakang layar.
+        const rowRef = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(rowNumber));
+        const prevStatus = rowRef ? rowRef['Status'] : undefined;
+
+        _optimisticRun_({
+          apply: () => {
+            _clearBtnLoading_(btnEl);
+            if (rowRef) rowRef['Status'] = 'On Delivery';
+            renderTeamDispatchCards();
             if (!estimasiTiba && etaFailReason) {
               showAppAlert('⚠️ Jam Berangkat tercatat, tapi Estimasi Tiba tidak bisa dihitung (' + etaFailReason + ').', 'warning');
             }
+          },
+          request: () => _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba }, 3),
+          onSuccess: () => {
             loadTeamDispatchTasks(true);
             if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
-          })
-          .catch(err => {
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
-            _clearBtnLoading_(btnEl);
-          });
+          },
+          rollback: () => {
+            if (rowRef) rowRef['Status'] = prevStatus;
+            renderTeamDispatchCards();
+          },
+          errorPrefix: '⚠️ Jam Berangkat BELUM tercatat di server: '
+        });
       }
 
       // Tombol "Tiba" diklik: catat Jam Tiba = sekarang, status berubah jadi
       // "Arrived", tombol berganti jadi "Delivered".
       function handleDispatchTiba(rowNumber, btnEl) {
-        _setBtnLoading_(btnEl, 'Mencatat...');
         const jamTiba = _formatJamWIB_(new Date());
-        _getFromGasWithRetry_('recordDispatchTiba', { rowNumber: rowNumber, jamTiba: jamTiba })
-          .then(json => {
-            if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal mencatat Jam Tiba'), 'error');
-              _clearBtnLoading_(btnEl);
-              return;
-            }
+
+        // OPTIMISTIC (sama seperti handleDispatchStart): status kartu langsung
+        // jadi "Arrived" (tombol ganti jadi "Delivered") SEKARANG.
+        const rowRef = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(rowNumber));
+        const prevStatus = rowRef ? rowRef['Status'] : undefined;
+
+        _optimisticRun_({
+          apply: () => {
+            _clearBtnLoading_(btnEl);
+            if (rowRef) rowRef['Status'] = 'Arrived';
+            renderTeamDispatchCards();
+          },
+          request: () => _getFromGasWithRetry_('recordDispatchTiba', { rowNumber: rowNumber, jamTiba: jamTiba }, 3),
+          onSuccess: () => {
             loadTeamDispatchTasks(true);
             if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
-          })
-          .catch(err => {
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
-            _clearBtnLoading_(btnEl);
-          });
+          },
+          rollback: () => {
+            if (rowRef) rowRef['Status'] = prevStatus;
+            renderTeamDispatchCards();
+          },
+          errorPrefix: '⚠️ Jam Tiba BELUM tercatat di server: '
+        });
       }
 
       // Render satu Task Card (dipakai di dalam tiap kelompok Team pada
@@ -9145,27 +9271,46 @@
             jamDelivered: _formatJamWIB_(new Date())
           };
 
-          let saveJson;
-          try {
-            saveJson = await _getFromGasWithRetry_('saveDispatchDelivered', payload, 3);
-          } catch (err) {
-            throw new Error('Foto berhasil diunggah, tapi gagal menyimpan data (Failed to fetch). Koneksi sempat terputus — coba klik Simpan sekali lagi (foto tidak perlu dipilih ulang).');
-          }
+          // ---- TITIK "TERASA INSTAN" ----
+          // Sampai sini, semua foto SUDAH benar-benar ter-upload ke Drive (itu
+          // proses yang butuh waktu nyata & tidak bisa "dipalsukan" instan).
+          // Sisa langkah (kirim data teks ke saveDispatchDelivered) ukurannya
+          // kecil dan HAMPIR SELALU berhasil — jadi daripada user menunggu lagi
+          // di sini, modal langsung ditutup + card langsung hilang dari list
+          // SEKARANG (optimis), sementara permintaan simpan sebenarnya jalan di
+          // belakang layar. requestId di _getFromGasWithRetry_ (guarded di
+          // server lewat _handleGuardedWrite_) memastikan retry otomatis tidak
+          // membuat data dobel, dan hasilnya tetap divalidasi success:true
+          // sebelum dianggap benar-benar tercatat — kalau gagal, card
+          // dikembalikan ke list + user diberi tombol "Coba Lagi" (lihat
+          // _optimisticRun_ di atas), TANPA perlu upload ulang foto.
+          const ddRowRef = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(_ddContext.rowNumber));
+          const ddRowIdx = ddRowRef ? _teamDispatchRows.indexOf(ddRowRef) : -1;
 
-          if (!saveJson.success) {
-            throw new Error(saveJson.message || 'Gagal menyimpan data');
-          }
+          _clearBtnLoading_(saveBtn);
+          _releaseDispatchWakeLock_();
 
-          closeDispatchDeliveredModal();
-          loadTeamDispatchTasks(true);
-          // Sekarang saveDispatchDelivered langsung menulis ke Jabodetabek &
-          // Inventory JS secara sinkron di server (tidak lewat antrian lagi,
-          // lihat catatan saveDispatchDelivered_ di Code.gs) — begitu balasan
-          // ini diterima, datanya sudah benar-benar tercatat.
-          showToast('✅ Task Team Dispatch berhasil diselesaikan!', 'success');
+          _optimisticRun_({
+            apply: () => {
+              closeDispatchDeliveredModal();
+              if (ddRowIdx >= 0) _teamDispatchRows.splice(ddRowIdx, 1);
+              saveTeamDispatchRows();
+              renderTeamDispatchCards();
+            },
+            successMessage: '✅ Task Team Dispatch berhasil diselesaikan!',
+            request: () => _getFromGasWithRetry_('saveDispatchDelivered', payload, 3),
+            onSuccess: () => { loadTeamDispatchTasks(true); },
+            rollback: () => {
+              if (ddRowRef && ddRowIdx >= 0) {
+                _teamDispatchRows.splice(ddRowIdx, 0, ddRowRef);
+                saveTeamDispatchRows();
+                renderTeamDispatchCards();
+              }
+            },
+            errorPrefix: '⚠️ Foto sudah ter-upload, tapi data Delivered BELUM tersimpan di server: '
+          });
         } catch (err) {
           statusEl.textContent = '❌ ' + err.message;
-        } finally {
           _clearBtnLoading_(saveBtn);
           _releaseDispatchWakeLock_();
         }
@@ -9715,17 +9860,36 @@
             photoUrls: photoUrls
           };
 
-          const json = await _getFromGasWithRetry_('saveTeamPrepareTask', payload, 3);
-          if (!json.success) {
-            throw new Error(json.message || 'Gagal menyimpan data');
-          }
+          // ---- TITIK "TERASA INSTAN" (sama seperti submitDispatchDelivered) ----
+          // Foto sudah ter-upload; sisa langkah (kirim data teks) kecil & cepat,
+          // jadi modal ditutup + card langsung hilang dari list SEKARANG
+          // (optimis), sementara saveTeamPrepareTask jalan di belakang layar.
+          // Kalau gagal, card dikembalikan + user diberi tombol "Coba Lagi"
+          // tanpa perlu upload ulang foto (lihat _optimisticRun_ di atas).
+          const tpCardIdx = _tpContext ? _teamPrepareCards.indexOf(_tpContext) : -1;
+          const tpCardRef = tpCardIdx >= 0 ? _teamPrepareCards[tpCardIdx] : null;
 
-          closeTeamPrepareModal();
-          loadTeamPrepareCards(true);
-          showToast('✅ Task Team Prepare berhasil diselesaikan!', 'success');
+          saveBtn.disabled = false;
+
+          _optimisticRun_({
+            apply: () => {
+              closeTeamPrepareModal();
+              if (tpCardIdx >= 0) _teamPrepareCards.splice(tpCardIdx, 1);
+              renderTeamPrepareCards();
+            },
+            successMessage: '✅ Task Team Prepare berhasil diselesaikan!',
+            request: () => _getFromGasWithRetry_('saveTeamPrepareTask', payload, 3),
+            onSuccess: () => { loadTeamPrepareCards(true); },
+            rollback: () => {
+              if (tpCardRef && tpCardIdx >= 0) {
+                _teamPrepareCards.splice(tpCardIdx, 0, tpCardRef);
+                renderTeamPrepareCards();
+              }
+            },
+            errorPrefix: '⚠️ Foto sudah ter-upload, tapi data Task Team Prepare BELUM tersimpan di server: '
+          });
         } catch (err) {
           statusEl.textContent = '❌ ' + err.message;
-        } finally {
           saveBtn.disabled = false;
         }
       }
@@ -10451,43 +10615,39 @@
         const statusEl = document.getElementById('stockOpname-status');
         statusEl.textContent = '';
 
-        _setStockOpnameModalBusy(true);
+        // OPTIMISTIC + pakai _postToGasWithRetry_ (sebelumnya raw fetch tanpa
+        // requestId/retry sama sekali). Backend saveStockOpname_ SUDAH masuk
+        // WRITE_ACTIONS_WITH_DUPLICATE_GUARD (lihat Code.gs) jadi aman di-retry
+        // tanpa data dobel. Form langsung ditutup+direset SEKARANG (tidak
+        // menunggu balasan server); permintaan simpan sebenarnya jalan di
+        // belakang layar, dan divalidasi betul-betul success:true sebelum
+        // dianggap tercatat — kalau gagal, form/payload dikembalikan supaya
+        // user bisa "Coba Lagi" tanpa perlu input ulang.
+        const payloadToSave = _pendingStockOpnamePayload;
+
         _startStockOpnameProgressSim();
 
-        fetch(INVENTORY_JS_GAS_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            action: 'saveStockOpname',
-            targetSheet: targetSheet,
-            data: _pendingStockOpnamePayload,
-          }),
-        })
-          .then(res => res.json())
-          .then(json => {
+        _optimisticRun_({
+          apply: () => {
             _finishStockOpnameProgressSim(() => {
               _setStockOpnameModalBusy(false);
-              if (json.success) {
-                statusEl.textContent = '✅ Data berhasil disimpan ke "' + targetSheet + '" — ' + new Date().toLocaleTimeString('id-ID');
-                statusEl.style.color = '#16a34a';
-                resetStockOpnameForm();
-                _pendingStockOpnamePayload = null;
-                closeStockOpnameTargetModal();
-                showToast('Data Stock Opname berhasil disimpan.', 'success');
-              } else {
-                statusEl.textContent = '❌ ' + (json.message || 'Gagal menyimpan data');
-                statusEl.style.color = '#ef4444';
-                closeStockOpnameTargetModal();
-              }
-            });
-          })
-          .catch(err => {
-            _finishStockOpnameProgressSim(() => {
-              _setStockOpnameModalBusy(false);
-              statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
-              statusEl.style.color = '#ef4444';
+              statusEl.textContent = '✅ Data berhasil disimpan ke "' + targetSheet + '" — ' + new Date().toLocaleTimeString('id-ID');
+              statusEl.style.color = '#16a34a';
+              resetStockOpnameForm();
+              _pendingStockOpnamePayload = null;
               closeStockOpnameTargetModal();
             });
-          });
+          },
+          successMessage: 'Data Stock Opname berhasil disimpan.',
+          request: () => _postToGasWithRetry_('saveStockOpname', { targetSheet: targetSheet, data: payloadToSave }, 3),
+          rollback: () => {
+            // Form sudah kosong/tertutup — kembalikan payload-nya supaya tombol
+            // "Coba Lagi" tetap bisa mengulang persis data yang sama tanpa user
+            // perlu isi ulang, walau formnya sendiri sudah tidak tampil lagi.
+            _pendingStockOpnamePayload = payloadToSave;
+          },
+          errorPrefix: '⚠️ Data Stock Opname BELUM tersimpan di server: '
+        });
       }
 
       function resetStockOpnameForm() {
