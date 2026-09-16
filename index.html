@@ -8221,9 +8221,9 @@
       let _meAssetsOptions = [];
       let _meFinalStatusOptions = [];
 
-      // Daftar item "Checklist Foto" di popup Delivered — HANYA ditampilkan
-      // kalau ACTION PLAN task-nya "Delivery Approval" (lihat
-      // _isDispatchActionPlanDeliveryApproval_ & openDispatchDeliveredModal).
+      // Daftar item "Checklist Foto" di popup Delivered — ditampilkan untuk
+      // ACTION PLAN "Delivery Approval", "Machine Exchange", ATAU "Relocation"
+      // (lihat _dispatchActionPlanNeedsChecklistFoto_ & openDispatchDeliveredModal).
       // Tiap item dijawab via radio "OK"/"Not OK". `key` di sini HARUS sama
       // persis (termasuk urutan) dengan DISPATCH_CHECKLIST_FOTO_KEYS di
       // Code.gs, supaya kolom checklist di sheet "Task Team Dispatch" terisi
@@ -8252,6 +8252,31 @@
       // supaya tetap kena walau teks ACTION PLAN-nya sedikit berbeda.
       function _isDispatchActionPlanDeliveryApproval_(actionPlan) {
         return String(actionPlan || '').trim().toLowerCase().indexOf('delivery') !== -1;
+      }
+
+      // ACTION PLAN "Relocation" -> ikut ditandai perlu Checklist & Foto Bukti
+      // di popup Delivered (lihat _dispatchActionPlanNeedsChecklistFoto_ di
+      // bawah). Dicocokkan via substring "relocation" sama seperti pengecekan
+      // ACTION PLAN "Relocation" lain di file ini.
+      function _isDispatchActionPlanRelocation_(actionPlan) {
+        return String(actionPlan || '').trim().toLowerCase().indexOf('relocation') !== -1;
+      }
+
+      // Section "Checklist & Foto Bukti" di popup Delivered ditampilkan untuk
+      // 3 ACTION PLAN: "Delivery Approval", "Machine Exchange", dan
+      // "Relocation" (awalnya hanya "Delivery Approval", diperluas atas
+      // permintaan supaya Machine Exchange & Relocation juga wajib isi
+      // checklist 10 item + foto bukti sebelum bisa Simpan). Dipakai di
+      // openDispatchDeliveredModal untuk toggle #dd-checklist-foto-section —
+      // sisanya (validasi Simpan, upload foto, payload ke GAS) otomatis ikut
+      // karena semuanya berbasis "apakah section ini sedang tampil"
+      // (lihat checklistVisible di _saveDispatchDeliveredNow_ index.html),
+      // bukan action plan langsung. Backend (_recordTaskTeamDispatch_ di
+      // Code.gs) sudah action-plan-agnostic, jadi tidak perlu diubah.
+      function _dispatchActionPlanNeedsChecklistFoto_(actionPlan) {
+        return _isDispatchActionPlanDeliveryApproval_(actionPlan) ||
+          _isDispatchActionPlanMachineExchange_(actionPlan) ||
+          _isDispatchActionPlanRelocation_(actionPlan);
       }
 
       // ACTION PLAN "Machine Exchange" -> tampilkan section "Machine Exchange
@@ -8359,8 +8384,9 @@
         populateDispatchPicSelect();
         populateDispatchMachineTypeSelect(row['MACHINE TYPE (sent from WH)'] || '');
 
-        // Checklist Foto hanya untuk ACTION PLAN "Delivery Approval".
-        const showChecklistFoto = _isDispatchActionPlanDeliveryApproval_(row['ACTION PLAN']);
+        // Checklist Foto untuk ACTION PLAN "Delivery Approval", "Machine
+        // Exchange", dan "Relocation".
+        const showChecklistFoto = _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
         document.getElementById('dd-checklist-foto-section').classList.toggle('hidden', !showChecklistFoto);
         if (showChecklistFoto) renderDispatchChecklistFotoFields();
 
@@ -8836,8 +8862,9 @@
         const saveBtn = document.getElementById('dd-save-btn');
 
         // Kalau section Checklist Foto sedang tampil (ACTION PLAN "Delivery
-        // Approval"), seluruh 10 item wajib dijawab OK/Not OK DAN wajib
-        // dilampirkan foto masing-masing sebelum Simpan.
+        // Approval", "Machine Exchange", atau "Relocation"), seluruh 10 item
+        // wajib dijawab OK/Not OK DAN wajib dilampirkan foto masing-masing
+        // sebelum Simpan.
         let checklistFoto = null;
         const checklistVisible = !document.getElementById('dd-checklist-foto-section').classList.contains('hidden');
         if (checklistVisible) {
@@ -8964,8 +8991,9 @@
             // & _saveDispatchDeliveredNow_ di Code.gs).
             actionPlan: _ddContext.actionPlan || '',
             photoUrls: photoUrls,
-            // Hanya terisi kalau ACTION PLAN "Delivery Approval" (lihat
-            // _isDispatchActionPlanDeliveryApproval_); dicatat GAS ke sheet
+            // Terisi kalau ACTION PLAN "Delivery Approval", "Machine
+            // Exchange", atau "Relocation" (lihat
+            // _dispatchActionPlanNeedsChecklistFoto_); dicatat GAS ke sheet
             // "Task Team Dispatch" (lihat _recordTaskTeamDispatch_ di Code.gs).
             checklistFoto: checklistFoto,
             // URL foto per-item Checklist Foto (key sesuai DISPATCH_CHECKLIST_FOTO_ITEMS),
