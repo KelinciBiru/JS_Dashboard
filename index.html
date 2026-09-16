@@ -212,6 +212,29 @@
         font-size: 14px;
         font-weight: 700;
         color: var(--neu-text);
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Indikator status koneksi di top bar HP — diposisikan di kanan
+         atas (menggantikan versi di sidebar, yang di HP tersembunyi di
+         balik deck menu dan jarang terlihat). */
+      #mobile-conn-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: auto;
+        flex: none;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--neu-text);
+      }
+
+      @media (max-width: 380px) {
+        #mobile-conn-label { display: none; }
       }
 
       aside {
@@ -1356,6 +1379,13 @@
         </svg>
       </button>
       <span id="mobile-topbar-title">Warehouse Pulogadung</span>
+      <div id="mobile-conn-status" aria-label="Status koneksi server">
+        <span id="mobile-conn-dot" style="
+        width:8px;height:8px;border-radius:50%;background:#22c55e;
+        box-shadow:0 0 0 3px rgba(34,197,94,.18);display:inline-block;
+        flex:none;transition:background-color .25s ease, box-shadow .25s ease;"></span>
+        <span id="mobile-conn-label">Online</span>
+      </div>
     </div>
 
     <!-- ============================================================
@@ -2849,13 +2879,18 @@
       };
       function _setConnIndicator(status) {
         const cfg = CONN_STATUS_STYLES[status] || CONN_STATUS_STYLES.online;
-        const dot = document.getElementById('sidebar-conn-dot');
-        const label = document.getElementById('sidebar-conn-label');
-        if (dot) {
-          dot.style.background = cfg.color;
-          dot.style.boxShadow = '0 0 0 3px ' + cfg.ring;
-        }
-        if (label) label.textContent = cfg.label;
+        // Dua versi ditulis serentak: dot di sidebar (mode PC/Laptop, di
+        // atas label role) dan dot di top bar (mode HP, pojok kanan atas —
+        // sidebar-nya sendiri ada di balik deck menu yang jarang dibuka).
+        ['sidebar', 'mobile'].forEach(prefix => {
+          const dot = document.getElementById(prefix + '-conn-dot');
+          const label = document.getElementById(prefix + '-conn-label');
+          if (dot) {
+            dot.style.background = cfg.color;
+            dot.style.boxShadow = '0 0 0 3px ' + cfg.ring;
+          }
+          if (label) label.textContent = cfg.label;
+        });
       }
       window._setConnIndicator = _setConnIndicator;
 
