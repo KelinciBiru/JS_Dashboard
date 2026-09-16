@@ -2382,7 +2382,7 @@
         <div class="flex items-center justify-end mb-2">
           <button id="jabodetabek-leaderboard-toggle" onclick="toggleJabodetabekLeaderboard()"
             class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">
-            📊 Tampilkan Leaderboard Kota (Open) <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>
+             Tampilkan Leaderboard Kota <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>
           </button>
         </div>
         <div id="jabodetabek-leaderboard-wrap" class="hidden mb-4 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/40">
@@ -6029,7 +6029,7 @@
 
       // Toggle tampil/sembunyi leaderboard (dipanggil tombol di atas tabel).
       // Ikon disamakan dengan konvensi panah ▼/▲ yang sudah dipakai di menu
-      // lain (mis. indikator dropdown & tren Summary Dispatch), 📊 tetap
+      // lain (mis. indikator dropdown & tren Summary Dispatch), tetap
       // dipakai konsisten di kedua state supaya jelas ini toggle leaderboard.
       function toggleJabodetabekLeaderboard() {
         _jabodetabekLeaderboardVisible = !_jabodetabekLeaderboardVisible;
@@ -6038,8 +6038,8 @@
         if (wrap) wrap.classList.toggle('hidden', !_jabodetabekLeaderboardVisible);
         if (btn) {
           btn.innerHTML = _jabodetabekLeaderboardVisible
-            ? '📊 Sembunyikan Leaderboard Kota (Open) <span id="jabodetabek-leaderboard-toggle-arrow">▲</span>'
-            : '📊 Tampilkan Leaderboard Kota (Open) <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>';
+            ? ' Sembunyikan Leaderboard Kota  <span id="jabodetabek-leaderboard-toggle-arrow">▲</span>'
+            : ' Tampilkan Leaderboard Kota <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>';
         }
         if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
       }
