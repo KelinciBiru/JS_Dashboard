@@ -8861,6 +8861,21 @@
         const statusEl = document.getElementById('dd-status');
         const saveBtn = document.getElementById('dd-save-btn');
 
+        // Loading Plan Date & Loading Date (Actual) WAJIB terisi sebelum Simpan,
+        // untuk SEMUA ACTION PLAN (Delivery Approval, Withdrawal, Machine
+        // Exchange, Relocation) — supaya kedua kolom ini dipastikan tercatat ke
+        // sheet "Jabodetabek" (kolom X & AD) lewat _saveDispatchDeliveredNow_ di
+        // Code.gs, bukan cuma untuk Delivery Approval. Dicek di sini (bukan cuma
+        // mengandalkan input type="date" browser) supaya konsisten di semua
+        // browser/HP dan tidak lolos kalau field readonly Loading Plan Date
+        // kebetulan kosong (mis. task lama yang belum punya Plan Date).
+        const loadingPlanDateVal = document.getElementById('dd-loading-plan-date').value.trim();
+        const loadingDateActualVal = document.getElementById('dd-loading-date-actual').value;
+        if (!loadingPlanDateVal || !loadingDateActualVal) {
+          statusEl.textContent = '❌ Loading Plan Date dan Loading Date (Actual) wajib terisi sebelum Simpan.';
+          return;
+        }
+
         // Kalau section Checklist Foto sedang tampil (ACTION PLAN "Delivery
         // Approval", "Machine Exchange", atau "Relocation"), seluruh 10 item
         // wajib dijawab OK/Not OK DAN wajib dilampirkan foto masing-masing
