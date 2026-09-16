@@ -1428,6 +1428,20 @@
 
         <!-- Logout -->
         <div style="margin-top:auto;padding-top:20px;border-top:1px solid #f1f5f9;margin-top:24px;">
+          <!-- Indikator status koneksi ke server GAS: hijau = normal,
+               kuning/oranye = server lambat merespon, merah = server down
+               atau tidak ada koneksi. Diperbarui otomatis oleh lapisan
+               fetch NOD RESILIENCE (lihat _setConnIndicator di script). -->
+          <div id="sidebar-conn-status" style="
+          display:flex;align-items:center;justify-content:center;gap:6px;
+          font-size:10px;font-weight:700;color:#64748b;margin-bottom:8px;
+          letter-spacing:.02em;">
+            <span id="sidebar-conn-dot" style="
+            width:7px;height:7px;border-radius:50%;background:#22c55e;
+            box-shadow:0 0 0 3px rgba(34,197,94,.18);display:inline-block;
+            flex:none;transition:background-color .25s ease, box-shadow .25s ease;"></span>
+            <span id="sidebar-conn-label">Online</span>
+          </div>
           <div id="sidebar-role-badge" style="
           font-size:11px;font-weight:700;color:#d97706;
           border-radius:10px;padding:8px 10px;
@@ -2818,6 +2832,38 @@
       //     tidak ikut tereksekusi kalau suatu saat ada yang mencoba
       //     menyisipkannya (mencegah stored-XSS).
       // ============================================================
+      // =============================================
+      // INDIKATOR STATUS KONEKSI (dot kecil di atas label role sidebar)
+      // Dipasang di sini (bukan progress bar per-menu) supaya statusnya
+      // real dari lalu-lintas fetch yang sudah ada ke GAS — tidak ada
+      // ping/polling tambahan yang membebani server.
+      //   online  (hijau)  -> respons GAS normal
+      //   slow    (oranye) -> respons GAS ok tapi lambat, atau sedang retry krn 5xx
+      //   offline (merah)  -> fetch gagal total / tidak ada koneksi jaringan
+      // =============================================
+      const CONN_SLOW_THRESHOLD_MS = 3500;
+      const CONN_STATUS_STYLES = {
+        online: { color: '#22c55e', ring: 'rgba(34,197,94,.18)', label: 'Online' },
+        slow: { color: '#f59e0b', ring: 'rgba(245,158,11,.20)', label: 'Server Lambat' },
+        offline: { color: '#ef4444', ring: 'rgba(239,68,68,.20)', label: 'Tidak Terhubung' }
+      };
+      function _setConnIndicator(status) {
+        const cfg = CONN_STATUS_STYLES[status] || CONN_STATUS_STYLES.online;
+        const dot = document.getElementById('sidebar-conn-dot');
+        const label = document.getElementById('sidebar-conn-label');
+        if (dot) {
+          dot.style.background = cfg.color;
+          dot.style.boxShadow = '0 0 0 3px ' + cfg.ring;
+        }
+        if (label) label.textContent = cfg.label;
+      }
+      window._setConnIndicator = _setConnIndicator;
+
+      // Deteksi instan kalau browser sendiri kehilangan koneksi jaringan
+      // (tanpa perlu menunggu fetch berikutnya gagal).
+      window.addEventListener('offline', () => _setConnIndicator('offline'));
+      window.addEventListener('online', () => _setConnIndicator('online'));
+
       (function () {
         const NATIVE_FETCH = window.fetch.bind(window);
         // Action yang MENULIS data — hanya action ini yang diberi requestId
@@ -2953,23 +2999,33 @@
           // atau server balas error 5xx — bukan karena "kelamaan".
           const MAX_RETRY = 3;
           const BASE_DELAY = 900; // ms, dikali 2^percobaan (backoff)
+          const _connCheckStart = Date.now();
 
           function attempt(n) {
             return NATIVE_FETCH(finalUrl, finalOptions)
               .then(res => {
                 if (!res.ok && res.status >= 500 && n < MAX_RETRY) {
                   showRecovering('Server sedang lambat, mencoba lagi\u2026');
+                  _setConnIndicator('slow');
                   return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
                 }
                 if (recoveryCount > 0) hideRecovering();
+                if (res.ok) {
+                  const elapsed = Date.now() - _connCheckStart;
+                  _setConnIndicator(elapsed > CONN_SLOW_THRESHOLD_MS ? 'slow' : 'online');
+                } else {
+                  _setConnIndicator('offline');
+                }
                 return res;
               })
               .catch(err => {
                 if (n < MAX_RETRY) {
                   showRecovering('Koneksi terputus, menyambung ulang\u2026');
+                  _setConnIndicator('offline');
                   return sleep(BASE_DELAY * Math.pow(2, n)).then(() => attempt(n + 1));
                 }
                 hideRecovering();
+                _setConnIndicator('offline');
                 throw err;
               });
           }
@@ -3692,6 +3748,11 @@
       // disimulasikan naik halus sampai 90% sambil menunggu respons,
       // lalu loncat ke 100% begitu respons diterima, sama seperti pola
       // progress bar di popup Simpan Stock Opname)
+      // HANYA ditampilkan sekali, saat Menu Utama pertama kali dimuat
+      // (belum ada cache/data sama sekali) — supaya tidak memicu render
+      // ulang yang membebani setiap kali menu ini dibuka/di-refresh.
+      // Untuk indikasi koneksi selanjutnya, lihat dot status di sidebar
+      // (_setConnIndicator, dekat lapisan fetch NOD RESILIENCE).
       // =============================================
       let _dashboardProgressInterval = null;
       let _dashboardProgressValue = 0;
@@ -3732,6 +3793,10 @@
 
       async function loadDashboardSummary(forceRefresh) {
         const statusEl = document.getElementById('dashboard-status');
+        // true hanya kalau Menu Utama BENAR-BENAR belum pernah dimuat sama
+        // sekali (belum ada data cache ataupun data di memori) — progress
+        // bar hanya berhak tampil di kondisi ini.
+        let showProgress = !_dashboardLoaded;
 
         // Render instan dari cache localStorage (SSR-style) kalau menu ini
         // belum pernah dimuat di memori sejak halaman dibuka/refresh.
@@ -3742,6 +3807,7 @@
             _dashboardLoaded = true;
             _renderDashboardCounts();
             if (statusEl) statusEl.textContent = 'Data (cache) — memuat data terbaru...';
+            showProgress = false; // data (cache) sudah tampil, cukup indikator online di sidebar
           }
         }
 
@@ -3757,12 +3823,12 @@
 
         _dashboardFetching = true;
         if (statusEl && !_dashboardLoaded) statusEl.textContent = 'Memuat data...';
-        _startDashboardProgressSim();
+        if (showProgress) _startDashboardProgressSim();
         try {
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getDashboardSummary');
           const json = await res.json();
           if (!json.success) {
-            _stopDashboardProgressSim();
+            if (showProgress) _stopDashboardProgressSim();
             if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
             return;
           }
@@ -3771,11 +3837,11 @@
           _dashboardLastFetch = Date.now();
           saveDataCache('dashboardSummary', { counts: _dashboardSummary.counts, details: _dashboardSummary.details });
           _renderDashboardCounts();
-          _finishDashboardProgressSim();
+          if (showProgress) _finishDashboardProgressSim();
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
-          _stopDashboardProgressSim();
+          if (showProgress) _stopDashboardProgressSim();
           if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
         } finally {
           _dashboardFetching = false;
