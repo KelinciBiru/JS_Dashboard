@@ -2374,6 +2374,25 @@
              lintas filter/kata kunci/badge SLA karena bersumber dari _jabodetabekSelectedRows,
              bukan hasil render tabel saat ini. -->
         <div id="jabodetabek-selected-list" class="hidden mb-3 p-3 rounded-xl border-2 border-amber-200 bg-amber-50/50"></div>
+
+        <!-- LEADERBOARD KOTA (status Open / kolom AB kosong) — persis di atas tabel,
+             bisa ditampilkan/disembunyikan oleh user. Data & posisi kota diambil dari
+             __kota (hasil parsing DELIVERY / PICK UP ADDRESS) yang sudah ada untuk
+             filter Kota, jadi tidak menambah request baru ke server. -->
+        <div class="flex items-center justify-end mb-2">
+          <button id="jabodetabek-leaderboard-toggle" onclick="toggleJabodetabekLeaderboard()"
+            class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">
+            📊 Tampilkan Leaderboard Kota (Open)
+          </button>
+        </div>
+        <div id="jabodetabek-leaderboard-wrap" class="hidden mb-4 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/40">
+          <h3 class="text-sm font-bold text-slate-800 mb-3">Leaderboard Kota — Status Open (Kolom AB Kosong)</h3>
+          <div id="jabodetabek-leaderboard-empty" class="hidden text-xs text-slate-400 text-center py-6">Tidak ada data dengan status Open.</div>
+          <div style="height:280px;">
+            <canvas id="jabodetabek-leaderboard-chart"></canvas>
+          </div>
+        </div>
+
         <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
           <table id="jabodetabek-table" class="table-fixed text-xs sm:text-sm border-collapse">
             <colgroup id="jabodetabek-colgroup"></colgroup>
@@ -5896,6 +5915,7 @@
             _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
             _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
             renderJabodetabekTable();
+            if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
             statusEl.textContent = _jabodetabekData.length + ' baris data (cache) — memuat data terbaru...';
           }
         }
@@ -5928,11 +5948,108 @@
           saveDataCache('jabodetabek', { headers: _jabodetabekHeaders, data: _jabodetabekData });
           statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderJabodetabekTable();
+          if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
         } finally {
           _jabodetabekFetching = false;
         }
+      }
+
+      // =============================================
+      // LEADERBOARD KOTA — Request BD - Jabodetabek, status "Open" (kolom AB kosong)
+      // Ditampilkan sebagai bar chart (Chart.js), persis di atas tabel, toggle
+      // tampil/sembunyi oleh user. Sumber kota: __kota (hasil parsing kolom
+      // DELIVERY / PICK UP ADDRESS oleh _enrichLocationFilters, sama seperti yang
+      // dipakai dropdown filter Kota) — tidak menambah request baru ke server.
+      // Kolom status (AB) dicari secara DINAMIS: header tepat SETELAH "WAREHOUSE"
+      // di _jabodetabekHeaders (posisi ini sama persis dengan cara server
+      // menyisipkan kolom AB di getJabodetabek_), supaya tetap benar walau nama
+      // header sel AB1 di sheet berbeda-beda ("LOGISTICS UPDATE"/dsb).
+      // =============================================
+      let _jabodetabekLeaderboardVisible = false;
+      let _jabodetabekLeaderboardChart = null;
+
+      function _jabodetabekStatusHeaderKey_() {
+        const idx = _jabodetabekHeaders.findIndex(h => String(h).trim().toLowerCase() === 'warehouse');
+        if (idx === -1 || idx + 1 >= _jabodetabekHeaders.length) return null;
+        return _jabodetabekHeaders[idx + 1];
+      }
+
+      // Hitung qty baris ber-status Open (kolom AB kosong) per Kota, diurut dari
+      // qty terbesar. Kota kosong/tidak terparse dikelompokkan sebagai "Tidak Diketahui".
+      function _buildJabodetabekOpenLeaderboard_() {
+        const statusKey = _jabodetabekStatusHeaderKey_();
+        const counts = {};
+        _jabodetabekData.forEach(row => {
+          const statusVal = statusKey ? String(row[statusKey] ?? '').trim() : '';
+          if (statusVal !== '') return; // hanya kolom AB kosong ("Open")
+          const kota = (row.__kota || '').trim() || 'Tidak Diketahui';
+          counts[kota] = (counts[kota] || 0) + 1;
+        });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        return { labels: sorted.map(e => e[0]), values: sorted.map(e => e[1]) };
+      }
+
+      function _renderJabodetabekLeaderboardChart_() {
+        const canvas = document.getElementById('jabodetabek-leaderboard-chart');
+        if (!canvas) return;
+
+        if (typeof Chart === 'undefined') {
+          const wrap = canvas.parentElement;
+          if (wrap && !document.getElementById('jabodetabek-leaderboard-chart-error')) {
+            wrap.innerHTML = '<div id="jabodetabek-leaderboard-chart-error" class="flex items-center justify-center h-full text-xs text-red-500 text-center px-4">' +
+              '❌ Gagal memuat library grafik (Chart.js) dari CDN. Cek koneksi internet / pemblokir CDN, lalu muat ulang halaman.</div>';
+          }
+          return;
+        }
+
+        const { labels, values } = _buildJabodetabekOpenLeaderboard_();
+
+        const emptyEl = document.getElementById('jabodetabek-leaderboard-empty');
+        if (emptyEl) emptyEl.classList.toggle('hidden', labels.length > 0);
+        canvas.classList.toggle('hidden', labels.length === 0);
+
+        if (_jabodetabekLeaderboardChart) {
+          _jabodetabekLeaderboardChart.data.labels = labels;
+          _jabodetabekLeaderboardChart.data.datasets[0].data = values;
+          _jabodetabekLeaderboardChart.update();
+          return;
+        }
+
+        _jabodetabekLeaderboardChart = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Qty Open',
+              data: values,
+              backgroundColor: '#6366f1',
+              borderRadius: 4,
+              maxBarThickness: 48
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+      }
+
+      // Toggle tampil/sembunyi leaderboard (dipanggil tombol di atas tabel).
+      function toggleJabodetabekLeaderboard() {
+        _jabodetabekLeaderboardVisible = !_jabodetabekLeaderboardVisible;
+        const wrap = document.getElementById('jabodetabek-leaderboard-wrap');
+        const btn = document.getElementById('jabodetabek-leaderboard-toggle');
+        if (wrap) wrap.classList.toggle('hidden', !_jabodetabekLeaderboardVisible);
+        if (btn) {
+          btn.innerHTML = _jabodetabekLeaderboardVisible
+            ? '🔼 Sembunyikan Leaderboard Kota (Open)'
+            : '📊 Tampilkan Leaderboard Kota (Open)';
+        }
+        if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
       }
 
       // Lebar minimum per kolom (px) supaya tidak terlalu sempit saat kolom banyak
