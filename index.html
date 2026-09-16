@@ -2382,15 +2382,13 @@
         <div class="flex items-center justify-end mb-2">
           <button id="jabodetabek-leaderboard-toggle" onclick="toggleJabodetabekLeaderboard()"
             class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">
-            📊 Tampilkan Leaderboard Kota (Open)
+            📊 Tampilkan Leaderboard Kota (Open) <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>
           </button>
         </div>
         <div id="jabodetabek-leaderboard-wrap" class="hidden mb-4 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/40">
           <h3 class="text-sm font-bold text-slate-800 mb-3">Leaderboard Kota — Status Open (Kolom AB Kosong)</h3>
           <div id="jabodetabek-leaderboard-empty" class="hidden text-xs text-slate-400 text-center py-6">Tidak ada data dengan status Open.</div>
-          <div style="height:280px;">
-            <canvas id="jabodetabek-leaderboard-chart"></canvas>
-          </div>
+          <div id="jabodetabek-leaderboard-list" class="flex flex-col gap-2.5"></div>
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
@@ -5968,7 +5966,11 @@
       // header sel AB1 di sheet berbeda-beda ("LOGISTICS UPDATE"/dsb).
       // =============================================
       let _jabodetabekLeaderboardVisible = false;
-      let _jabodetabekLeaderboardChart = null;
+
+      // Palet warna pill leaderboard, urutan dipakai berulang (rank 1 = paling
+      // menonjol/ungu, lalu merah, oranye, kuning, lalu berulang lagi kalau
+      // baris lebih dari 4) — meniru model chart pill-progress yang dilampirkan user.
+      const JABODETABEK_LEADERBOARD_COLORS = ['#7c6fd6', '#e6483f', '#f2792b', '#f2b93c'];
 
       function _jabodetabekStatusHeaderKey_() {
         const idx = _jabodetabekHeaders.findIndex(h => String(h).trim().toLowerCase() === 'warehouse');
@@ -5991,54 +5993,45 @@
         return { labels: sorted.map(e => e[0]), values: sorted.map(e => e[1]) };
       }
 
+      // Render leaderboard sebagai baris pill-progress (badge % di kiri +
+      // bar gelap berisi nama Kota), model chart sesuai contoh yang dilampirkan
+      // user — bukan lagi canvas Chart.js.
       function _renderJabodetabekLeaderboardChart_() {
-        const canvas = document.getElementById('jabodetabek-leaderboard-chart');
-        if (!canvas) return;
-
-        if (typeof Chart === 'undefined') {
-          const wrap = canvas.parentElement;
-          if (wrap && !document.getElementById('jabodetabek-leaderboard-chart-error')) {
-            wrap.innerHTML = '<div id="jabodetabek-leaderboard-chart-error" class="flex items-center justify-center h-full text-xs text-red-500 text-center px-4">' +
-              '❌ Gagal memuat library grafik (Chart.js) dari CDN. Cek koneksi internet / pemblokir CDN, lalu muat ulang halaman.</div>';
-          }
-          return;
-        }
+        const listEl = document.getElementById('jabodetabek-leaderboard-list');
+        if (!listEl) return;
 
         const { labels, values } = _buildJabodetabekOpenLeaderboard_();
 
         const emptyEl = document.getElementById('jabodetabek-leaderboard-empty');
         if (emptyEl) emptyEl.classList.toggle('hidden', labels.length > 0);
-        canvas.classList.toggle('hidden', labels.length === 0);
+        listEl.classList.toggle('hidden', labels.length === 0);
+        if (labels.length === 0) { listEl.innerHTML = ''; return; }
 
-        if (_jabodetabekLeaderboardChart) {
-          _jabodetabekLeaderboardChart.data.labels = labels;
-          _jabodetabekLeaderboardChart.data.datasets[0].data = values;
-          _jabodetabekLeaderboardChart.update();
-          return;
-        }
-
-        _jabodetabekLeaderboardChart = new Chart(canvas.getContext('2d'), {
-          type: 'bar',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Qty Open',
-              data: values,
-              backgroundColor: '#6366f1',
-              borderRadius: 4,
-              maxBarThickness: 48
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-          }
-        });
+        const maxVal = Math.max(...values, 1);
+        listEl.innerHTML = labels.map((kota, i) => {
+          const val = values[i];
+          const pct = Math.round((val / maxVal) * 100);
+          const fillWidth = Math.max(pct, 16); // lebar minimum supaya badge % selalu muat
+          const color = JABODETABEK_LEADERBOARD_COLORS[i % JABODETABEK_LEADERBOARD_COLORS.length];
+          const kotaSafe = _escapeHtmlAttr_(kota);
+          return `
+            <div style="position:relative;height:44px;border-radius:9999px;overflow:hidden;background:#1e293b;">
+              <div style="position:absolute;inset:0;width:${fillWidth}%;background-color:${color};
+                background-image:repeating-linear-gradient(90deg, rgba(255,255,255,0) 0px, rgba(255,255,255,0) 6px, rgba(255,255,255,.55) 6px, rgba(255,255,255,.55) 10px);"></div>
+              <div style="position:absolute;left:4px;top:4px;bottom:4px;display:flex;align-items:center;padding:0 14px;
+                border-radius:9999px;background:${color};color:#fff;font-weight:700;font-size:12px;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.15);">${pct}%</div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 88px;">
+                <span style="color:#e2e8f0;font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${kotaSafe}</span>
+                <span style="color:#94a3b8;font-size:11px;font-weight:600;flex-shrink:0;margin-left:8px;white-space:nowrap;">${val} Open</span>
+              </div>
+            </div>`;
+        }).join('');
       }
 
       // Toggle tampil/sembunyi leaderboard (dipanggil tombol di atas tabel).
+      // Ikon disamakan dengan konvensi panah ▼/▲ yang sudah dipakai di menu
+      // lain (mis. indikator dropdown & tren Summary Dispatch), 📊 tetap
+      // dipakai konsisten di kedua state supaya jelas ini toggle leaderboard.
       function toggleJabodetabekLeaderboard() {
         _jabodetabekLeaderboardVisible = !_jabodetabekLeaderboardVisible;
         const wrap = document.getElementById('jabodetabek-leaderboard-wrap');
@@ -6046,8 +6039,8 @@
         if (wrap) wrap.classList.toggle('hidden', !_jabodetabekLeaderboardVisible);
         if (btn) {
           btn.innerHTML = _jabodetabekLeaderboardVisible
-            ? '🔼 Sembunyikan Leaderboard Kota (Open)'
-            : '📊 Tampilkan Leaderboard Kota (Open)';
+            ? '📊 Sembunyikan Leaderboard Kota (Open) <span id="jabodetabek-leaderboard-toggle-arrow">▲</span>'
+            : '📊 Tampilkan Leaderboard Kota (Open) <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>';
         }
         if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
       }
