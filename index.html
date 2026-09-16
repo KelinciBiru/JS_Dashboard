@@ -2871,7 +2871,19 @@
       //   slow    (oranye) -> respons GAS ok tapi lambat, atau sedang retry krn 5xx
       //   offline (merah)  -> fetch gagal total / tidak ada koneksi jaringan
       // =============================================
-      const CONN_SLOW_THRESHOLD_MS = 3500;
+      // Threshold dinaikkan dari 3.5 detik -> 9 detik. GAS (Google Apps
+      // Script) itu memang wajar butuh beberapa detik utk baca spreadsheet
+      // (apalagi menu berat spt Summary Dispatch bisa belasan detik, lihat
+      // komentar di window.fetch override di bawah), jadi 3.5 detik terlalu
+      // ketat dan bikin indikator "Server Lambat" nyala terus padahal
+      // server-nya sehat-sehat saja, cuma GAS memang begitu karakternya.
+      const CONN_SLOW_THRESHOLD_MS = 9000;
+      // Supaya tidak "flapping" (nyala-mati) hanya gara-gara satu request
+      // kebetulan kena cold-start GAS, status 'slow' baru betulan ditampilkan
+      // kalau elapsed di atas threshold terjadi 2x BERTURUT-TURUT. Begitu ada
+      // satu response yang cepat lagi, streak-nya direset -> balik 'online'.
+      const CONN_SLOW_STREAK_NEEDED = 2;
+      let _connSlowStreak = 0;
       const CONN_STATUS_STYLES = {
         online: { color: '#22c55e', ring: 'rgba(34,197,94,.18)', label: 'Online' },
         slow: { color: '#f59e0b', ring: 'rgba(245,158,11,.20)', label: 'Server Lambat' },
@@ -3047,8 +3059,15 @@
                 if (recoveryCount > 0) hideRecovering();
                 if (res.ok) {
                   const elapsed = Date.now() - _connCheckStart;
-                  _setConnIndicator(elapsed > CONN_SLOW_THRESHOLD_MS ? 'slow' : 'online');
+                  if (elapsed > CONN_SLOW_THRESHOLD_MS) {
+                    _connSlowStreak++;
+                    _setConnIndicator(_connSlowStreak >= CONN_SLOW_STREAK_NEEDED ? 'slow' : 'online');
+                  } else {
+                    _connSlowStreak = 0;
+                    _setConnIndicator('online');
+                  }
                 } else {
+                  _connSlowStreak = 0;
                   _setConnIndicator('offline');
                 }
                 return res;
