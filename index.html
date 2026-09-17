@@ -2386,6 +2386,13 @@
                   <option value="">Semua Kecamatan</option>
                 </select>
               </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Action Plan</label>
+                <select id="jabodetabek-filter-actionplan" onchange="renderJabodetabekTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Action Plan</option>
+                </select>
+              </div>
             </div>
             <div class="flex items-center gap-2">
               <input id="jabodetabek-search" type="text" placeholder="Cari data..."
@@ -2469,6 +2476,13 @@
                 <select id="event-filter-kecamatan" onchange="renderEventTable()"
                   class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
                   <option value="">Semua Kecamatan</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Action Plan</label>
+                <select id="event-filter-actionplan" onchange="renderEventTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Action Plan</option>
                 </select>
               </div>
             </div>
@@ -5899,11 +5913,16 @@
       // internal __landmark/__kota/__kecamatan) berdasarkan kolom addressColumnName.
       function _enrichLocationFilters(data, headers, addressColumnName) {
         const addrKey = _findHeaderKey(headers, addressColumnName);
+        const apKey = _findHeaderKey(headers, 'ACTION PLAN');
         data.forEach(row => {
           const comp = _parseAddressComponents(row[addrKey]);
           row.__landmark = comp.landmark;
           row.__kota = comp.kota;
           row.__kecamatan = comp.kecamatan;
+          // Nilai ACTION PLAN apa adanya (trim saja) — dipakai dropdown filter
+          // "Action Plan" di menu Jabodetabek & Event, sama pola dengan
+          // __landmark/__kota/__kecamatan di atas.
+          row.__actionplan = String(row[apKey] ?? '').trim();
         });
       }
 
@@ -5948,9 +5967,12 @@
         const landmarkVal = document.getElementById(idPrefix + '-filter-landmark').value;
         const kotaVal = document.getElementById(idPrefix + '-filter-kota').value;
         const kecamatanVal = document.getElementById(idPrefix + '-filter-kecamatan').value;
+        const actionPlanEl = document.getElementById(idPrefix + '-filter-actionplan');
+        const actionPlanVal = actionPlanEl ? actionPlanEl.value : '';
         if (landmarkVal && row.__landmark !== landmarkVal) return false;
         if (kotaVal && row.__kota !== kotaVal) return false;
         if (kecamatanVal && row.__kecamatan !== kecamatanVal) return false;
+        if (actionPlanVal && row.__actionplan !== actionPlanVal) return false;
         return true;
       }
 
@@ -6126,6 +6148,7 @@
             _enrichLocationFilters(_jabodetabekData, _jabodetabekHeaders, 'DELIVERY / PICK UP ADDRESS');
             _populateLocationFilterOptions('jabodetabek-filter-landmark', _jabodetabekData, '__landmark', 'Semua Landmark');
             _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
+            _populateLocationFilterOptions('jabodetabek-filter-actionplan', _jabodetabekData, '__actionplan', 'Semua Action Plan');
             _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
             renderJabodetabekTable();
             if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
@@ -6157,6 +6180,7 @@
           _enrichLocationFilters(_jabodetabekData, _jabodetabekHeaders, 'DELIVERY / PICK UP ADDRESS');
           _populateLocationFilterOptions('jabodetabek-filter-landmark', _jabodetabekData, '__landmark', 'Semua Landmark');
           _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
+          _populateLocationFilterOptions('jabodetabek-filter-actionplan', _jabodetabekData, '__actionplan', 'Semua Action Plan');
           _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
           saveDataCache('jabodetabek', { headers: _jabodetabekHeaders, data: _jabodetabekData });
           statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
@@ -10293,6 +10317,7 @@
             _enrichLocationFilters(_eventData, _eventHeaders, 'DELIVERY / PICK UP ADDRESS');
             _populateLocationFilterOptions('event-filter-landmark', _eventData, '__landmark', 'Semua Landmark');
             _populateLocationFilterOptions('event-filter-kota', _eventData, '__kota', 'Semua Kota');
+            _populateLocationFilterOptions('event-filter-actionplan', _eventData, '__actionplan', 'Semua Action Plan');
             _refreshKecamatanFilterOptions('event', _eventData);
             renderEventTable();
             statusEl.textContent = _eventData.length + ' baris data (cache) — memuat data terbaru...';
@@ -10323,6 +10348,7 @@
           _enrichLocationFilters(_eventData, _eventHeaders, 'DELIVERY / PICK UP ADDRESS');
           _populateLocationFilterOptions('event-filter-landmark', _eventData, '__landmark', 'Semua Landmark');
           _populateLocationFilterOptions('event-filter-kota', _eventData, '__kota', 'Semua Kota');
+          _populateLocationFilterOptions('event-filter-actionplan', _eventData, '__actionplan', 'Semua Action Plan');
           _refreshKecamatanFilterOptions('event', _eventData);
           saveDataCache('event', { headers: _eventHeaders, data: _eventData });
           statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
