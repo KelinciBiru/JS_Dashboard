@@ -5982,13 +5982,22 @@
       // dengan _mprepRowKey() di List Machine Preparation. Kombinasi TIMESTAMP +
       // LOCATION NAME + ACTION PLAN + DELIVERY/PICK UP ADDRESS dipakai karena baris
       // Request BD tidak punya TICKET (TICKET baru dibuat saat masuk Plan Task).
-      function _requestBdRowKey(row, headers) {
+      // FIX: kombinasi kolom saja bisa sama persis utk beberapa task (mis. event
+      // dgn beberapa mesin dikirim ke site+jam+action plan yang sama) sehingga
+      // beberapa baris numpuk jadi satu entry Map & cuma 1 yang ikut tercentang/
+      // terkirim. Ditambahkan index baris di dataArray (data asli, bukan hasil
+      // filter) sebagai pembeda — tetap stabil lintas filter/pencarian karena
+      // dataArray & urutannya tidak berubah saat filter diganti, hanya berubah
+      // saat data di-reload (yang otomatis membersihkan seleksi juga).
+      function _requestBdRowKey(row, headers, dataArray) {
         const tsKey = _findHeaderKey(headers, 'TIMESTAMP');
         const locKey = _findHeaderKey(headers, 'LOCATION NAME');
         const apKey = _findHeaderKey(headers, 'ACTION PLAN');
         const addrKey = _findHeaderKey(headers, 'DELIVERY / PICK UP ADDRESS');
-        return [row[tsKey], row[locKey], row[apKey], row[addrKey]]
+        const baseKey = [row[tsKey], row[locKey], row[apKey], row[addrKey]]
           .map(v => String(v ?? '').trim()).join('||');
+        const idx = dataArray ? dataArray.indexOf(row) : -1;
+        return baseKey + '||' + idx;
       }
 
       function _mapRowToInputTaskColumns(row, headers) {
@@ -6434,7 +6443,7 @@
         const filtered = _getFilteredJabodetabekData();
 
         _jabodetabekVisibleRowsByKey = {};
-        filtered.forEach(row => { _jabodetabekVisibleRowsByKey[_requestBdRowKey(row, _jabodetabekHeaders)] = row; });
+        filtered.forEach(row => { _jabodetabekVisibleRowsByKey[_requestBdRowKey(row, _jabodetabekHeaders, _jabodetabekData)] = row; });
 
         _renderJabodetabekSelectedList();
 
@@ -6445,7 +6454,7 @@
         }
 
         tbody.innerHTML = filtered.map((row, i) => {
-          const key = _requestBdRowKey(row, _jabodetabekHeaders);
+          const key = _requestBdRowKey(row, _jabodetabekHeaders, _jabodetabekData);
           const checkboxTd = _jabodetabekAddTaskMode
             ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
               '<input type="checkbox" class="jabodetabek-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-key="' + key.replace(/"/g, '&quot;') + '" ' +
@@ -10379,7 +10388,7 @@
         const filtered = _getFilteredEventData();
 
         _eventVisibleRowsByKey = {};
-        filtered.forEach(row => { _eventVisibleRowsByKey[_requestBdRowKey(row, _eventHeaders)] = row; });
+        filtered.forEach(row => { _eventVisibleRowsByKey[_requestBdRowKey(row, _eventHeaders, _eventData)] = row; });
 
         _renderEventSelectedList();
 
@@ -10390,7 +10399,7 @@
         }
 
         tbody.innerHTML = filtered.map((row, i) => {
-          const key = _requestBdRowKey(row, _eventHeaders);
+          const key = _requestBdRowKey(row, _eventHeaders, _eventData);
           const checkboxTd = _eventAddTaskMode
             ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
               '<input type="checkbox" class="event-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-key="' + key.replace(/"/g, '&quot;') + '" ' +
