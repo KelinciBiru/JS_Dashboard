@@ -43,10 +43,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <!-- Leaflet: dipakai peta "Pool Driver" (menu Plan Task) — free & open source (OpenStreetMap),
-       tanpa API key. CSS+JS dari cdnjs, sudah diizinkan di CSP style-src/script-src di atas. -->
+  <!-- Leaflet + OpenStreetMap: library peta INTERAKTIF GRATIS, TANPA API KEY (beda
+       dengan Google Maps JS API yang butuh billing/API key) — dipakai menu
+       "Pool Driver" untuk menampilkan titik koordinat GPS real-time Team Dispatch.
+       Dimuat dari cdnjs.cloudflare.com supaya cocok dengan script-src/style-src
+       CSP yang sudah ada di atas (tidak perlu menambah domain baru). Tile peta
+       (gambar map-nya) dimuat dari tile.openstreetmap.org lewat <img>, yang sudah
+       diizinkan oleh img-src 'https:' pada CSP ini. -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
   <style>
     *,
     *::before,
@@ -1759,6 +1764,30 @@
         <div id="plan-task-result-wrap" class="hidden space-y-6"></div>
       </div>
 
+      <!-- POOL DRIVER (menu Plan Task > Pool Driver): peta real-time posisi GPS
+           Team Dispatch yang sedang berjalan (Status "On Delivery"/"Arrived"),
+           dibaca dari kolom Geolocation sheet "Plan Task". Peta pakai Leaflet +
+           OpenStreetMap (gratis, tanpa API key — lihat komentar di <head>).
+           Auto-refresh lewat AUTO_REFRESH_LOADERS['PoolDriver'] (tiap
+           AUTO_REFRESH_INTERVAL_MS selama menu ini terbuka), sama seperti menu
+           lain di Dashboard. -->
+      <div id="content-PoolDriver" class="page-content">
+        <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Pool Driver</h1>
+          <button onclick="loadPoolDriverMap(true)"
+            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">🔄 Refresh</button>
+        </div>
+        <div id="pool-driver-status" class="text-xs text-slate-400 mb-2"></div>
+        <div id="pool-driver-empty" class="placeholder-box hidden">Belum ada Team Dispatch yang sedang berjalan (On Delivery/Tiba) dengan titik lokasi tercatat.</div>
+        <div id="pool-driver-map-wrap" class="bg-white rounded-lg shadow p-2">
+          <div id="pool-driver-map" style="height:60vh;min-height:360px;border-radius:8px;"></div>
+        </div>
+        <!-- List Team aktif di bawah peta, supaya bisa dibaca tanpa perlu tap tiap
+             marker satu-satu (berguna juga di HP layar kecil). Diisi ulang oleh
+             renderPoolDriverList() tiap kali data dimuat/refresh. -->
+        <div id="pool-driver-list" class="mt-3 space-y-2"></div>
+      </div>
+
       <!-- MODAL: Pilih Team (PIC) untuk Preview / Share to WhatsApp Plan Task -->
       <div id="plan-task-pic-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
@@ -1822,21 +1851,6 @@
             <thead id="task-ongoing-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
             <tbody id="task-ongoing-tbody"></tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- POOL DRIVER — peta real-time posisi Team Dispatch (ADMIN monitoring) -->
-      <div id="content-PoolDriver" class="page-content">
-        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
-          <h1 class="text-lg font-bold text-slate-800">Pool Driver</h1>
-          <button onclick="loadPoolDriverMap(true)"
-            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
-        </div>
-        <div id="pool-driver-status" class="text-xs text-slate-500 mb-3"></div>
-        <div id="pool-driver-empty" class="placeholder-box">Belum ada Team Dispatch yang aktif (klik "Start" di menu Task Team Dispatch untuk mulai terlihat di peta ini).</div>
-        <div id="pool-driver-map-wrap" class="hidden">
-          <div id="pool-driver-map" style="width:100%;height:520px;border-radius:0.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
-          <div id="pool-driver-team-list" class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
         </div>
       </div>
 
@@ -3415,8 +3429,8 @@
           items: [
             { label: 'Input Task', action: "showInventory('Input Task')" },
             { label: 'Plan Task', action: "showInventory('Plan Task')" },
-            { label: 'Task on Going', action: "showInventory('Status Task')" },
             { label: 'Pool Driver', action: "showInventory('Pool Driver')" },
+            { label: 'Task on Going', action: "showInventory('Status Task')" },
             { label: 'Historycal Dispatch', action: "showInventory('Historycal Dispatch')" },
           ],
         },
@@ -3678,11 +3692,11 @@
         'InputTask': () => loadPlanTaskDropdowns(true),
         'PlanTask': () => loadPlanTaskBatches(true),
         'StatusTask': () => loadTaskOnGoing(true),
-        'PoolDriver': () => loadPoolDriverMap(true),
         'HistorycalDispatch': () => loadHistorycalDispatch(true),
         'HistorycalPreparation': () => loadHistorycalPreparation(true),
-        'TeamDispatch': () => loadTeamDispatchTasks(true),
-        'TeamPrepare': () => loadTeamPrepareCards(true)
+        'TeamDispatch': () => { loadTeamDispatchTasks(true); _pingDispatchGeolocation_(); },
+        'TeamPrepare': () => loadTeamPrepareCards(true),
+        'PoolDriver': () => loadPoolDriverMap(true)
       };
 
       function _isAnyModalOpen_() {
@@ -3868,11 +3882,11 @@
         if (n === 'Stock Opname') loadStockOpnameSource(false);
         if (n === 'Input Task') { renderInputTaskTable(); loadPlanTaskDropdowns(false); refreshInputTaskVmcNo(); }
         if (n === 'Plan Task') { renderPlanTaskTable(); loadPlanTaskBatches(false); }
-        if (n === 'Status Task') { loadTaskOnGoing(false); }
         if (n === 'Pool Driver') { loadPoolDriverMap(false); }
+        if (n === 'Status Task') { loadTaskOnGoing(false); }
         if (n === 'Historycal Dispatch') { loadHistorycalDispatch(false); }
         if (n === 'Historycal Preparation') { loadHistorycalPreparation(false); }
-        if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); }
+        if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); _pingDispatchGeolocation_(); }
         if (n === 'Team Prepare') { loadTeamPrepareCards(false); }
       }
 
@@ -7488,6 +7502,164 @@
       }
 
       // =============================================
+      // POOL DRIVER (menu Plan Task > Pool Driver)
+      // Peta real-time (Leaflet + OpenStreetMap, gratis & tanpa API key — lihat
+      // komentar di <head>) yang menampilkan titik koordinat GPS terakhir setiap
+      // Team Dispatch yang task-nya sedang berjalan (Status "On Delivery"/
+      // "Arrived"), dibaca dari kolom "Geolocation"/"Geolocation Updated At"
+      // sheet "Plan Task" (action 'getPlanTaskActive', field yang sama dipakai
+      // Task On Going/Team Dispatch). Posisi ini diperbarui otomatis dari HP
+      // Team Dispatch lewat recordDispatchBerangkat_/recordDispatchTiba_ (saat
+      // Start/Tiba diklik) dan updateDispatchGeolocation_ (ping berkala lewat
+      // _pingDispatchGeolocation_ di index.html, lihat bagian Task Team
+      // Dispatch) — jadi menu ini otomatis "hidup" tanpa ADMIN perlu apa-apa.
+      // =============================================
+      let _poolDriverMap = null;
+      let _poolDriverMarkers = {}; // key: rowNumber -> L.marker
+      let _poolDriverRows = [];
+
+      function _parseGeolocationString_(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return null;
+        const parts = s.split(',');
+        if (parts.length !== 2) return null;
+        const lat = Number(parts[0]);
+        const lng = Number(parts[1]);
+        if (isNaN(lat) || isNaN(lng)) return null;
+        return { lat: lat, lng: lng };
+      }
+
+      function _ensurePoolDriverMap_() {
+        if (_poolDriverMap) return _poolDriverMap;
+        // Default center: Jabodetabek (area operasional utama), zoom cukup lebar
+        // supaya beberapa titik Jabodetabek langsung kelihatan sebelum ada data.
+        _poolDriverMap = L.map('pool-driver-map').setView([-6.2088, 106.8456], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+        }).addTo(_poolDriverMap);
+        return _poolDriverMap;
+      }
+
+      // Ikon marker custom (pin oranye khas warna brand Dashboard) supaya beda
+      // dari pin default Leaflet, dibuat lewat divIcon (SVG inline, tidak perlu
+      // file gambar tambahan — tetap sesuai CSP img-src yang sudah ada).
+      function _poolDriverDivIcon_() {
+        return L.divIcon({
+          className: '',
+          html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#F5A623;' +
+            'border:2px solid #ffffff;box-shadow:0 1px 4px rgba(0,0,0,.4);transform:rotate(-45deg);"></div>',
+          iconSize: [28, 28],
+          iconAnchor: [14, 28],
+          popupAnchor: [0, -28]
+        });
+      }
+
+      async function loadPoolDriverMap(forceRefresh) {
+        const statusEl = document.getElementById('pool-driver-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          return;
+        }
+        statusEl.textContent = 'Memuat posisi Team Dispatch...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
+          const json = await res.json();
+          if (!json.success) {
+            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            return;
+          }
+          _poolDriverRows = (json.rows || []).filter(r => {
+            const st = String(r['Status'] || '').trim().toLowerCase();
+            return (st === 'on delivery' || st === 'arrived') && _parseGeolocationString_(r['Geolocation']);
+          });
+          statusEl.textContent = _poolDriverRows.length + ' Team sedang berjalan — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          renderPoolDriverMap();
+          renderPoolDriverList();
+        } catch (err) {
+          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+        }
+      }
+
+      function renderPoolDriverMap() {
+        const emptyEl = document.getElementById('pool-driver-empty');
+        const mapWrap = document.getElementById('pool-driver-map-wrap');
+        if (!_poolDriverRows.length) {
+          emptyEl.classList.remove('hidden');
+          mapWrap.classList.add('hidden');
+          return;
+        }
+        emptyEl.classList.add('hidden');
+        mapWrap.classList.remove('hidden');
+
+        const map = _ensurePoolDriverMap_();
+        // Leaflet butuh invalidateSize() setelah container-nya sempat display:none
+        // (halaman "Pool Driver" baru saja ditampilkan), kalau tidak peta akan
+        // ter-render abu-abu/terpotong sampai window di-resize manual.
+        setTimeout(() => map.invalidateSize(), 0);
+
+        const seenRowNumbers = new Set();
+        const latLngs = [];
+        _poolDriverRows.forEach(row => {
+          const pos = _parseGeolocationString_(row['Geolocation']);
+          if (!pos) return;
+          seenRowNumbers.add(row.rowNumber);
+          latLngs.push([pos.lat, pos.lng]);
+
+          const status = String(row['Status'] || '').trim();
+          const updatedAt = row['Geolocation Updated At'] || '-';
+          const popupHtml =
+            '<div style="font-size:12px;line-height:1.5;">' +
+              '<b>' + (row['PIC'] || row['Divisi'] || '-') + '</b><br>' +
+              (row['LOCATION NAME'] || '-') + '<br>' +
+              'Status: ' + status + '<br>' +
+              'Estimasi Tiba: ' + (row['Estimasi Tiba'] || '-') + '<br>' +
+              'Update GPS terakhir: ' + updatedAt +
+            '</div>';
+
+          let marker = _poolDriverMarkers[row.rowNumber];
+          if (marker) {
+            marker.setLatLng([pos.lat, pos.lng]);
+            marker.setPopupContent(popupHtml);
+          } else {
+            marker = L.marker([pos.lat, pos.lng], { icon: _poolDriverDivIcon_() }).addTo(map);
+            marker.bindPopup(popupHtml);
+            _poolDriverMarkers[row.rowNumber] = marker;
+          }
+        });
+
+        // Buang marker Team yang sudah tidak aktif lagi (Delivered/Cancel/Closed)
+        // supaya peta tidak menumpuk pin basi.
+        Object.keys(_poolDriverMarkers).forEach(rn => {
+          if (!seenRowNumbers.has(Number(rn))) {
+            map.removeLayer(_poolDriverMarkers[rn]);
+            delete _poolDriverMarkers[rn];
+          }
+        });
+
+        if (latLngs.length) {
+          map.fitBounds(latLngs, { padding: [30, 30], maxZoom: 15 });
+        }
+      }
+
+      function renderPoolDriverList() {
+        const listEl = document.getElementById('pool-driver-list');
+        if (!_poolDriverRows.length) { listEl.innerHTML = ''; return; }
+        listEl.innerHTML = _poolDriverRows.map(row => {
+          const status = String(row['Status'] || '').trim();
+          const badgeClass = status.toLowerCase() === 'arrived' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700';
+          return '<div class="bg-white rounded-lg shadow p-3 flex items-center justify-between gap-3 flex-wrap">' +
+            '<div class="text-xs text-slate-600 min-w-0">' +
+              '<div class="font-bold text-slate-800">' + (row['PIC'] || row['Divisi'] || '-') + '</div>' +
+              '<div class="break-words">' + (row['LOCATION NAME'] || '-') + '</div>' +
+              '<div class="text-slate-400">Update GPS: ' + (row['Geolocation Updated At'] || '-') + '</div>' +
+            '</div>' +
+            '<span class="text-[10px] font-semibold px-2 py-1 rounded-full whitespace-nowrap ' + badgeClass + '">' + status + '</span>' +
+          '</div>';
+        }).join('');
+      }
+
+      // =============================================
       // HISTORYCAL DISPATCH (menu Plan Task > Historycal Dispatch)
       // Menampilkan riwayat sheet "Task Team Dispatch" (spreadsheet Dashboard
       // Dispatch V2) — log task yang sudah Delivered/Closed lengkap checklist
@@ -7868,128 +8040,6 @@
           renderTeamDispatchCards();
         } catch (err) {
           statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
-        }
-      }
-
-      // =============================================
-      // POOL DRIVER (menu Plan Task > Pool Driver) — peta real-time posisi
-      // Team Dispatch untuk ADMIN. Sumber data SAMA dengan Task Team Dispatch
-      // (action 'getPlanTaskActive', sheet "Plan Task"), hanya baris dengan
-      // Status "On Delivery" atau "Arrived" (Team sedang jalan/sudah tiba di
-      // lokasi) DAN kolom Geolocation terisi yang ditampilkan sebagai marker —
-      // Geolocation diisi otomatis oleh server (recordDispatchBerangkat_ /
-      // recordDispatchTiba_) setiap kali User Team Dispatch klik tombol
-      // "Start"/"Tiba" di Cardview Task Team Dispatch. Peta pakai Leaflet +
-      // OpenStreetMap (gratis, tanpa API key, tanpa biaya) — akurasi titik
-      // mengikuti akurasi GPS HP masing-masing User saat tombol diklik, BUKAN
-      // pelacakan terus-menerus (baterai HP tidak disedot terus).
-      // =============================================
-      let _poolDriverMap = null;
-      let _poolDriverMarkers = {}; // key: rowNumber -> L.marker
-      let _poolDriverFetching = false;
-
-      function _poolDriverParseLatLng_(geoStr) {
-        const parts = String(geoStr || '').split(',').map(s => parseFloat(s.trim()));
-        if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
-        return { lat: parts[0], lng: parts[1] };
-      }
-
-      function _ensurePoolDriverMap_() {
-        if (_poolDriverMap || typeof L === 'undefined') return;
-        _poolDriverMap = L.map('pool-driver-map').setView([-6.1865, 106.9088], 12); // default: Pulogadung
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-          maxZoom: 19
-        }).addTo(_poolDriverMap);
-      }
-
-      async function loadPoolDriverMap(forceRefresh) {
-        const statusEl = document.getElementById('pool-driver-status');
-        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
-          return;
-        }
-        if (_poolDriverFetching) return;
-        _poolDriverFetching = true;
-        statusEl.textContent = 'Memuat posisi Team...';
-        try {
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
-          const json = await res.json();
-          if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
-            return;
-          }
-          const rows = (json.rows || []).filter(r => {
-            const status = String(r['Status'] || '').trim();
-            return (status === 'On Delivery' || status === 'Arrived') && _poolDriverParseLatLng_(r['Geolocation']);
-          });
-
-          const emptyEl = document.getElementById('pool-driver-empty');
-          const wrapEl = document.getElementById('pool-driver-map-wrap');
-          if (!rows.length) {
-            emptyEl.classList.remove('hidden');
-            wrapEl.classList.add('hidden');
-            statusEl.textContent = 'Tidak ada Team yang sedang aktif saat ini.';
-            return;
-          }
-          emptyEl.classList.add('hidden');
-          wrapEl.classList.remove('hidden');
-          _ensurePoolDriverMap_();
-          if (!_poolDriverMap) { statusEl.textContent = '❌ Gagal memuat peta (Leaflet tidak termuat).'; return; }
-
-          // Hapus marker lama yang row-nya sudah tidak aktif lagi, lalu
-          // buat/perbarui marker untuk tiap Team yang masih aktif.
-          const activeKeys = {};
-          const bounds = [];
-          rows.forEach(row => {
-            const pos = _poolDriverParseLatLng_(row['Geolocation']);
-            const key = String(row.rowNumber);
-            activeKeys[key] = true;
-            bounds.push([pos.lat, pos.lng]);
-            const status = String(row['Status'] || '').trim();
-            const label = (row['PIC'] || '-') + ' — ' + (row['Divisi'] || '-') +
-              (row['No. Kendaraan'] ? (' (' + row['No. Kendaraan'] + ')') : '');
-            const popupHtml = '<div style="font-size:12px;line-height:1.5;min-width:180px;">' +
-              '<div style="font-weight:700;">' + label + '</div>' +
-              '<div>Status: <b>' + status + '</b></div>' +
-              (row['LOCATION NAME'] ? ('<div>Tujuan: ' + row['LOCATION NAME'] + '</div>') : '') +
-              (row['ACTION PLAN'] ? ('<div>Action Plan: ' + row['ACTION PLAN'] + '</div>') : '') +
-              (row['Estimasi Tiba'] ? ('<div>Estimasi Tiba: ' + row['Estimasi Tiba'] + '</div>') : '') +
-              '</div>';
-
-            if (_poolDriverMarkers[key]) {
-              _poolDriverMarkers[key].setLatLng([pos.lat, pos.lng]).setPopupContent(popupHtml);
-            } else {
-              _poolDriverMarkers[key] = L.marker([pos.lat, pos.lng]).addTo(_poolDriverMap).bindPopup(popupHtml);
-            }
-          });
-          Object.keys(_poolDriverMarkers).forEach(key => {
-            if (!activeKeys[key]) {
-              _poolDriverMap.removeLayer(_poolDriverMarkers[key]);
-              delete _poolDriverMarkers[key];
-            }
-          });
-          if (bounds.length) _poolDriverMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-          // Leaflet butuh invalidateSize() begitu container-nya baru saja terlihat
-          // (display:none -> block), kalau tidak peta bisa tampil terpotong/blank.
-          setTimeout(() => { if (_poolDriverMap) _poolDriverMap.invalidateSize(); }, 100);
-
-          document.getElementById('pool-driver-team-list').innerHTML = rows.map(row => {
-            const status = String(row['Status'] || '').trim();
-            const badgeColor = status === 'Arrived' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
-            return '<div class="border border-slate-200 rounded-md p-2 text-xs">' +
-              '<div class="font-semibold text-slate-800">' + (row['PIC'] || '-') + '</div>' +
-              '<div class="text-slate-500">' + (row['Divisi'] || '-') + (row['No. Kendaraan'] ? (' • ' + row['No. Kendaraan']) : '') + '</div>' +
-              '<div class="mt-1"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ' + badgeColor + '">' + status + '</span></div>' +
-              (row['LOCATION NAME'] ? ('<div class="mt-1 text-slate-500 break-words">Tujuan: ' + row['LOCATION NAME'] + '</div>') : '') +
-              '</div>';
-          }).join('');
-
-          statusEl.textContent = rows.length + ' Team aktif — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
-        } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
-        } finally {
-          _poolDriverFetching = false;
         }
       }
 
@@ -8409,13 +8459,8 @@
         const jamBerangkat = _formatJamWIB_(now);
         let estimasiTiba = '';
         let etaFailReason = '';
-        let geolocationStr = '';
         try {
           const [userPos, destPos] = await Promise.all([_getCurrentGeolocation_(), _geocodeAddress_(addressText)]);
-          // Titik koordinat lokasi user saat klik "Start" — dikirim ke server (kolom
-          // "Geolocation", sheet "Plan Task") supaya ADMIN bisa memantau posisi Team
-          // secara real-time di menu Plan Task > Pool Driver.
-          if (userPos) geolocationStr = userPos.lat.toFixed(6) + ',' + userPos.lng.toFixed(6);
           if (userPos && destPos) {
             const distanceKm = _haversineKm_(userPos.lat, userPos.lng, destPos.lat, destPos.lng) * ROAD_DISTANCE_FACTOR;
             const etaMinutes = Math.max(5, Math.round(distanceKm / AVG_TRAVEL_SPEED_KMH * 60));
@@ -8432,6 +8477,12 @@
         // pencatatan Jam Berangkat yang sebenarnya jalan di belakang layar.
         const rowRef = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(rowNumber));
         const prevStatus = rowRef ? rowRef['Status'] : undefined;
+        // Titik koordinat GPS user saat Start diklik (sudah didapat di atas lewat
+        // _getCurrentGeolocation_ untuk hitung Estimasi Tiba) ikut dikirim & dicatat
+        // permanen ke kolom "Geolocation" sheet "Plan Task", supaya menu "Pool Driver"
+        // langsung punya posisi awal begitu task di-Start.
+        const startGeoLat = (typeof userPos !== 'undefined' && userPos) ? userPos.lat : '';
+        const startGeoLng = (typeof userPos !== 'undefined' && userPos) ? userPos.lng : '';
 
         _optimisticRun_({
           apply: () => {
@@ -8442,7 +8493,7 @@
               showAppAlert('⚠️ Jam Berangkat tercatat, tapi Estimasi Tiba tidak bisa dihitung (' + etaFailReason + ').', 'warning');
             }
           },
-          request: () => _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba, geolocation: geolocationStr }, 3),
+          request: () => _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba, geoLat: startGeoLat, geoLng: startGeoLng }, 3),
           onSuccess: () => {
             loadTeamDispatchTasks(true);
             if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
@@ -8455,18 +8506,15 @@
         });
       }
 
-      // Tombol "Tiba" diklik: catat Jam Tiba = sekarang, status berubah jadi
-      // "Arrived", tombol berganti jadi "Delivered".
+      // Tombol "Tiba" diklik: catat Jam Tiba = sekarang + titik koordinat GPS user saat
+      // itu (kolom Geolocation), status berubah jadi "Arrived", tombol berganti jadi
+      // "Delivered". Dijadikan async supaya bisa menunggu _getCurrentGeolocation_()
+      // dulu sebelum request ke server — kalau izin lokasi ditolak/gagal, Jam Tiba
+      // TETAP tercatat seperti biasa, cuma kolom Geolocation yang kosong.
       async function handleDispatchTiba(rowNumber, btnEl) {
-        _setBtnLoading_(btnEl, 'Memproses...');
+        _setBtnLoading_(btnEl, 'Mencatat...');
         const jamTiba = _formatJamWIB_(new Date());
-        // Titik koordinat lokasi user saat klik "Tiba" — sama seperti handleDispatchStart,
-        // dikirim ke server (kolom "Geolocation") untuk peta Pool Driver.
-        let geolocationStr = '';
-        try {
-          const pos = await _getCurrentGeolocation_();
-          if (pos) geolocationStr = pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
-        } catch (e) { /* abaikan, Jam Tiba tetap tercatat walau geolocation gagal */ }
+        const tibaPos = await _getCurrentGeolocation_();
 
         // OPTIMISTIC (sama seperti handleDispatchStart): status kartu langsung
         // jadi "Arrived" (tombol ganti jadi "Delivered") SEKARANG.
@@ -8479,7 +8527,10 @@
             if (rowRef) rowRef['Status'] = 'Arrived';
             renderTeamDispatchCards();
           },
-          request: () => _getFromGasWithRetry_('recordDispatchTiba', { rowNumber: rowNumber, jamTiba: jamTiba, geolocation: geolocationStr }, 3),
+          request: () => _getFromGasWithRetry_('recordDispatchTiba', {
+            rowNumber: rowNumber, jamTiba: jamTiba,
+            geoLat: tibaPos ? tibaPos.lat : '', geoLng: tibaPos ? tibaPos.lng : ''
+          }, 3),
           onSuccess: () => {
             loadTeamDispatchTasks(true);
             if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
@@ -8489,6 +8540,31 @@
             renderTeamDispatchCards();
           },
           errorPrefix: '⚠️ Jam Tiba BELUM tercatat di server: '
+        });
+      }
+
+      // Real-time tracking: selama minimal satu task di Cardview Task Team Dispatch
+      // berstatus "On Delivery"/"Arrived", ambil posisi GPS user SEKALI lalu kirim
+      // (ping) ke server sebagai posisi terbaru untuk task-task tersebut lewat action
+      // 'updateDispatchGeolocation' — TIDAK mengubah Status/Jam apa pun, cuma
+      // memperbarui kolom Geolocation/Geolocation Updated At. Dipanggil dari
+      // AUTO_REFRESH_LOADERS['TeamDispatch'] (tiap AUTO_REFRESH_INTERVAL_MS SELAMA
+      // menu Task Team Dispatch sedang dibuka) supaya posisi yang tampil di peta
+      // "Pool Driver" (menu Plan Task) terus ter-update tanpa user perlu menekan
+      // tombol apa pun. Gagal kirim (mis. jaringan sedang buruk) sengaja diabaikan
+      // senyap — ini cuma pembaruan posisi, bukan aksi yang harus diberitahukan ke
+      // user kalau gagal, akan dicoba lagi otomatis di tick berikutnya.
+      async function _pingDispatchGeolocation_() {
+        if (!Array.isArray(_teamDispatchRows) || !_teamDispatchRows.length) return;
+        const activeRows = _teamDispatchRows.filter(r => {
+          const s = String(r['Status'] || '').trim().toLowerCase();
+          return s === 'on delivery' || s === 'arrived';
+        });
+        if (!activeRows.length) return;
+        const pos = await _getCurrentGeolocation_();
+        if (!pos) return;
+        activeRows.forEach(r => {
+          _getFromGasWithRetry_('updateDispatchGeolocation', { rowNumber: r.rowNumber, geoLat: pos.lat, geoLng: pos.lng }, 1).catch(() => {});
         });
       }
 
