@@ -1400,6 +1400,25 @@
         </div>
       </div>
 
+      <!-- Team dropdown — HANYA muncul kalau role "Dispatch" dipilih (lihat
+           selectRole()). Diisi dinamis lewat action GAS 'getTeamsWithTaskToday'
+           (hanya Team yang PUNYA Task hari ini, bukan daftar Team master),
+           supaya user Dispatch login sebagai Team yang benar. Team yang
+           dipilih di sini disimpan (localStorage 'nod_currentTeamKey') dan
+           dipakai untuk: (1) membatasi Cardview Task Team Dispatch cuma
+           menampilkan Task milik Team ini, (2) menandai device ini boleh
+           mengirim ping Geolocation ke peta Pool Driver. -->
+      <div id="login-team-wrap" style="margin-bottom:16px;display:none;">
+        <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
+          Team (Task Hari Ini)
+        </label>
+        <select id="loginTeamSelect" style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
+               font-size:14px;outline:none;transition:border .2s;box-sizing:border-box;background:#fff;color:#1e293b;">
+          <option value="">-- Pilih Team --</option>
+        </select>
+        <p id="login-team-status" style="font-size:10px;color:#94a3b8;margin-top:4px;margin-bottom:0;text-align:left;"></p>
+      </div>
+
       <div style="margin-bottom:16px;">
         <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
           Password
@@ -3320,6 +3339,14 @@
 
       let currentRole = '';
       let selectedRole = '';
+      // Team (Divisi+PIC+No. Kendaraan) yang dipilih user role Dispatch di
+      // halaman Login — dipakai untuk membatasi Cardview Task Team Dispatch
+      // & menandai device ini boleh ping Geolocation ke Pool Driver (lihat
+      // loadTeamDispatchTasks/_pingDispatchGeolocation_). Kosong untuk role
+      // ADMIN/Prepare (tidak relevan).
+      let currentTeamKey = '';
+      let currentTeamPic = '';
+      let selectedTeamKey = '';
 
       function selectRole(role) {
         selectedRole = role;
@@ -3337,7 +3364,56 @@
             btn.style.boxShadow = 'none';
           }
         });
-        document.getElementById('loginPassword').focus();
+
+        // Dropdown Team cuma relevan buat role Dispatch — role lain (ADMIN/
+        // Prepare) tidak terikat satu Team tertentu.
+        const teamWrap = document.getElementById('login-team-wrap');
+        if (role === 'Dispatch') {
+          teamWrap.style.display = 'block';
+          _loadLoginTeamOptions_();
+        } else {
+          teamWrap.style.display = 'none';
+          selectedTeamKey = '';
+          document.getElementById('loginTeamSelect').value = '';
+          document.getElementById('loginPassword').focus();
+        }
+      }
+
+      /**
+       * Isi dropdown Team di halaman Login (role Dispatch) dari action GAS
+       * 'getTeamsWithTaskToday' — HANYA Team yang punya Task dengan Plan Date
+       * = hari ini (WIB), bukan daftar Team master/statis. Dipanggil setiap
+       * kali tombol role "Dispatch" ditekan (biar datanya selalu fresh kalau
+       * user sempat mendarat di halaman Login dari kemarin/tab ketiduran).
+       */
+      async function _loadLoginTeamOptions_() {
+        const select = document.getElementById('loginTeamSelect');
+        const statusEl = document.getElementById('login-team-status');
+        select.innerHTML = '<option value="">-- Memuat Team... --</option>';
+        select.disabled = true;
+        statusEl.textContent = '';
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          select.innerHTML = '<option value="">-- GAS URL belum diisi --</option>';
+          return;
+        }
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamsWithTaskToday');
+          const json = await res.json();
+          const teams = (json && json.success) ? (json.teams || []) : [];
+          select.disabled = false;
+          if (!teams.length) {
+            select.innerHTML = '<option value="">-- Belum ada Team dengan Task hari ini --</option>';
+            statusEl.textContent = 'Hubungi ADMIN kalau seharusnya sudah ada Task hari ini.';
+            return;
+          }
+          select.innerHTML = '<option value="">-- Pilih Team --</option>' +
+            teams.map(t => '<option value="' + _escapeHtmlAttr_(t.key) + '">' +
+              _escapeHtmlAttr_(t.pic) + ' (' + t.taskCount + ' task)</option>').join('');
+        } catch (err) {
+          select.disabled = false;
+          select.innerHTML = '<option value="">-- Gagal memuat Team --</option>';
+          statusEl.textContent = '❌ ' + err.message;
+        }
       }
 
       // Ikon mata (Feather-style, stroke="currentColor") untuk toggle
@@ -3373,26 +3449,60 @@
         _setLoginPasswordIcon_();
       }
 
+      // Label role yang ditampilkan di badge sidebar/dock/Homescreen HP —
+      // untuk role Dispatch disertai nama Team (PIC) yang dipilih saat Login,
+      // supaya jelas device ini login sebagai Team yang mana.
+      function _roleDisplayLabel_() {
+        if (currentRole === 'Dispatch' && currentTeamPic) {
+          return currentRole + ' · ' + currentTeamPic;
+        }
+        return currentRole || 'Role';
+      }
+
       function doLogin() {
         const pass = document.getElementById('loginPassword').value;
         const err = document.getElementById('login-error');
+        const teamSelect = document.getElementById('loginTeamSelect');
+        selectedTeamKey = selectedRole === 'Dispatch' ? teamSelect.value : '';
 
         if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
+          err.textContent = '❌ Password salah atau role belum dipilih.';
           err.style.display = 'block';
           document.getElementById('loginPassword').value = '';
+          return;
+        }
+        // Role Dispatch WAJIB pilih Team (task hari ini) sebelum masuk —
+        // supaya Cardview Task Team Dispatch & ping Geolocation Pool Driver
+        // bisa dibatasi ke Team yang benar (lihat renderTeamDispatchCards/
+        // _pingDispatchGeolocation_).
+        if (selectedRole === 'Dispatch' && !selectedTeamKey) {
+          err.textContent = '❌ Pilih Team terlebih dahulu.';
+          err.style.display = 'block';
           return;
         }
         err.style.display = 'none';
         currentRole = selectedRole;
 
         localStorage.setItem('nod_currentRole', currentRole);
+        if (currentRole === 'Dispatch') {
+          const opt = teamSelect.options[teamSelect.selectedIndex];
+          currentTeamKey = selectedTeamKey;
+          currentTeamPic = opt ? opt.textContent.replace(/\s*\(\d+ task\)$/, '') : '';
+          localStorage.setItem('nod_currentTeamKey', currentTeamKey);
+          localStorage.setItem('nod_currentTeamPic', currentTeamPic);
+        } else {
+          currentTeamKey = '';
+          currentTeamPic = '';
+          localStorage.removeItem('nod_currentTeamKey');
+          localStorage.removeItem('nod_currentTeamPic');
+        }
         _touchLastActive_(true);
 
         document.getElementById('login-page').style.display = 'none';
         document.getElementById('app-wrapper').style.display = 'block';
 
         const badge = document.getElementById('sidebar-role-badge');
-        badge.textContent = currentRole;
+        badge.textContent = _roleDisplayLabel_();
 
         applyRoleAccess();
       }
@@ -3419,10 +3529,17 @@
       function doLogout() {
         currentRole = '';
         selectedRole = '';
+        currentTeamKey = '';
+        currentTeamPic = '';
+        selectedTeamKey = '';
         localStorage.removeItem('nod_currentRole');
+        localStorage.removeItem('nod_currentTeamKey');
+        localStorage.removeItem('nod_currentTeamPic');
         localStorage.removeItem(LS_LAST_ACTIVE_KEY);
         document.getElementById('loginPassword').value = '';
         document.getElementById('login-error').style.display = 'none';
+        document.getElementById('login-team-wrap').style.display = 'none';
+        document.getElementById('loginTeamSelect').innerHTML = '<option value="">-- Pilih Team --</option>';
         ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
           const btn = document.getElementById('role-' + r);
           btn.style.background = '#f8fafc';
@@ -3446,6 +3563,8 @@
         // index.html terbaru karena ini request baru dari server).
         if (_isSessionExpired_()) {
           localStorage.removeItem('nod_currentRole');
+          localStorage.removeItem('nod_currentTeamKey');
+          localStorage.removeItem('nod_currentTeamPic');
           localStorage.removeItem(LS_LAST_ACTIVE_KEY);
           return;
         }
@@ -3453,13 +3572,17 @@
         const savedRole = localStorage.getItem('nod_currentRole');
         if (savedRole && PASSWORDS.hasOwnProperty(savedRole)) {
           currentRole = savedRole;
+          if (currentRole === 'Dispatch') {
+            currentTeamKey = localStorage.getItem('nod_currentTeamKey') || '';
+            currentTeamPic = localStorage.getItem('nod_currentTeamPic') || '';
+          }
           _touchLastActive_(true);
 
           document.getElementById('login-page').style.display = 'none';
           document.getElementById('app-wrapper').style.display = 'block';
 
           const badge = document.getElementById('sidebar-role-badge');
-          if (badge) badge.textContent = currentRole;
+          if (badge) badge.textContent = _roleDisplayLabel_();
 
           applyRoleAccess();
         }
@@ -3628,7 +3751,7 @@
 
         renderMobileHome();
         const roleLbl = document.getElementById('dock-role-label');
-        if (roleLbl) roleLbl.textContent = currentRole || 'Role';
+        if (roleLbl) roleLbl.textContent = _roleDisplayLabel_();
         // Di layar HP, arahkan user ke homescreen ikon (bukan langsung ke
         // tabel Dashboard/Team Dispatch/Team Prepare) supaya pengalaman
         // pertama di HP terasa seperti membuka aplikasi mobile.
@@ -8247,7 +8370,14 @@
             statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
             return;
           }
-          _teamDispatchRows = json.rows || []; // "Closed" sudah difilter di server
+          let rows = json.rows || []; // "Closed" sudah difilter di server
+          // Role Dispatch: batasi cuma Task milik Team yang dipilih saat
+          // Login (currentTeamKey) — Team lain TIDAK ikut tampil di Cardview
+          // ini sama sekali (beda dengan ADMIN yang tetap lihat semua Team).
+          if (currentRole === 'Dispatch' && currentTeamKey) {
+            rows = rows.filter(r => _poolDriverTeamKey_(r) === currentTeamKey);
+          }
+          _teamDispatchRows = rows;
           saveTeamDispatchRows();
           statusEl.textContent = _teamDispatchRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTeamDispatchCards();
@@ -8471,18 +8601,26 @@
         // Badge filter per Team — klik salah satu badge untuk hanya
         // menampilkan Task milik Team tersebut; klik lagi (atau badge
         // "Semua Team") untuk menampilkan seluruh Team kembali.
-        const allActiveClass = _teamDispatchActiveKey === '' ? ' is-active' : '';
-        let badgesHtml =
-          '<span class="td-team-badge' + allActiveClass + ' text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-300 text-slate-600" ' +
-            'onclick="filterTeamDispatchByTeam(\'\')">Semua Team (' + _teamDispatchRows.length + ')</span>';
-        groups.forEach(group => {
-          const isActive = _teamDispatchActiveKey === group.key ? ' is-active' : '';
-          badgesHtml +=
-            '<span class="td-team-badge' + isActive + ' text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-300 text-slate-600" ' +
-              'onclick="filterTeamDispatchByTeam(\'' + _escapeHtmlAttr_(group.key) + '\')">' +
-              _escapeHtmlAttr_(group.pic) + ' (' + group.rows.length + ')</span>';
-        });
-        filterEl.innerHTML = badgesHtml;
+        // Role Dispatch DISEMBUNYIKAN (bukan cuma dikosongkan) — _teamDispatchRows
+        // mereka memang sudah dibatasi ke Team sendiri saja (lihat
+        // loadTeamDispatchTasks), jadi badge filter Team lain tidak relevan/
+        // membingungkan buat mereka.
+        if (currentRole === 'Dispatch') {
+          filterEl.innerHTML = '';
+        } else {
+          const allActiveClass = _teamDispatchActiveKey === '' ? ' is-active' : '';
+          let badgesHtml =
+            '<span class="td-team-badge' + allActiveClass + ' text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-300 text-slate-600" ' +
+              'onclick="filterTeamDispatchByTeam(\'\')">Semua Team (' + _teamDispatchRows.length + ')</span>';
+          groups.forEach(group => {
+            const isActive = _teamDispatchActiveKey === group.key ? ' is-active' : '';
+            badgesHtml +=
+              '<span class="td-team-badge' + isActive + ' text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-300 text-slate-600" ' +
+                'onclick="filterTeamDispatchByTeam(\'' + _escapeHtmlAttr_(group.key) + '\')">' +
+                _escapeHtmlAttr_(group.pic) + ' (' + group.rows.length + ')</span>';
+          });
+          filterEl.innerHTML = badgesHtml;
+        }
 
         const visibleGroups = _teamDispatchActiveKey
           ? groups.filter(g => g.key === _teamDispatchActiveKey)
@@ -8768,6 +8906,16 @@
       // senyap — ini cuma pembaruan posisi, bukan aksi yang harus diberitahukan ke
       // user kalau gagal, akan dicoba lagi otomatis di tick berikutnya.
       async function _pingDispatchGeolocation_() {
+        // FIX (Sept 2026): dulu SIAPA SAJA yang membuka menu Team Dispatch
+        // (termasuk ADMIN, yang bisa lihat SEMUA Team sekaligus) ikut
+        // mengirim ping — kalau device ADMIN kebetulan sedang online di menu
+        // ini, lokasi GPS device ADMIN itu SENDIRI tertulis sebagai posisi
+        // SEMUA Team yang lagi On Delivery/Arrived, menimpa posisi asli
+        // mereka. Sekarang HANYA role "Dispatch" yang boleh ping — dan
+        // karena _teamDispatchRows role Dispatch sudah dibatasi ke Team
+        // sendiri saja (lihat loadTeamDispatchTasks), otomatis cuma Task
+        // milik Team device itu sendiri yang ke-update.
+        if (currentRole !== 'Dispatch') return;
         if (!Array.isArray(_teamDispatchRows) || !_teamDispatchRows.length) return;
         const activeRows = _teamDispatchRows.filter(r => {
           const s = String(r['Status'] || '').trim().toLowerCase();
