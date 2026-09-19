@@ -7769,6 +7769,78 @@
         return Object.values(byTeam);
       }
 
+      // =============================================
+      // ALAMAT (reverse geocoding) untuk popup marker Pool Driver.
+      // Baris "Lokasi" di popup = alamat sesuai titik koordinat GPS Team saat ini
+      // (BUKAN LOCATION NAME tujuan task). Alamat diminta ke GAS action
+      // 'reverseGeocode' (Google Maps Geocoder di GAS + cache server) HANYA saat
+      // popup marker dibuka, dan diperbarui otomatis selama popup masih terbuka &
+      // Team berpindah > POOL_DRIVER_ADDR_REUSE_METERS — supaya kuota geocoding
+      // tidak terpakai untuk marker yang tidak sedang dilihat.
+      // =============================================
+      const POOL_DRIVER_ADDR_REUSE_METERS = 50;
+      let _poolDriverAddrCache = {};    // key Team -> { lat, lng, address }
+      let _poolDriverAddrInflight = {}; // key Team -> 'lat,lng' yang sedang diminta
+      let _poolDriverAddrError = {};    // key Team -> true kalau permintaan terakhir gagal
+
+      function _poolDriverCachedAddress_(team) {
+        const c = _poolDriverAddrCache[team.key];
+        if (!c) return null;
+        const meters = _haversineKm_(c.lat, c.lng, team.pos.lat, team.pos.lng) * 1000;
+        return meters <= POOL_DRIVER_ADDR_REUSE_METERS ? c.address : null;
+      }
+
+      function _poolDriverTeamByKey_(key) {
+        return _poolDriverGroupByTeam_().find(t => t.key === key) || null;
+      }
+
+      function _poolDriverPopupHtml_(team) {
+        const row = team.row;
+        const status = String(row['Status'] || '').trim();
+        const updatedAt = row['Geolocation Updated At'] || '-';
+        const addr = _poolDriverCachedAddress_(team);
+        let addrText;
+        if (addr !== null) {
+          addrText = addr || ('Alamat tidak ditemukan (' + team.pos.lat.toFixed(5) + ', ' + team.pos.lng.toFixed(5) + ')');
+        } else if (_poolDriverAddrError[team.key]) {
+          addrText = 'Alamat belum bisa dimuat';
+        } else {
+          addrText = 'Memuat alamat...';
+        }
+        return '<div style="font-size:12px;line-height:1.5;">' +
+            '<b>' + (row['PIC'] || row['Divisi'] || '-') + '</b><br>' +
+            'Lokasi: ' + _escapeHtmlAttr_(addrText) + '<br>' +
+            'Status: ' + status + '<br>' +
+            'Estimasi Tiba: ' + (row['Estimasi Tiba'] || '-') + '<br>' +
+            'Update GPS terakhir: ' + updatedAt +
+          '</div>';
+      }
+
+      async function _resolvePoolDriverAddress_(team) {
+        if (_poolDriverCachedAddress_(team) !== null) return;
+        const coordKey = team.pos.lat + ',' + team.pos.lng;
+        if (_poolDriverAddrInflight[team.key] === coordKey) return;
+        _poolDriverAddrInflight[team.key] = coordKey;
+        delete _poolDriverAddrError[team.key];
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=reverseGeocode&lat=' +
+            encodeURIComponent(team.pos.lat) + '&lng=' + encodeURIComponent(team.pos.lng)).then(r => r.json());
+          if (res && res.success) {
+            _poolDriverAddrCache[team.key] = { lat: team.pos.lat, lng: team.pos.lng, address: res.address || '' };
+          } else {
+            _poolDriverAddrError[team.key] = true;
+          }
+        } catch (err) {
+          _poolDriverAddrError[team.key] = true;
+        } finally {
+          if (_poolDriverAddrInflight[team.key] === coordKey) delete _poolDriverAddrInflight[team.key];
+        }
+        // Perbarui isi popup (kalau marker Team ini masih ada di peta).
+        const marker = _poolDriverMarkers[team.key];
+        const latest = _poolDriverTeamByKey_(team.key);
+        if (marker && latest) marker.setPopupContent(_poolDriverPopupHtml_(latest));
+      }
+
       function _ensurePoolDriverMap_() {
         if (_poolDriverMap) return _poolDriverMap;
         // Default center: Jabodetabek (area operasional utama), zoom cukup lebar
@@ -7853,29 +7925,26 @@
         const seenKeys = new Set();
         const latLngs = [];
         teams.forEach(team => {
-          const row = team.row;
           const pos = team.pos;
           seenKeys.add(team.key);
           latLngs.push([pos.lat, pos.lng]);
 
-          const status = String(row['Status'] || '').trim();
-          const updatedAt = row['Geolocation Updated At'] || '-';
-          const popupHtml =
-            '<div style="font-size:12px;line-height:1.5;">' +
-              '<b>' + (row['PIC'] || row['Divisi'] || '-') + '</b><br>' +
-              (row['LOCATION NAME'] || '-') + '<br>' +
-              'Status: ' + status + '<br>' +
-              'Estimasi Tiba: ' + (row['Estimasi Tiba'] || '-') + '<br>' +
-              'Update GPS terakhir: ' + updatedAt +
-            '</div>';
-
           let marker = _poolDriverMarkers[team.key];
           if (marker) {
             marker.setLatLng([pos.lat, pos.lng]);
-            marker.setPopupContent(popupHtml);
+            // Popup sedang terbuka -> pastikan alamat mengikuti posisi terbaru.
+            if (marker.isPopupOpen()) _resolvePoolDriverAddress_(team);
+            marker.setPopupContent(_poolDriverPopupHtml_(team));
           } else {
             marker = L.marker([pos.lat, pos.lng], { icon: _poolDriverDivIcon_() }).addTo(map);
-            marker.bindPopup(popupHtml);
+            marker.bindPopup(_poolDriverPopupHtml_(team));
+            // Alamat dimuat otomatis begitu popup marker dibuka.
+            marker.on('popupopen', () => {
+              const latest = _poolDriverTeamByKey_(team.key);
+              if (!latest) return;
+              _resolvePoolDriverAddress_(latest);
+              marker.setPopupContent(_poolDriverPopupHtml_(latest));
+            });
             _poolDriverMarkers[team.key] = marker;
           }
         });
