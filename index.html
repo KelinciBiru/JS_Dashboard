@@ -7734,6 +7734,19 @@
       let _poolDriverRows = [];       // baris aktif (On Delivery/Arrived) + geolocation valid -> sumber marker peta
       let _poolDriverTimelineRows = []; // SEMUA Task Plan Date = hari ini (termasuk Closed) -> sumber Timeline History Dispatch
 
+      // Tanggal hari ini format "yyyy-MM-dd" berbasis Asia/Jakarta (WIB), supaya
+      // cocok dengan format "Plan Date" yang dikirim backend (lihat
+      // getPlanTaskActive_ / Utilities.formatDate ..., 'yyyy-MM-dd') dan tidak
+      // bergantung timezone browser user. Dipakai untuk menyaring marker Pool
+      // Driver supaya hanya Task hari ini yang tampil (lihat loadPoolDriverMap).
+      function _todayDateStrWIB_() {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(new Date());
+        const get = (t) => (parts.find(p => p.type === t) || {}).value || '';
+        return get('year') + '-' + get('month') + '-' + get('day');
+      }
+
       function _parseGeolocationString_(raw) {
         const s = String(raw || '').trim();
         if (!s) return null;
@@ -7886,9 +7899,22 @@
             statusEl.textContent = '❌ ' + (mapRes.message || 'Gagal memuat data peta');
             return;
           }
+          // FIX (Sept 2026): getPlanTaskActive_ TIDAK memfilter Plan Date (dipakai
+          // bersama oleh Task On Going & Task Team Dispatch, yang memang perlu tetap
+          // menampilkan Task lama yang belum selesai). Akibatnya, Task dari hari
+          // sebelumnya yang lupa/gagal di-set "Closed" (mis. tombol Delivered lupa
+          // diklik) ikut lolos filter Status di bawah dan marker Team itu terus
+          // "menempel" di peta Pool Driver — dengan posisi GPS basi — walau Team-nya
+          // sudah selesai/Delivered secara fisik. Peta Pool Driver dimaksudkan untuk
+          // posisi real-time HARI INI saja, jadi tambahkan filter Plan Date = hari
+          // ini (WIB) KHUSUS untuk sumber marker peta ini (tidak mengubah data
+          // _teamDispatchRows/Task On Going).
+          const todayStrPoolDriver = _todayDateStrWIB_();
           _poolDriverRows = (mapRes.rows || []).filter(r => {
             const st = String(r['Status'] || '').trim().toLowerCase();
-            return (st === 'on delivery' || st === 'arrived') && _parseGeolocationString_(r['Geolocation']);
+            if (st !== 'on delivery' && st !== 'arrived') return false;
+            if (!_parseGeolocationString_(r['Geolocation'])) return false;
+            return String(r['Plan Date'] || '').trim() === todayStrPoolDriver;
           });
 
           if (timelineRes.success) {
