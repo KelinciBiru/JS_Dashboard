@@ -94,6 +94,47 @@
       font-family: 'Century Gothic', 'CenturyGothic', AppleGothic, sans-serif !important;
     }
 
+    /* ============================================================
+       SISTEM ICON — satu keluarga garis (stroke) yang sama dengan ikon
+       sidebar & dock: viewBox 24, stroke 1.8, ujung bulat. Warna selalu
+       mengikuti teks (currentColor); warna semantik lewat kelas ic-*.
+       Menggantikan emoji (✅ ❌ ⚠️ 🔄 📍 dll.) yang tampil beda di tiap OS.
+    ============================================================ */
+    .ic {
+      width: 1.05em;
+      height: 1.05em;
+      flex-shrink: 0;
+      display: inline-block;
+      vertical-align: -0.16em;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .ic-lg { width: 30px; height: 30px; vertical-align: middle; stroke-width: 1.6; }
+    .ic-xs { width: 11px; height: 11px; vertical-align: middle; stroke-width: 2.2; }
+    .ic-success { color: #059669; }
+    .ic-error { color: #dc2626; }
+    .ic-warning { color: #d97706; }
+    .ic-info { color: #64748b; }
+    .neu-badge-close .ic { width: 13px; height: 13px; vertical-align: middle; }
+    .td-fan-nav-btn .ic { width: 1.15em; height: 1.15em; vertical-align: middle; stroke-width: 2; }
+
+    /* Titik status (online / offline / sedang jalan) — cekungan lembut ala neumorphism */
+    .ic-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 6px;
+      border-radius: 50%;
+      vertical-align: middle;
+      box-shadow: inset 1px 1px 2px rgba(0, 0, 0, .22), inset -1px -1px 1px rgba(255, 255, 255, .55);
+    }
+    .ic-dot-on { background: #22c55e; }
+    .ic-dot-run { background: #F5A623; }
+    .ic-dot-off { background: #cbd5e1; }
+
     /* ---- TOMBOL ANIMASI TEKAN (dipakai beberapa tombol lewat class btn-press) ---- */
     .btn-press {
       transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -1213,7 +1254,7 @@
         height: 21px;
         stroke: currentColor;
         fill: none;
-        stroke-width: 1.9;
+        stroke-width: 1.8;
         stroke-linecap: round;
         stroke-linejoin: round;
       }
@@ -1434,7 +1475,7 @@
       </div>
 
       <p id="login-error" style="color:#ef4444;font-size:12px;margin-bottom:12px;display:none;">
-        ❌ Password salah atau role belum dipilih.
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6M9 9l6 6"></path></svg> Password salah atau role belum dipilih.
       </p>
 
       <button onclick="doLogin()" style="
@@ -1443,7 +1484,7 @@
         color:#fff;font-size:14px;font-weight:700;cursor:pointer;
         transition:transform .1s,box-shadow .1s;
         box-shadow:0 4px 14px rgba(245,166,35,.45);">
-        Masuk →
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path></svg> Masuk
       </button>
 
       <p style="font-size:10px;color:#eda408;margin-top:20px;">
@@ -1459,7 +1500,7 @@
   <div id="app-wrapper" style="display:none;width:100%;">
     <div id="mobile-topbar">
       <button id="menu-btn" aria-label="Kembali ke Home">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;">
           <path d="M3 11l9-8 9 8"></path>
           <path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"></path>
         </svg>
@@ -1568,11 +1609,7 @@
           padding:9px;border-radius:8px;border:none;
           background:#fff1f2;color:#ef4444;font-size:12px;font-weight:700;
           cursor:pointer;transition:background .2s;">
-            <svg xmlns="http://www.w3.org/2000/svg" style="height:14px;width:14px;" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
-            </svg>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
             Logout
           </button>
         </div>
@@ -1613,7 +1650,7 @@
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
           <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true);"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
-            🔄 Refresh
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Refresh
           </button>
         </div>
         <div id="dashboard-status" class="text-xs text-slate-500 mb-1">Memuat data...</div>
@@ -1702,7 +1739,7 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-5 max-h-[85vh] flex flex-col">
           <div class="flex items-center justify-between mb-1">
             <h3 id="dashboard-detail-title" class="text-sm font-bold text-slate-800">Detail</h3>
-            <button onclick="closeDashboardDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+            <button onclick="closeDashboardDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <p id="dashboard-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
 
@@ -1722,7 +1759,7 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-5 max-h-[85vh] flex flex-col">
           <div class="flex items-center justify-between mb-1">
             <h3 id="bd-status-detail-title" class="text-sm font-bold text-slate-800">Detail</h3>
-            <button onclick="closeBDStatusDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+            <button onclick="closeBDStatusDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <p id="bd-status-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
 
@@ -1747,7 +1784,7 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-5 max-h-[85vh] flex flex-col">
           <div class="flex items-center justify-between mb-1">
             <h3 id="action-plan-detail-title" class="text-sm font-bold text-slate-800">Detail</h3>
-            <button onclick="closeActionPlanDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+            <button onclick="closeActionPlanDetail()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <p id="action-plan-detail-subtitle" class="text-xs text-slate-500 mb-3"></p>
 
@@ -1773,7 +1810,7 @@
           <h1 class="text-lg font-bold text-slate-800">Input Task</h1>
           <div class="flex items-center gap-2">
             <button id="input-task-refresh-btn" onclick="refreshInputTaskPage()"
-              class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">🔄 Refresh</button>
+              class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Refresh</button>
             <button id="input-task-clear-btn" onclick="clearInputTaskPage()"
               class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">Bersihkan Halaman</button>
           </div>
@@ -1800,13 +1837,13 @@
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">PIC (bisa pilih lebih dari satu)
                 <button type="button" onclick="loadPlanTaskDropdowns(true)" title="Muat ulang pilihan Divisi/PIC"
-                  class="text-slate-400 hover:text-amber-600">🔄</button>
+                  class="text-slate-400 hover:text-amber-600" aria-label="Muat ulang"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></button>
               </label>
               <div class="relative">
                 <button type="button" id="pt-pic-toggle" onclick="togglePicDropdown()"
                   class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm text-left bg-white flex justify-between items-center gap-2">
                   <span id="pt-pic-label" class="text-slate-400 truncate">-- Pilih PIC --</span>
-                  <span class="text-xs text-slate-400 shrink-0">▼</span>
+                  <span class="text-xs text-slate-400 shrink-0 inline-flex"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
                 </button>
                 <div id="pt-pic-panel"
                   class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-300 rounded-md shadow-lg max-h-56 overflow-y-auto">
@@ -1871,7 +1908,7 @@
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Pool Driver</h1>
           <button onclick="loadPoolDriverMap(true)"
-            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">🔄 Refresh</button>
+            class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Refresh</button>
         </div>
         <div id="pool-driver-status" class="text-xs text-slate-400 mb-2"></div>
         <div id="pool-driver-empty" class="placeholder-box hidden mb-2">Belum ada Team Dispatch yang online hari ini. Team muncul otomatis di peta begitu login sebagai role Dispatch dan mengizinkan akses lokasi di HP-nya.</div>
@@ -1889,7 +1926,7 @@
              Klik badge -> openPoolDriverTimelineModal() menampilkan vertical
              tracking timeline Task Team tsb hari ini. -->
         <div class="mt-4">
-          <div class="text-xs font-semibold text-slate-500 mb-2">📍 Timeline History Dispatch — Team dengan Task hari ini</div>
+          <div class="text-xs font-semibold text-slate-500 mb-2"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Timeline History Dispatch — Team dengan Task hari ini</div>
           <div id="pool-driver-timeline-empty" class="placeholder-box hidden">Belum ada Team dengan Task hari ini.</div>
           <div id="pool-driver-timeline-badges" class="flex flex-wrap gap-2"></div>
         </div>
@@ -1906,7 +1943,7 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-3">
             <h3 id="pool-driver-timeline-title" class="text-sm font-bold text-slate-800">Timeline Dispatch</h3>
-            <button onclick="closePoolDriverTimelineModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">✕</button>
+            <button onclick="closePoolDriverTimelineModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <div id="pool-driver-timeline-modal-body"></div>
         </div>
@@ -1934,7 +1971,7 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto p-5">
           <div class="flex justify-between items-center mb-3 gap-2">
             <h3 class="text-sm font-bold text-slate-800">Preview Plan Task — <span id="plan-task-preview-pic"></span></h3>
-            <button onclick="closePlanTaskPreviewModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+            <button onclick="closePlanTaskPreviewModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <div id="plan-task-preview-area" class="overflow-x-auto rounded-lg shadow">
             <table id="plan-task-preview-table" class="table-fixed text-xs sm:text-sm border-collapse">
@@ -1987,7 +2024,7 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5">
           <div class="flex justify-between items-center mb-3 gap-2">
             <h3 class="text-sm font-bold text-slate-800">Checklist &amp; Foto Bukti — <span id="hd-checklist-location"></span></h3>
-            <button onclick="closeHistorycalDispatchChecklistModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+            <button onclick="closeHistorycalDispatchChecklistModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <div id="hd-checklist-meta" class="text-xs text-slate-500 mb-3"></div>
           <div id="hd-checklist-list" class="space-y-1.5 mb-4"></div>
@@ -2264,7 +2301,7 @@
             </button>
             <button id="mprep-add-btn" onclick="confirmMachinePrepAddTask()"
               class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 whitespace-nowrap">
-              ✓ Add (<span id="mprep-selected-count">0</span>)
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg> Add (<span id="mprep-selected-count">0</span>)
             </button>
             <button id="mprep-cancel-btn" onclick="cancelMachinePrepAddTask()"
               class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600 whitespace-nowrap">
@@ -2349,7 +2386,7 @@
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5">
           <div class="flex justify-between items-center mb-3 gap-2">
             <h3 class="text-sm font-bold text-slate-800">Detail Preparation — <span id="hp-detail-vmc"></span></h3>
-            <button onclick="closeHistorycalPreparationDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+            <button onclick="closeHistorycalPreparationDetailModal()" class="text-slate-400 hover:text-slate-600 text-lg leading-none" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
           </div>
           <div id="hp-detail-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs mb-4"></div>
           <div id="hp-detail-checklist-wrap" class="space-y-3 mb-4"></div>
@@ -2576,7 +2613,7 @@
         <div class="flex items-center justify-end mb-2">
           <button id="jabodetabek-leaderboard-toggle" onclick="toggleJabodetabekLeaderboard()"
             class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">
-             Tampilkan Leaderboard Kota <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>
+             Tampilkan Leaderboard Kota <span id="jabodetabek-leaderboard-toggle-arrow"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span>
           </button>
         </div>
         <div id="jabodetabek-leaderboard-wrap" class="hidden mb-4 p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50/40">
@@ -2699,7 +2736,7 @@
           </label>
         </div>
 
-        <div id="so-target-error" class="text-xs text-red-500 mb-1 hidden">⚠️ Pilih salah satu sheet tujuan terlebih dahulu.</div>
+        <div id="so-target-error" class="text-xs text-red-500 mb-1 hidden"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4M12 17h.01"></path></svg> Pilih salah satu sheet tujuan terlebih dahulu.</div>
 
         <!-- Progress bar saat proses simpan -->
         <div id="so-save-progress-wrap" class="hidden mt-3">
@@ -2740,7 +2777,7 @@
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <h3 id="mobile-folder-title" class="text-sm font-bold text-slate-800">Menu</h3>
-          <button onclick="closeMobileFolder()" class="neu-badge-close" aria-label="Tutup">✕</button>
+          <button onclick="closeMobileFolder()" class="neu-badge-close" aria-label="Tutup"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>
         </div>
         <div class="mh-grid" id="mobile-folder-grid" style="grid-template-columns:repeat(3,1fr);"></div>
       </div>
@@ -2757,7 +2794,7 @@
     ============================================================ -->
     <div id="app-alert-modal" class="hidden fixed inset-0 z-[20002] flex items-center justify-center bg-black/40 p-4">
       <div id="app-alert-modal-panel" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 text-center">
-        <div id="app-alert-modal-icon" style="font-size:32px;line-height:1;margin-bottom:10px;">ℹ️</div>
+        <div id="app-alert-modal-icon" style="display:flex;justify-content:center;margin-bottom:10px;"></div>
         <p id="app-alert-modal-message" class="text-sm text-slate-700 mb-5" style="white-space:pre-line;"></p>
         <button id="app-alert-modal-ok" onclick="closeAppAlert()"
           class="btn-press px-6 py-2.5 text-sm font-bold rounded-lg text-white"
@@ -2775,7 +2812,7 @@
     ============================================================ -->
     <div id="app-confirm-modal" class="hidden fixed inset-0 z-[20003] flex items-center justify-center bg-black/40 p-4">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 text-center">
-        <div id="app-confirm-modal-icon" style="font-size:32px;line-height:1;margin-bottom:10px;">⚠️</div>
+        <div id="app-confirm-modal-icon" style="display:flex;justify-content:center;margin-bottom:10px;"></div>
         <p id="app-confirm-modal-message" class="text-sm text-slate-700 mb-5" style="white-space:pre-line;"></p>
         <div class="flex gap-3">
           <button id="app-confirm-modal-cancel"
@@ -2793,6 +2830,60 @@
 
     <script>
       // =============================================
+      // SISTEM ICON — pengganti emoji. Semua ikon: garis 1.8, ujung bulat,
+      // viewBox 24 (selaras ikon sidebar/dock). Pakai svgIcon('nama').
+      // =============================================
+      const _ICON_PATHS_ = {
+        'error': '<circle cx="12" cy="12" r="10"></circle><path d="M15 9l-6 6M9 9l6 6"></path>',
+        'warning': '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4M12 17h.01"></path>',
+        'success': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><path d="M22 4L12 14.01l-3-3"></path>',
+        'info': '<circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path>',
+        'refresh': '<path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>',
+        'close': '<path d="M18 6L6 18M6 6l12 12"></path>',
+        'check': '<path d="M20 6L9 17l-5-5"></path>',
+        'pin': '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle>',
+        'clipboard': '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 13h6M9 17h6"></path>',
+        'printer': '<path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect>',
+        'trash': '<path d="M3 6h18"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M10 11v6M14 11v6"></path>',
+        'clock': '<circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path>',
+        'truck': '<path d="M1 3h13v13H1z"></path><path d="M14 8h4l3 3v5h-7V8z"></path><circle cx="6" cy="18" r="2"></circle><circle cx="17" cy="18" r="2"></circle>',
+        'camera': '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle>',
+        'chevron-down': '<path d="M6 9l6 6 6-6"></path>',
+        'chevron-up': '<path d="M18 15l-6-6-6 6"></path>',
+        'chevron-left': '<path d="M15 18l-6-6 6-6"></path>',
+        'chevron-right': '<path d="M9 18l6-6-6-6"></path>',
+        'arrow-up': '<path d="M12 19V5M5 12l7-7 7 7"></path>',
+        'arrow-down': '<path d="M12 5v14M19 12l-7 7-7-7"></path>',
+        'minus': '<path d="M5 12h14"></path>',
+        'login': '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path>',
+        'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path>',
+        'loader': '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>'
+      };
+
+      function svgIcon(name, extraClass) {
+        const body = _ICON_PATHS_[name] || _ICON_PATHS_.info;
+        return '<svg class="ic' + (extraClass ? ' ' + extraClass : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + body + '</svg>';
+      }
+
+      // Ikon status semantik: error | warning | success | info
+      function _statusType_(type) {
+        return (type === 'error' || type === 'warning' || type === 'success') ? type : 'info';
+      }
+
+      // Tulis pesan status di elemen: ikon SVG + teks (teks di-escape).
+      function _setStatus(el, type, text) {
+        if (!el) return;
+        const ty = _statusType_(type);
+        el.innerHTML = svgIcon(ty, 'ic-' + ty) + ' ' + _escapeHtmlAttr_(String(text == null ? '' : text));
+      }
+
+      // Buang emoji/simbol pembuka dari pesan (jaga-jaga kalau masih ada yang lolos).
+      function _stripLeadingGlyph_(msg) {
+        return String(msg == null ? '' : msg)
+          .replace(/^\s*(?:[\u2600-\u27BF\u2B50\u2139\uFE0F]|[\uD83C-\uD83E][\uDC00-\uDFFF])+\s*/, '');
+      }
+
+      // =============================================
       // UI HELPER — TOAST & MODAL ALERT
       // Pengganti alert() bawaan browser: tidak nge-block halaman,
       // dan tampilannya mengikuti gaya neumorphism di layar HP
@@ -2801,13 +2892,14 @@
       function showToast(message, type) {
         const container = document.getElementById('app-toast-container');
         if (!container) { return; }
-        const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : 'ℹ️';
+        const ty = _statusType_(type);
         const el = document.createElement('div');
         el.className = 'app-toast';
         const iconSpan = document.createElement('span');
-        iconSpan.textContent = icon;
+        iconSpan.style.display = 'inline-flex';
+        iconSpan.innerHTML = svgIcon(ty, 'ic-' + ty);
         const textSpan = document.createElement('span');
-        textSpan.textContent = message;
+        textSpan.textContent = _stripLeadingGlyph_(message);
         el.appendChild(iconSpan);
         el.appendChild(textSpan);
         container.appendChild(el);
@@ -2909,7 +3001,7 @@
           };
           const msgEl = document.getElementById('app-alert-modal-message');
           showAppAlert(
-            (config.errorPrefix || '⚠️ Perubahan tadi BELUM tercatat di server: ') + err.message +
+            (config.errorPrefix || 'Perubahan tadi BELUM tercatat di server: ') + err.message +
             '\n\nTampilan sudah dikembalikan seperti semula supaya datanya tidak salah. Silakan coba lagi.',
             'error'
           );
@@ -2921,7 +3013,7 @@
             const retryBtn = document.createElement('button');
             retryBtn.id = 'app-alert-retry-btn';
             retryBtn.className = 'btn-press w-full mb-2 px-4 py-2 text-sm font-bold rounded-lg border border-amber-400 text-amber-700 hover:bg-amber-50';
-            retryBtn.textContent = '🔄 Coba Lagi';
+            retryBtn.innerHTML = svgIcon('refresh') + ' Coba Lagi';
             retryBtn.onclick = window['_optimisticRetry_' + retryLabel];
             msgEl.insertAdjacentElement('afterend', retryBtn);
           }
@@ -2933,8 +3025,9 @@
         const iconEl = document.getElementById('app-alert-modal-icon');
         const msgEl = document.getElementById('app-alert-modal-message');
         if (!modal || !iconEl || !msgEl) { window.alert(message); return; }
-        iconEl.textContent = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
-        msgEl.textContent = message;
+        const ty = _statusType_(type);
+        iconEl.innerHTML = svgIcon(ty, 'ic-lg ic-' + ty);
+        msgEl.textContent = _stripLeadingGlyph_(message);
         modal.classList.remove('hidden');
       }
 
@@ -2966,8 +3059,9 @@
             return;
           }
 
-          iconEl.textContent = options.icon || '⚠️';
-          msgEl.textContent = message;
+          const iconName = options.icon || 'warning';
+          iconEl.innerHTML = svgIcon(iconName, 'ic-lg ' + (iconName === 'trash' ? 'ic-error' : 'ic-warning'));
+          msgEl.textContent = _stripLeadingGlyph_(message);
           okBtn.textContent = options.okLabel || 'Ya';
           cancelBtn.textContent = options.cancelLabel || 'Batal';
           modal.classList.remove('hidden');
@@ -3421,7 +3515,7 @@
         } catch (err) {
           select.disabled = false;
           select.innerHTML = '<option value="">-- Gagal memuat Team --</option>';
-          statusEl.textContent = '❌ ' + err.message;
+          _setStatus(statusEl, 'error', err.message);
         }
       }
 
@@ -3429,13 +3523,13 @@
       // visibility Password — selaras dengan tema (warna ikon ikut
       // `color` pada elemen #togglePasswordIcon), pengganti emoji 👁️/🙈.
       const ICON_EYE_OPEN =
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
           'stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>' +
           '<circle cx="12" cy="12" r="3"></circle>' +
         '</svg>';
       const ICON_EYE_OFF =
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
           'stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.6 18.6 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>' +
           '<line x1="1" y1="1" x2="23" y2="23"></line>' +
@@ -3475,7 +3569,7 @@
         selectedTeamKey = selectedRole === 'Dispatch' ? teamSelect.value : '';
 
         if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
-          err.textContent = '❌ Password salah atau role belum dipilih.';
+          _setStatus(err, 'error', 'Password salah atau role belum dipilih.');
           err.style.display = 'block';
           document.getElementById('loginPassword').value = '';
           return;
@@ -3485,7 +3579,7 @@
         // bisa dibatasi ke Team yang benar (lihat renderTeamDispatchCards/
         // _pingDispatchGeolocation_).
         if (selectedRole === 'Dispatch' && !selectedTeamKey) {
-          err.textContent = '❌ Pilih Team terlebih dahulu.';
+          _setStatus(err, 'error', 'Pilih Team terlebih dahulu.');
           err.style.display = 'block';
           return;
         }
@@ -4220,7 +4314,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          if (statusEl) _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -4237,7 +4331,7 @@
           const json = await res.json();
           if (!json.success) {
             if (showProgress) _stopDashboardProgressSim();
-            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            if (statusEl) _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _dashboardSummary = { counts: json.counts || {}, details: json.details || {} };
@@ -4250,7 +4344,7 @@
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
           if (showProgress) _stopDashboardProgressSim();
-          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          if (statusEl) _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _dashboardFetching = false;
         }
@@ -4452,7 +4546,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          if (statusEl) _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -4465,7 +4559,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getBDStatusSummary');
           const json = await res.json();
           if (!json.success) {
-            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            if (statusEl) _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _bdStatusSummary = { counts: json.counts || {}, details: json.details || {} };
@@ -4476,7 +4570,7 @@
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
-          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          if (statusEl) _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _bdStatusFetching = false;
         }
@@ -4590,7 +4684,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          if (statusEl) _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -4603,7 +4697,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getActionPlanSummary');
           const json = await res.json();
           if (!json.success) {
-            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            if (statusEl) _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _actionPlanSummary = { counts: json.counts || {}, details: json.details || {} };
@@ -4614,7 +4708,7 @@
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
-          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          if (statusEl) _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _actionPlanFetching = false;
         }
@@ -4864,7 +4958,7 @@
           const wrap = canvas.parentElement;
           if (wrap && !document.getElementById('summary-dispatch-chart-error')) {
             wrap.innerHTML = '<div id="summary-dispatch-chart-error" class="flex items-center justify-center h-full text-xs text-red-500 text-center px-4">' +
-              '❌ Gagal memuat library grafik (Chart.js) dari CDN. Cek koneksi internet / pemblokir CDN, lalu muat ulang halaman.</div>';
+              svgIcon('error') + ' Gagal memuat library grafik (Chart.js) dari CDN. Cek koneksi internet / pemblokir CDN, lalu muat ulang halaman.</div>';
           }
           return;
         }
@@ -4933,9 +5027,9 @@
 
       function _summaryDispatchTrendArrow_(current, previous) {
         if (previous === undefined || previous === null) return '';
-        if (current > previous) return ' <span class="text-emerald-500 font-bold">▲</span>';
-        if (current < previous) return ' <span class="text-red-500 font-bold">▼</span>';
-        return ' <span class="text-slate-300 font-bold">▬</span>';
+        if (current > previous) return ' <span class="text-emerald-500">' + svgIcon('arrow-up') + '</span>';
+        if (current < previous) return ' <span class="text-red-500">' + svgIcon('arrow-down') + '</span>';
+        return ' <span class="text-slate-300">' + svgIcon('minus') + '</span>';
       }
 
       function _renderSummaryDispatchPicTable() {
@@ -4985,7 +5079,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          if (statusEl) statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          if (statusEl) _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -4999,7 +5093,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSummaryDispatch');
           const json = await res.json();
           if (!json.success) {
-            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            if (statusEl) _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _summaryDispatchData = {
@@ -5019,7 +5113,7 @@
           if (statusEl) statusEl.textContent = 'Data tahun ' + (json.year || new Date().getFullYear()) +
             ' — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
-          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          if (statusEl) _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _summaryDispatchFetching = false;
         }
@@ -5063,7 +5157,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -5076,7 +5170,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getInventoryJS');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _invJSHeaders = json.headers || [];
@@ -5087,7 +5181,7 @@
           statusEl.textContent = _invJSData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderInventoryJSTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _invJSFetching = false;
         }
@@ -5143,7 +5237,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -5156,7 +5250,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getInventoryCIMB');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _invCIMBHeaders = json.headers || [];
@@ -5167,7 +5261,7 @@
           statusEl.textContent = _invCIMBData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderInventoryCIMBTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _invCIMBFetching = false;
         }
@@ -5399,7 +5493,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -5413,7 +5507,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getMachinePreparationList');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             _mprepFinishProgress(false);
             return;
           }
@@ -5429,7 +5523,7 @@
           renderMachinePrepTable();
           _mprepFinishProgress(true);
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
           _mprepFinishProgress(false);
         } finally {
           _mprepFetching = false;
@@ -5532,7 +5626,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -5545,7 +5639,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTaskMachinePrepList');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _taskMprepData = json.data || [];
@@ -5555,7 +5649,7 @@
           statusEl.textContent = _taskMprepData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTaskMachinePrepTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _taskMprepFetching = false;
         }
@@ -5594,11 +5688,11 @@
       // Preparation", lalu disembunyikan lewat _isTaskMprepHidden().
       async function removeTaskMachinePrep(rowNumber) {
         if (!rowNumber) {
-          showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
+          showAppAlert('Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
           return;
         }
         const ok = await showAppConfirm('Hapus task ini dari Task Machine Preparation?', {
-          icon: '🗑️', okLabel: 'Ya, Hapus', cancelLabel: 'Batal'
+          icon: 'trash', okLabel: 'Ya, Hapus', cancelLabel: 'Batal'
         });
         if (!ok) return;
 
@@ -5614,7 +5708,7 @@
             if (idxRemoved >= 0) _taskMprepData.splice(idxRemoved, 1);
             renderTaskMachinePrepTable();
           },
-          successMessage: '✅ Task berhasil dihapus.',
+          successMessage: 'Task berhasil dihapus.',
           request: () => _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' }, 3),
           onSuccess: () => { loadTaskMachinePrepList(true); },
           rollback: () => {
@@ -5623,7 +5717,7 @@
               renderTaskMachinePrepTable();
             }
           },
-          errorPrefix: '⚠️ Task BELUM benar-benar terhapus di server: '
+          errorPrefix: 'Task BELUM benar-benar terhapus di server: '
         });
       }
 
@@ -5744,15 +5838,15 @@
                 // Dibatalkan user sendiri, bukan error — tidak perlu fallback.
               } else {
                 _downloadPlanTaskImage(blob, fileName);
-                showAppAlert('⚠️ Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
+                showAppAlert('Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
               }
             }
           } else {
             _downloadPlanTaskImage(blob, fileName);
-            showAppAlert('📥 Gambar Task Machine Preparation sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan bagikan manual lewat WhatsApp.', 'success');
+            showAppAlert('Gambar Task Machine Preparation sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan bagikan manual lewat WhatsApp.', 'success');
           }
         } catch (err) {
-          showAppAlert('❌ Gagal menyiapkan data untuk dibagikan: ' + err.message, 'error');
+          showAppAlert('Gagal menyiapkan data untuk dibagikan: ' + err.message, 'error');
         } finally {
           if (captureArea) captureArea.remove();
           resetBtn();
@@ -6338,12 +6432,12 @@
           return '<span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-white border border-amber-300 text-amber-800">' +
             site.replace(/</g, '&lt;') +
             '<button type="button" onclick="removeJabodetabekSelected(\'' + key.replace(/'/g, "\\'") + '\')" ' +
-            'class="w-4 h-4 flex items-center justify-center rounded-full text-amber-400 hover:bg-red-100 hover:text-red-600 font-bold leading-none" title="Hapus dari seleksi">✕</button></span>';
+            'class="w-4 h-4 flex items-center justify-center rounded-full text-amber-400 hover:bg-red-100 hover:text-red-600 leading-none" title="Hapus dari seleksi" aria-label="Hapus dari seleksi"><svg class="ic ic-xs" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button></span>';
         }).join('');
 
         wrap.innerHTML =
           '<div class="flex items-center justify-between mb-2">' +
-            '<span class="text-xs font-bold text-amber-700 uppercase tracking-wide">📋 Site Terpilih (' + _jabodetabekSelectedRows.size + ')</span>' +
+            '<span class="text-xs font-bold text-amber-700 uppercase tracking-wide"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 13h6M9 17h6"></path></svg> Site Terpilih (' + _jabodetabekSelectedRows.size + ')</span>' +
             '<button type="button" onclick="clearAllJabodetabekSelected()" class="text-xs font-semibold text-slate-400 hover:text-red-500">Kosongkan Semua</button>' +
           '</div>' +
           '<div class="flex flex-wrap gap-1.5">' + chips + '</div>';
@@ -6422,7 +6516,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -6435,7 +6529,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabek');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _jabodetabekHeaders = json.headers || [];
@@ -6452,7 +6546,7 @@
           renderJabodetabekTable();
           if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _jabodetabekFetching = false;
         }
@@ -6542,8 +6636,8 @@
         if (wrap) wrap.classList.toggle('hidden', !_jabodetabekLeaderboardVisible);
         if (btn) {
           btn.innerHTML = _jabodetabekLeaderboardVisible
-            ? ' Sembunyikan Leaderboard Kota  <span id="jabodetabek-leaderboard-toggle-arrow">▲</span>'
-            : ' Tampilkan Leaderboard Kota <span id="jabodetabek-leaderboard-toggle-arrow">▼</span>';
+            ? ' Sembunyikan Leaderboard Kota  <span id="jabodetabek-leaderboard-toggle-arrow">' + svgIcon('chevron-up') + '</span>'
+            : ' Tampilkan Leaderboard Kota <span id="jabodetabek-leaderboard-toggle-arrow">' + svgIcon('chevron-down') + '</span>';
         }
         if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
       }
@@ -6738,7 +6832,7 @@
       // =============================================
       // INPUT TASK (data dikirim dari Request BD - Jabodetabek)
       // =============================================
-      // Tombol "🔄 Refresh": dulu memakai location.reload() (muat ulang
+      // Tombol "Refresh": dulu memakai location.reload() (muat ulang
       // halaman penuh). Masalahnya, tidak ada state yang menyimpan menu mana
       // yang terakhir dibuka, jadi begitu halaman reload, aplikasi kembali ke
       // menu utama alih-alih tetap di Input Task. Sekarang diganti jadi
@@ -6849,7 +6943,7 @@
             (current ? 'text-slate-800 font-semibold' : 'text-slate-400') + '">' +
             '<span class="truncate">' + (current ? _escapeHtmlAttr_(current) : '-- Pilih VMC NO --') + '</span>' +
             '<svg class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
-            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>' +
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 9l-7 7-7-7"/></svg>' +
             '</button>';
         }
         if (_isVmcAutoFillActionPlan(actionPlan)) {
@@ -6930,7 +7024,7 @@
         if (_planTaskDropdownsRetrying && !forceRefresh) return;
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           statusEl.style.color = '#ef4444';
           return;
         }
@@ -6953,7 +7047,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskDropdowns');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat pilihan Divisi/PIC');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat pilihan Divisi/PIC'));
             statusEl.style.color = '#ef4444';
             _planTaskDropdownsRetrying = false;
             return;
@@ -7006,12 +7100,12 @@
             _planTaskDropdownsLoaded = true;
             statusEl.textContent = '';
           } else {
-            statusEl.textContent = '⚠️ Pilihan Divisi/PIC masih kosong. Klik tombol reload di sebelah label PIC.';
+            _setStatus(statusEl, 'warning', 'Pilihan Divisi/PIC masih kosong. Klik tombol reload di sebelah label PIC.');
             statusEl.style.color = '#ef4444';
           }
         } catch (err) {
           _planTaskDropdownsRetrying = false;
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
           statusEl.style.color = '#ef4444';
         }
       }
@@ -7032,13 +7126,13 @@
         };
 
         if (!payload.divisi || !payload.pic || !payload.planDate) {
-          statusEl.textContent = '⚠️ Divisi, PIC, dan Plan Date wajib diisi.';
+          _setStatus(statusEl, 'warning', 'Divisi, PIC, dan Plan Date wajib diisi.');
           statusEl.style.color = '#ef4444';
           return;
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script untuk menyimpan ke Sheet.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script untuk menyimpan ke Sheet.');
           statusEl.style.color = '#ef4444';
           return;
         }
@@ -7053,7 +7147,7 @@
           .then(res => res.json())
           .then(json => {
             if (json.success) {
-              statusEl.textContent = '✅ ' + (json.message || 'Plan Task berhasil disimpan') + ' — ' + new Date().toLocaleTimeString('id-ID');
+              _setStatus(statusEl, 'success', (json.message || 'Plan Task berhasil disimpan') + ' — ' + new Date().toLocaleTimeString('id-ID'));
               statusEl.style.color = '#16a34a';
 
               // Data hasil submit (sudah dilengkapi lookup dari Spreadsheet "Logistic
@@ -7074,12 +7168,12 @@
               showPage('Plan Task');
               renderPlanTaskTable();
             } else {
-              statusEl.textContent = '❌ ' + (json.message || 'Gagal menyimpan Plan Task');
+              _setStatus(statusEl, 'error', (json.message || 'Gagal menyimpan Plan Task'));
               statusEl.style.color = '#ef4444';
             }
           })
           .catch(err => {
-            statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+            _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
             statusEl.style.color = '#ef4444';
           });
       }
@@ -7151,7 +7245,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskBatches');
           const json = await res.json();
           if (!json.success) {
-            if (statusEl) statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data Plan Task dari server');
+            if (statusEl) _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data Plan Task dari server'));
             return;
           }
           _planTaskBatches = json.batches || [];
@@ -7162,7 +7256,7 @@
           renderPlanTaskTable();
           if (statusEl) statusEl.textContent = 'Tersinkron dengan semua device — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
         } catch (err) {
-          if (statusEl) statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          if (statusEl) _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _planTaskFetching = false;
         }
@@ -7206,7 +7300,7 @@
           }).join('') +
           '<td class="px-2 py-2 align-top text-center">' +
             '<button onclick="printPlanTaskNote(' + batchIndex + ',' + realIdx + ')" ' +
-              'class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-white whitespace-nowrap">🖨️ Cetak</button>' +
+              'class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-white whitespace-nowrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg> Cetak</button>' +
           '</td>' +
           '</tr>';
         }).join('');
@@ -7218,7 +7312,7 @@
         const batchIndex = Number(inputEl.dataset.batchIndex);
         const value = inputEl.value.trim();
         if (!rowNumber) {
-          showAppAlert('⚠️ Baris ini belum punya referensi ke sheet (coba submit ulang Plan Task).', 'warning');
+          showAppAlert('Baris ini belum punya referensi ke sheet (coba submit ulang Plan Task).', 'warning');
           return;
         }
 
@@ -7231,7 +7325,7 @@
           .then(json => {
             inputEl.disabled = false;
             if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal menyimpan NO VMC JUMPSTART'), 'error');
+              showAppAlert((json.message || 'Gagal menyimpan NO VMC JUMPSTART'), 'error');
               return;
             }
             const batch = _planTaskBatches[batchIndex];
@@ -7241,7 +7335,7 @@
           })
           .catch(err => {
             inputEl.disabled = false;
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+            showAppAlert('Gagal terhubung ke server: ' + err.message, 'error');
           });
       }
 
@@ -7334,11 +7428,11 @@
         const btn = document.getElementById('plan-task-cleanup-btn');
         const originalLabel = btn.textContent;
         btn.disabled = true;
-        btn.textContent = '⏳ Memeriksa sheet...';
+        btn.innerHTML = svgIcon('loader', 'animate-spin') + ' Memeriksa sheet...';
         try {
           const json = await _getFromGasWithRetry_('getPlanTaskExistingTickets', {});
           if (!json || !json.success) {
-            showAppAlert('❌ ' + ((json && json.message) || 'Gagal mengambil data sheet Plan Task.'), 'error');
+            showAppAlert(((json && json.message) || 'Gagal mengambil data sheet Plan Task.'), 'error');
             return;
           }
           // Map TICKET (di-normalisasi trim+lowercase) -> rowNumber terbaru di sheet.
@@ -7367,12 +7461,12 @@
 
           renderPlanTaskTable();
           if (removedCount > 0) {
-            showToast('🧹 ' + removedCount + ' task yang sudah dihapus dari sheet ikut dibersihkan dari tampilan.', 'success');
+            showToast(removedCount + ' task yang sudah dihapus dari sheet ikut dibersihkan dari tampilan.', 'success');
           } else {
             showToast('Semua task yang tampil masih sesuai dengan sheet — tidak ada yang perlu dibersihkan.', 'success');
           }
         } catch (err) {
-          showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+          showAppAlert('Gagal terhubung ke server: ' + err.message, 'error');
         } finally {
           btn.disabled = false;
           btn.textContent = originalLabel;
@@ -7443,13 +7537,13 @@
 
       function printPlanTaskNote(batchIndex, rowIndex) {
         if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
-          showAppAlert('❌ Library PDF belum termuat, coba refresh halaman.', 'error');
+          showAppAlert('Library PDF belum termuat, coba refresh halaman.', 'error');
           return;
         }
         const batch = _planTaskBatches[batchIndex];
         const row = batch && batch.rows[rowIndex];
         if (!row) {
-          showAppAlert('❌ Data baris tidak ditemukan.', 'error');
+          showAppAlert('Data baris tidak ditemukan.', 'error');
           return;
         }
 
@@ -7598,7 +7692,7 @@
       async function loadTaskOnGoing(forceRefresh) {
         const statusEl = document.getElementById('task-ongoing-status');
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -7607,7 +7701,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _taskOnGoingRows = (json.rows || []).filter(r => {
@@ -7618,7 +7712,7 @@
           statusEl.textContent = _taskOnGoingRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTaskOnGoingTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         }
       }
 
@@ -7678,7 +7772,7 @@
       // hilang dari Task Team Dispatch & menu Plan Task.
       async function removeTaskOnGoing(rowNumber) {
         if (!rowNumber) {
-          showAppAlert('❌ Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
+          showAppAlert('Data baris tidak lengkap (rowNumber kosong), tidak bisa menghapus task ini.', 'error');
           return;
         }
         // PENTING: pakai showAppConfirm (modal custom), BUKAN window.confirm()
@@ -7704,7 +7798,7 @@
             saveTaskOnGoingRows();
             renderTaskOnGoingTable();
           },
-          successMessage: '✅ Task berhasil dihapus.',
+          successMessage: 'Task berhasil dihapus.',
           request: () => _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: 'Removed By Admin' }, 3),
           onSuccess: () => {
             loadTaskOnGoing(true);
@@ -7717,7 +7811,7 @@
               renderTaskOnGoingTable();
             }
           },
-          errorPrefix: '⚠️ Task BELUM benar-benar terhapus di server: '
+          errorPrefix: 'Task BELUM benar-benar terhapus di server: '
         });
       }
 
@@ -7892,7 +7986,7 @@
         let html = '<div style="font-size:12px;line-height:1.5;">' +
             '<b>' + _escapeHtmlAttr_(team.pic) + '</b><br>' +
             'Lokasi: ' + _escapeHtmlAttr_(addrText) + '<br>' +
-            'Status: ' + (team.online ? '🟢 Online' : '⚪ Offline') + '<br>';
+            'Status: ' + (team.online ? '<span class="ic-dot ic-dot-on"></span>Online' : '<span class="ic-dot ic-dot-off"></span>Offline') + '<br>';
         if (team.taskStatus) {
           html += 'Status Task: ' + _escapeHtmlAttr_(team.taskStatus) + '<br>';
           if (team.taskStatus.toLowerCase() === 'on delivery') {
@@ -7976,11 +8070,11 @@
       async function loadPoolDriverMap(forceRefresh) {
         const statusEl = document.getElementById('pool-driver-status');
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
         if (!_showPoolDriverMap_()) {
-          statusEl.textContent = '⚠️ Library peta (Leaflet) gagal dimuat — cek koneksi internet lalu refresh halaman.';
+          _setStatus(statusEl, 'warning', 'Library peta (Leaflet) gagal dimuat — cek koneksi internet lalu refresh halaman.');
           return;
         }
         statusEl.textContent = 'Memuat posisi Team Dispatch...';
@@ -7998,7 +8092,7 @@
           ]);
 
           if (!mapRes.success && !presenceRes.success) {
-            statusEl.textContent = '❌ ' + (presenceRes.message || mapRes.message || 'Gagal memuat data peta');
+            _setStatus(statusEl, 'error', (presenceRes.message || mapRes.message || 'Gagal memuat data peta'));
             renderPoolDriverMap();
             return;
           }
@@ -8028,15 +8122,17 @@
           const offlineCount = teams.length - onlineCount;
           let statusText = onlineCount + ' Team online' + (offlineCount ? ' · ' + offlineCount + ' offline' : '') +
             ' hari ini — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          let statusWarn = '';
           if (!presenceRes.success) {
-            statusText += ' ⚠️ Data Team online belum bisa dimuat (' + (presenceRes.message || 'tidak ada respons') +
+            statusWarn = 'Data Team online belum bisa dimuat (' + (presenceRes.message || 'tidak ada respons') +
               ') — pastikan GAS sudah di-deploy ulang (New version).';
           }
-          statusEl.textContent = statusText;
+          statusEl.innerHTML = _escapeHtmlAttr_(statusText) +
+            (statusWarn ? ' ' + svgIcon('warning', 'ic-warning') + ' ' + _escapeHtmlAttr_(statusWarn) : '');
           renderPoolDriverMap();
           renderPoolDriverTimelineBadges();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         }
       }
 
@@ -8047,11 +8143,12 @@
           const cls = t.online
             ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
             : 'bg-slate-100 text-slate-500 border-slate-300';
-          const label = (t.online ? '🟢 ' : '⚪ ') + t.pic +
+          const dot = '<span class="ic-dot ' + (t.online ? 'ic-dot-on' : 'ic-dot-off') + '"></span>';
+          const label = t.pic +
             (t.online ? '' : ' · terakhir ' + t.updatedAt) +
             (t.pos ? '' : ' · lokasi belum tersedia');
           return '<span class="td-team-badge text-xs font-semibold px-3 py-1.5 rounded-full border ' + cls + '" ' +
-            'data-team-key="' + _escapeHtmlAttr_(t.key) + '">' + _escapeHtmlAttr_(label) + '</span>';
+            'data-team-key="' + _escapeHtmlAttr_(t.key) + '">' + dot + _escapeHtmlAttr_(label) + '</span>';
         }).join('');
       }
 
@@ -8160,7 +8257,7 @@
             : 'bg-slate-100 text-slate-600 border-slate-300';
           return '<span class="td-team-badge text-xs font-semibold px-3 py-1.5 rounded-full border ' + colorClass + '" ' +
             'onclick="openPoolDriverTimelineModal(\'' + _escapeHtmlAttr_(key) + '\')">' +
-            (isRunning ? '🟠 ' : '') + _escapeHtmlAttr_(group.pic) + ' (' + group.rows.length + ' task)</span>';
+            (isRunning ? '<span class="ic-dot ic-dot-run"></span>' : '') + _escapeHtmlAttr_(group.pic) + ' (' + group.rows.length + ' task)</span>';
         }).join('');
       }
 
@@ -8197,7 +8294,7 @@
           const jamBerangkat = row['Jam Berangkat'] || '-';
           const jamTiba = row['Jam Tiba'] || (state === 'notstarted' ? 'Belum Berangkat' : 'Belum Tiba');
           const etaHtml = state === 'ontheway'
-            ? '<div class="pd-tl-eta-badge">⏱ Estimasi Tiba: ' + _escapeHtmlAttr_(row['Estimasi Tiba'] || '-') + '</div>'
+            ? '<div class="pd-tl-eta-badge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg> Estimasi Tiba: ' + _escapeHtmlAttr_(row['Estimasi Tiba'] || '-') + '</div>'
             : '';
           return (
             '<div class="pd-tl-item' + itemClass + '">' +
@@ -8205,8 +8302,8 @@
               '<div class="text-xs text-slate-800 font-bold">' + _escapeHtmlAttr_(row['LOCATION NAME'] || '-') + '</div>' +
               '<div class="text-[11px] text-slate-500 mb-1">' + _escapeHtmlAttr_(row['ACTION PLAN'] || '-') +
                 ' &middot; ' + _escapeHtmlAttr_(row['MACHINE TYPE (sent from WH)'] || '-') + '</div>' +
-              '<div class="text-[11px] text-slate-600">🚚 Berangkat: <b>' + _escapeHtmlAttr_(jamBerangkat) + '</b></div>' +
-              '<div class="text-[11px] text-slate-600">📍 Tiba: <b>' + _escapeHtmlAttr_(jamTiba) + '</b></div>' +
+              '<div class="text-[11px] text-slate-600"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 3h13v13H1z"></path><path d="M14 8h4l3 3v5h-7V8z"></path><circle cx="6" cy="18" r="2"></circle><circle cx="17" cy="18" r="2"></circle></svg> Berangkat: <b>' + _escapeHtmlAttr_(jamBerangkat) + '</b></div>' +
+              '<div class="text-[11px] text-slate-600"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Tiba: <b>' + _escapeHtmlAttr_(jamTiba) + '</b></div>' +
               etaHtml +
             '</div>'
           );
@@ -8262,7 +8359,7 @@
       async function loadHistorycalDispatch(forceRefresh) {
         const statusEl = document.getElementById('historycal-dispatch-status');
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -8271,7 +8368,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTaskTeamDispatchHistory');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           // Urutkan terbaru dulu (Timestamp desc) supaya riwayat terkini tampil di atas.
@@ -8284,7 +8381,7 @@
           statusEl.textContent = _historycalDispatchRows.length + ' riwayat — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderHistorycalDispatchTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         }
       }
 
@@ -8447,7 +8544,7 @@
       async function loadHistorycalPreparation(forceRefresh) {
         const statusEl = document.getElementById('historycal-preparation-status');
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -8456,14 +8553,14 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamPrepareHistory');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _historycalPreparationRows = json.rows || [];
           statusEl.textContent = _historycalPreparationRows.length + ' riwayat — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderHistorycalPreparationTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         }
       }
 
@@ -8583,7 +8680,7 @@
       async function loadTeamDispatchTasks(forceRefresh) {
         const statusEl = document.getElementById('team-dispatch-status');
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -8592,7 +8689,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           let rows = json.rows || []; // "Closed" sudah difilter di server
@@ -8607,7 +8704,7 @@
           statusEl.textContent = _teamDispatchRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTeamDispatchCards();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         }
       }
 
@@ -8649,10 +8746,10 @@
         const keyAttr = _escapeHtmlAttr_(groupKey);
         return '<div class="td-fan-nav" data-fan-nav-key="' + keyAttr + '">' +
           '<button type="button" class="td-fan-nav-btn" onclick="_advanceFanStack_(\'' + keyAttr + '\', -1)"' +
-            (currentIdx <= 0 ? ' disabled' : '') + '>&lsaquo;</button>' +
+            (currentIdx <= 0 ? ' disabled' : '') + '>' + svgIcon('chevron-left') + '</button>' +
           '<span class="td-fan-nav-count">' + (currentIdx + 1) + ' / ' + total + '</span>' +
           '<button type="button" class="td-fan-nav-btn" onclick="_advanceFanStack_(\'' + keyAttr + '\', 1)"' +
-            (currentIdx >= total - 1 ? ' disabled' : '') + '>&rsaquo;</button>' +
+            (currentIdx >= total - 1 ? ' disabled' : '') + '>' + svgIcon('chevron-right') + '</button>' +
         '</div>';
       }
 
@@ -9066,7 +9163,7 @@
             if (rowRef) rowRef['Status'] = 'On Delivery';
             renderTeamDispatchCards();
             if (!estimasiTiba && etaFailReason) {
-              showAppAlert('⚠️ Jam Berangkat tercatat, tapi Estimasi Tiba tidak bisa dihitung (' + etaFailReason + ').', 'warning');
+              showAppAlert('Jam Berangkat tercatat, tapi Estimasi Tiba tidak bisa dihitung (' + etaFailReason + ').', 'warning');
             }
           },
           request: () => _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba, geoLat: startGeoLat, geoLng: startGeoLng }, 3),
@@ -9078,7 +9175,7 @@
             if (rowRef) rowRef['Status'] = prevStatus;
             renderTeamDispatchCards();
           },
-          errorPrefix: '⚠️ Jam Berangkat BELUM tercatat di server: '
+          errorPrefix: 'Jam Berangkat BELUM tercatat di server: '
         });
       }
 
@@ -9115,7 +9212,7 @@
             if (rowRef) rowRef['Status'] = prevStatus;
             renderTeamDispatchCards();
           },
-          errorPrefix: '⚠️ Jam Tiba BELUM tercatat di server: '
+          errorPrefix: 'Jam Tiba BELUM tercatat di server: '
         });
       }
 
@@ -9265,8 +9362,8 @@
           '<div class="flex gap-2 mt-2">' +
             (gmapsLink
               ? '<a href="' + gmapsLink + '" target="_blank" rel="noopener" ' +
-                  'class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-slate-300 text-slate-600 hover:bg-slate-50">📍 Maps</a>'
-              : '<span class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-slate-200 text-slate-300 cursor-not-allowed">📍 Maps</span>') +
+                  'class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-slate-300 text-slate-600 hover:bg-slate-50"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Maps</a>'
+              : '<span class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-slate-200 text-slate-300 cursor-not-allowed"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Maps</span>') +
             (waLink
               ? '<a href="' + waLink + '" target="_blank" rel="noopener" ' +
                   'class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-emerald-300 text-emerald-700 hover:bg-emerald-50">' + ICON_WHATSAPP + ' WhatsApp</a>'
@@ -9344,7 +9441,7 @@
         _getFromGasWithRetry_('updatePlanTaskStatus', { rowNumber: rowNumber, status: newStatus })
           .then(json => {
             if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal memperbarui status'), 'error');
+              showAppAlert((json.message || 'Gagal memperbarui status'), 'error');
               _clearBtnLoading_(btnEl);
               return;
             }
@@ -9353,7 +9450,7 @@
             loadTeamDispatchTasks(true);
           })
           .catch(err => {
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+            showAppAlert('Gagal terhubung ke server: ' + err.message, 'error');
             _clearBtnLoading_(btnEl);
           });
       }
@@ -9476,7 +9573,7 @@
                 '<input type="radio" name="dd-cf-' + item.key + '" value="Not OK"> Not OK</label>' +
               '<span id="dd-cf-photo-btn-' + item.key + '">' +
                 '<label class="cursor-pointer px-1.5 py-1 rounded-md border border-slate-300 bg-white text-slate-500" title="Lampirkan foto">' +
-                  '📷<input type="file" accept="image/*" class="hidden" onchange="handleDispatchChecklistFotoInput(\'' + item.key + '\', this)">' +
+                  '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg><input type="file" accept="image/*" class="hidden" onchange="handleDispatchChecklistFotoInput(\'' + item.key + '\', this)">' +
                 '</label>' +
               '</span>' +
             '</div>' +
@@ -9494,10 +9591,10 @@
         if (btnWrap) btnWrap.innerHTML = '<span class="text-slate-400">...</span>';
         _compressDispatchPhoto_(file, 1600, 0.7).then(result => {
           _ddChecklistFotoPhotos[key] = { name: file.name, mimeType: result.mimeType, base64: result.base64 };
-          if (btnWrap) btnWrap.innerHTML = '<span class="text-emerald-600 font-bold" title="Foto sudah dilampirkan">✅</span>';
+          if (btnWrap) btnWrap.innerHTML = '<span class="text-emerald-600" title="Foto sudah dilampirkan">' + svgIcon('success') + '</span>';
         }).catch(err => {
-          if (btnWrap) btnWrap.innerHTML = '<span class="text-red-500" title="Gagal memproses foto">⚠️</span>';
-          showAppAlert('❌ Gagal memproses foto: ' + err.message, 'error');
+          if (btnWrap) btnWrap.innerHTML = '<span class="text-red-500" title="Gagal memproses foto">' + svgIcon('warning') + '</span>';
+          showAppAlert('Gagal memproses foto: ' + err.message, 'error');
         });
       }
 
@@ -9527,7 +9624,7 @@
         _setBtnLoading_(btnEl, 'Memuat...');
         const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
         if (!row) {
-          showAppAlert('❌ Data task tidak ditemukan, silakan refresh dulu.', 'error');
+          showAppAlert('Data task tidak ditemukan, silakan refresh dulu.', 'error');
           _clearBtnLoading_(btnEl);
           return;
         }
@@ -9638,8 +9735,8 @@
           if (vmc.found) {
             document.getElementById('dd-me-vmc-no').value = vmc.noVMC || '';
             if (vmc.assets) document.getElementById('dd-me-assets').value = vmc.assets;
-            document.getElementById('dd-me-vmc-status').textContent =
-              '✅ Otomatis dari sheet "' + (vmc.sheetName || '-') + '"';
+            _setStatus(document.getElementById('dd-me-vmc-status'), 'success',
+              'Otomatis dari sheet "' + (vmc.sheetName || '-') + '"');
             _ddMachineExchangeLookup = {
               found: true,
               sheetName: vmc.sheetName || '',
@@ -9647,13 +9744,13 @@
               machineDetail: vmc.machineDetail || ''
             };
           } else {
-            document.getElementById('dd-me-vmc-status').textContent =
-              '⚠️ VMC NO tidak ditemukan otomatis, silakan isi manual.';
+            _setStatus(document.getElementById('dd-me-vmc-status'), 'warning',
+              'VMC NO tidak ditemukan otomatis, silakan isi manual.');
             _ddMachineExchangeLookup = null;
           }
         } catch (err) {
-          document.getElementById('dd-me-vmc-status').textContent =
-            '⚠️ Gagal memuat data otomatis, silakan isi manual.';
+          _setStatus(document.getElementById('dd-me-vmc-status'), 'warning',
+            'Gagal memuat data otomatis, silakan isi manual.');
           _ddMachineExchangeLookup = null;
         }
       }
@@ -9892,7 +9989,7 @@
           statusEl.textContent = '';
         }).catch(err => {
           statusEl.textContent = '';
-          showAppAlert('❌ Gagal memproses foto/video: ' + err.message, 'error');
+          showAppAlert('Gagal memproses foto/video: ' + err.message, 'error');
         });
 
         inputEl.value = ''; // reset supaya file yang sama bisa dipilih lagi kalau perlu
@@ -9911,7 +10008,7 @@
               ? '<video src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200" muted></video>'
               : '<img src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200">') +
             '<button type="button" onclick="removeDispatchDeliveredPhoto(' + idx + ')" ' +
-              'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">&times;</button>' +
+              'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center" aria-label="Hapus"><svg class="ic ic-xs" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>' +
           '</div>'
         ).join('');
       }
@@ -10022,7 +10119,7 @@
 
       async function submitDispatchDelivered() {
         if (!_ddContext || !_ddContext.ticket) {
-          showAppAlert('❌ TICKET tidak ditemukan pada task ini, tidak bisa disimpan.', 'error');
+          showAppAlert('TICKET tidak ditemukan pada task ini, tidak bisa disimpan.', 'error');
           return;
         }
 
@@ -10040,7 +10137,7 @@
         const loadingPlanDateVal = document.getElementById('dd-loading-plan-date').value.trim();
         const loadingDateActualVal = document.getElementById('dd-loading-date-actual').value;
         if (!loadingPlanDateVal || !loadingDateActualVal) {
-          statusEl.textContent = '❌ Loading Plan Date dan Loading Date (Actual) wajib terisi sebelum Simpan.';
+          _setStatus(statusEl, 'error', 'Loading Plan Date dan Loading Date (Actual) wajib terisi sebelum Simpan.');
           return;
         }
 
@@ -10053,7 +10150,7 @@
         if (checklistVisible) {
           checklistFoto = _collectDispatchChecklistFoto_();
           if (!checklistFoto) {
-            statusEl.textContent = '❌ Checklist Foto wajib diisi (OK / Not OK) dan dilampirkan foto untuk semua item sebelum Simpan.';
+            _setStatus(statusEl, 'error', 'Checklist Foto wajib diisi (OK / Not OK) dan dilampirkan foto untuk semua item sebelum Simpan.');
             return;
           }
         }
@@ -10069,7 +10166,7 @@
           const meVmcNo = document.getElementById('dd-me-vmc-no').value.trim();
           const meFinalStatus = document.getElementById('dd-me-final-status').value;
           if (!meVmcNo || !meFinalStatus) {
-            statusEl.textContent = '❌ VMC NO dan Final Status pada bagian "Machine Exchange (Sent To WH)" wajib diisi sebelum Simpan.';
+            _setStatus(statusEl, 'error', 'VMC NO dan Final Status pada bagian "Machine Exchange (Sent To WH)" wajib diisi sebelum Simpan.');
             return;
           }
           machineExchange = {
@@ -10219,7 +10316,7 @@
               saveTeamDispatchRows();
               renderTeamDispatchCards();
             },
-            successMessage: '✅ Task Team Dispatch berhasil diselesaikan!',
+            successMessage: 'Task Team Dispatch berhasil diselesaikan!',
             request: () => _getFromGasWithRetry_('saveDispatchDelivered', payload, 3),
             onSuccess: () => { loadTeamDispatchTasks(true); },
             rollback: () => {
@@ -10229,10 +10326,10 @@
                 renderTeamDispatchCards();
               }
             },
-            errorPrefix: '⚠️ Foto sudah ter-upload, tapi data Delivered BELUM tersimpan di server: '
+            errorPrefix: 'Foto sudah ter-upload, tapi data Delivered BELUM tersimpan di server: '
           });
         } catch (err) {
-          statusEl.textContent = '❌ ' + err.message;
+          _setStatus(statusEl, 'error', err.message);
           _clearBtnLoading_(saveBtn);
           _releaseDispatchWakeLock_();
         }
@@ -10264,7 +10361,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -10277,7 +10374,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamPrepareCards');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _teamPrepareCards = json.data || [];
@@ -10287,7 +10384,7 @@
           statusEl.textContent = _teamPrepareCards.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderTeamPrepareCards();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _teamPrepareFetching = false;
         }
@@ -10368,10 +10465,10 @@
       function _buildTeamPrepareFanNavHtml_(currentIdx, total) {
         return '<div class="td-fan-nav">' +
           '<button type="button" class="td-fan-nav-btn" onclick="_advanceTeamPrepareFan_(-1)"' +
-            (currentIdx <= 0 ? ' disabled' : '') + '>&lsaquo;</button>' +
+            (currentIdx <= 0 ? ' disabled' : '') + '>' + svgIcon('chevron-left') + '</button>' +
           '<span class="td-fan-nav-count">' + (currentIdx + 1) + ' / ' + total + '</span>' +
           '<button type="button" class="td-fan-nav-btn" onclick="_advanceTeamPrepareFan_(1)"' +
-            (currentIdx >= total - 1 ? ' disabled' : '') + '>&rsaquo;</button>' +
+            (currentIdx >= total - 1 ? ' disabled' : '') + '>' + svgIcon('chevron-right') + '</button>' +
         '</div>';
       }
 
@@ -10476,14 +10573,14 @@
         _getFromGasWithRetry_('updateTaskMachinePrepStatus', { rowNumber: rowNumber, status: 'Cancelled' })
           .then(json => {
             if (!json.success) {
-              showAppAlert('❌ ' + (json.message || 'Gagal membatalkan task'), 'error');
+              showAppAlert((json.message || 'Gagal membatalkan task'), 'error');
               return;
             }
-            showToast('✅ Task berhasil dibatalkan.', 'success');
+            showToast('Task berhasil dibatalkan.', 'success');
             loadTeamPrepareCards(true);
           })
           .catch(err => {
-            showAppAlert('❌ Gagal terhubung ke server: ' + err.message, 'error');
+            showAppAlert('Gagal terhubung ke server: ' + err.message, 'error');
           });
       }
 
@@ -10550,7 +10647,7 @@
           const json = await res.json();
 
           if (!json.success) {
-            document.getElementById('tp-modal-loading').textContent = '❌ ' + (json.message || 'Gagal memuat detail mesin');
+            _setStatus(document.getElementById('tp-modal-loading'), 'error', (json.message || 'Gagal memuat detail mesin'));
             return;
           }
 
@@ -10570,7 +10667,7 @@
           document.getElementById('tp-modal-loading').classList.add('hidden');
           document.getElementById('tp-modal-body').classList.remove('hidden');
         } catch (err) {
-          document.getElementById('tp-modal-loading').textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(document.getElementById('tp-modal-loading'), 'error', 'Gagal terhubung ke server: ' + err.message);
         }
       }
 
@@ -10676,7 +10773,7 @@
           statusEl.textContent = '';
         }).catch(err => {
           statusEl.textContent = '';
-          showAppAlert('❌ Gagal memproses foto: ' + err.message, 'error');
+          showAppAlert('Gagal memproses foto: ' + err.message, 'error');
         });
 
         inputEl.value = ''; // reset supaya file yang sama bisa dipilih lagi kalau perlu
@@ -10694,7 +10791,7 @@
           '<div class="relative">' +
             '<img src="data:' + p.mimeType + ';base64,' + p.base64 + '" class="w-16 h-16 object-cover rounded-md border border-slate-200">' +
             '<button type="button" onclick="removeTeamPreparePhoto(' + idx + ')" ' +
-              'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center">&times;</button>' +
+              'class="neu-badge-close absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 text-white text-[10px] leading-4 text-center" aria-label="Hapus"><svg class="ic ic-xs" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button>' +
           '</div>'
         ).join('');
       }
@@ -10708,12 +10805,12 @@
 
       async function submitTeamPrepareTask() {
         if (!_tpContext || !_tpContext.noVMC) {
-          showAppAlert('❌ Data task tidak lengkap, tidak bisa disimpan.', 'error');
+          showAppAlert('Data task tidak lengkap, tidak bisa disimpan.', 'error');
           return;
         }
         const picValue = document.getElementById('tp-f-pic').value;
         if (!picValue) {
-          showAppAlert('⚠️ PIC wajib dipilih sebelum menyimpan.', 'error');
+          showAppAlert('PIC wajib dipilih sebelum menyimpan.', 'error');
           return;
         }
 
@@ -10799,7 +10896,7 @@
               if (tpCardIdx >= 0) _teamPrepareCards.splice(tpCardIdx, 1);
               renderTeamPrepareCards();
             },
-            successMessage: '✅ Task Team Prepare berhasil diselesaikan!',
+            successMessage: 'Task Team Prepare berhasil diselesaikan!',
             request: () => _getFromGasWithRetry_('saveTeamPrepareTask', payload, 3),
             onSuccess: () => { loadTeamPrepareCards(true); },
             rollback: () => {
@@ -10808,10 +10905,10 @@
                 renderTeamPrepareCards();
               }
             },
-            errorPrefix: '⚠️ Foto sudah ter-upload, tapi data Task Team Prepare BELUM tersimpan di server: '
+            errorPrefix: 'Foto sudah ter-upload, tapi data Task Team Prepare BELUM tersimpan di server: '
           });
         } catch (err) {
-          statusEl.textContent = '❌ ' + err.message;
+          _setStatus(statusEl, 'error', err.message);
           saveBtn.disabled = false;
         }
       }
@@ -10856,7 +10953,7 @@
         if (_planTaskActualPicList.length) {
           statusEl.textContent = '';
         } else {
-          statusEl.textContent = '⚠️ Belum ada team pada task yang sedang tampil di menu Plan Task.';
+          _setStatus(statusEl, 'warning', 'Belum ada team pada task yang sedang tampil di menu Plan Task.');
           statusEl.style.color = '#ef4444';
         }
       }
@@ -10869,7 +10966,7 @@
         const statusEl = document.getElementById('plan-task-pic-modal-status');
         const team = document.getElementById('plan-task-pic-select').value;
         if (!team) {
-          statusEl.textContent = '⚠️ Pilih team terlebih dahulu.';
+          _setStatus(statusEl, 'warning', 'Pilih team terlebih dahulu.');
           statusEl.style.color = '#ef4444';
           return;
         }
@@ -11055,16 +11152,16 @@
                 // Dibatalkan user sendiri, bukan error — tidak perlu fallback.
               } else {
                 _downloadPlanTaskImage(blob, fileName);
-                showAppAlert('⚠️ Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
+                showAppAlert('Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
               }
             }
           } else {
             // Desktop / browser tanpa dukungan Web Share API file — fallback unduh + Bagikan Manual.
             _downloadPlanTaskImage(blob, fileName);
-            showAppAlert('📥 Gambar Plan Task sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan Bagikan Manual lewat WhatsApp.', 'success');
+            showAppAlert('Gambar Plan Task sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan Bagikan Manual lewat WhatsApp.', 'success');
           }
         } catch (err) {
-          showAppAlert('❌ Gagal menyiapkan Plan Task untuk dibagikan: ' + err.message, 'error');
+          showAppAlert('Gagal menyiapkan Plan Task untuk dibagikan: ' + err.message, 'error');
         } finally {
           if (captureArea) captureArea.remove();
           resetBtn();
@@ -11149,12 +11246,12 @@
           return '<span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-white border border-amber-300 text-amber-800">' +
             site.replace(/</g, '&lt;') +
             '<button type="button" onclick="removeEventSelected(\'' + key.replace(/'/g, "\\'") + '\')" ' +
-            'class="w-4 h-4 flex items-center justify-center rounded-full text-amber-400 hover:bg-red-100 hover:text-red-600 font-bold leading-none" title="Hapus dari seleksi">✕</button></span>';
+            'class="w-4 h-4 flex items-center justify-center rounded-full text-amber-400 hover:bg-red-100 hover:text-red-600 leading-none" title="Hapus dari seleksi" aria-label="Hapus dari seleksi"><svg class="ic ic-xs" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button></span>';
         }).join('');
 
         wrap.innerHTML =
           '<div class="flex items-center justify-between mb-2">' +
-            '<span class="text-xs font-bold text-amber-700 uppercase tracking-wide">📋 Site Terpilih (' + _eventSelectedRows.size + ')</span>' +
+            '<span class="text-xs font-bold text-amber-700 uppercase tracking-wide"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 13h6M9 17h6"></path></svg> Site Terpilih (' + _eventSelectedRows.size + ')</span>' +
             '<button type="button" onclick="clearAllEventSelected()" class="text-xs font-semibold text-slate-400 hover:text-red-500">Kosongkan Semua</button>' +
           '</div>' +
           '<div class="flex flex-wrap gap-1.5">' + chips + '</div>';
@@ -11223,7 +11320,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           return;
         }
 
@@ -11236,7 +11333,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getEvent');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat data');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
           _eventHeaders = json.headers || [];
@@ -11252,7 +11349,7 @@
           statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderEventTable();
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         } finally {
           _eventFetching = false;
         }
@@ -11355,7 +11452,7 @@
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
           statusEl.style.color = '#ef4444';
           return;
         }
@@ -11372,7 +11469,7 @@
           const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getSourceDropdowns');
           const json = await res.json();
           if (!json.success) {
-            statusEl.textContent = '❌ ' + (json.message || 'Gagal memuat pilihan dropdown');
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat pilihan dropdown'));
             statusEl.style.color = '#ef4444';
             return;
           }
@@ -11383,7 +11480,7 @@
           saveDataCache('stockOpnameDropdowns', json);
           statusEl.textContent = '';
         } catch (err) {
-          statusEl.textContent = '❌ Gagal terhubung ke server: ' + err.message;
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
           statusEl.style.color = '#ef4444';
         } finally {
           _stockOpnameFetching = false;
@@ -11413,13 +11510,13 @@
         };
 
         if (!payload.noVMC || !payload.serialNumber) {
-          statusEl.textContent = '⚠️ No. VMC dan Serial Number wajib diisi.';
+          _setStatus(statusEl, 'warning', 'No. VMC dan Serial Number wajib diisi.');
           statusEl.style.color = '#ef4444';
           return;
         }
 
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
-          statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script untuk menyimpan ke Sheet.';
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script untuk menyimpan ke Sheet.');
           statusEl.style.color = '#ef4444';
           return;
         }
@@ -11555,7 +11652,7 @@
           apply: () => {
             _finishStockOpnameProgressSim(() => {
               _setStockOpnameModalBusy(false);
-              statusEl.textContent = '✅ Data berhasil disimpan ke "' + targetSheet + '" — ' + new Date().toLocaleTimeString('id-ID');
+              _setStatus(statusEl, 'success', 'Data berhasil disimpan ke "' + targetSheet + '" — ' + new Date().toLocaleTimeString('id-ID'));
               statusEl.style.color = '#16a34a';
               resetStockOpnameForm();
               _pendingStockOpnamePayload = null;
@@ -11570,7 +11667,7 @@
             // perlu isi ulang, walau formnya sendiri sudah tidak tampil lagi.
             _pendingStockOpnamePayload = payloadToSave;
           },
-          errorPrefix: '⚠️ Data Stock Opname BELUM tersimpan di server: '
+          errorPrefix: 'Data Stock Opname BELUM tersimpan di server: '
         });
       }
 
