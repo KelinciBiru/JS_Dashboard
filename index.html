@@ -1858,8 +1858,11 @@
       </div>
 
       <!-- POOL DRIVER (menu Plan Task > Pool Driver): peta real-time posisi GPS
-           Team Dispatch yang sedang berjalan (Status "On Delivery"/"Arrived"),
-           dibaca dari kolom Geolocation sheet "Plan Task". Peta pakai Leaflet +
+           Team Dispatch yang ONLINE hari ini. "Online" = device role Dispatch
+           yang sudah login & mengirim heartbeat (action GAS 'updateTeamPresence',
+           sheet "Team Presence"), DITAMBAH Team yang task-nya sedang berjalan
+           (Status "On Delivery"/"Arrived", kolom Geolocation sheet "Plan Task").
+           Peta SELALU tampil (walau belum ada Team online). Peta pakai Leaflet +
            OpenStreetMap (gratis, tanpa API key — lihat komentar di <head>).
            Auto-refresh lewat AUTO_REFRESH_LOADERS['PoolDriver'] (tiap
            AUTO_REFRESH_INTERVAL_MS selama menu ini terbuka), sama seperti menu
@@ -1871,10 +1874,14 @@
             class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">🔄 Refresh</button>
         </div>
         <div id="pool-driver-status" class="text-xs text-slate-400 mb-2"></div>
-        <div id="pool-driver-empty" class="placeholder-box hidden">Belum ada Team Dispatch yang sedang berjalan (On Delivery/Tiba) dengan titik lokasi tercatat.</div>
+        <div id="pool-driver-empty" class="placeholder-box hidden mb-2">Belum ada Team Dispatch yang online hari ini. Team muncul otomatis di peta begitu login sebagai role Dispatch dan mengizinkan akses lokasi di HP-nya.</div>
         <div id="pool-driver-map-wrap" class="bg-white rounded-lg shadow p-2">
           <div id="pool-driver-map" style="height:60vh;min-height:360px;border-radius:8px;"></div>
         </div>
+        <!-- Daftar Team online hari ini (hijau = online, abu-abu = offline).
+             Klik chip -> peta fokus ke posisi Team itu. Team online yang GPS-nya
+             belum tersedia juga tampil di sini walau belum bisa digambar di peta. -->
+        <div id="pool-driver-online-list" class="flex flex-wrap gap-2 mt-3"></div>
         <!-- Timeline History Dispatch: badge per Team yang punya Task hari ini
              (bukan cuma yang sedang On Delivery/Arrived, beda dari marker peta
              di atas). Diisi ulang oleh renderPoolDriverTimelineBadges() tiap
@@ -3529,6 +3536,8 @@
       }
 
       function doLogout() {
+        // Tandai Team offline SEBELUM currentRole/currentTeamKey dikosongkan.
+        stopTeamPresenceHeartbeat_(true);
         currentRole = '';
         selectedRole = '';
         currentTeamKey = '';
@@ -3750,6 +3759,10 @@
         } else if (currentRole === 'Prepare') {
           selectDeckGroup('prepare');
         }
+
+        // Presence "Team online" untuk peta Pool Driver — hanya role Dispatch.
+        if (currentRole === 'Dispatch') startTeamPresenceHeartbeat_();
+        else stopTeamPresenceHeartbeat_(false);
 
         renderMobileHome();
         const roleLbl = document.getElementById('dock-role-label');
@@ -7734,6 +7747,11 @@
       let _poolDriverMap = null;
       let _poolDriverMarkers = {}; // key: team key -> L.marker
       let _poolDriverRows = [];       // baris aktif (On Delivery/Arrived) + geolocation valid -> sumber marker peta
+      let _poolDriverPresence = [];   // hasil action 'getTeamPresenceToday' — Team yang online (login role Dispatch) HARI INI
+      // true  -> Team yang sudah online hari ini tapi SEKARANG offline (logout / tidak ada
+      //          ping > 5 menit) tetap digambar abu-abu di posisi terakhirnya.
+      // false -> peta HANYA menampilkan Team yang sedang online sekarang.
+      const POOL_DRIVER_SHOW_OFFLINE = true;
       let _poolDriverTimelineRows = []; // SEMUA Task Plan Date = hari ini (termasuk Closed) -> sumber Timeline History Dispatch
 
       // Tanggal hari ini format "yyyy-MM-dd" berbasis Asia/Jakarta (WIB), supaya
@@ -7766,22 +7784,74 @@
         return (row['Divisi'] || '-') + '||' + (row['PIC'] || '-') + '||' + (row['No. Kendaraan'] || '-');
       }
 
-      // Kelompokkan baris aktif (_poolDriverRows) jadi satu entri per Team —
-      // kalau satu Team kebetulan punya >1 Task aktif bersamaan, ambil yang
-      // update GPS-nya PALING BARU (Geolocation Updated At), supaya titik di
-      // peta selalu posisi ter-update, bukan tertimpa urutan array saja.
+      // Gabungkan dua sumber jadi SATU entri per Team (key = Divisi+PIC+No. Kendaraan):
+      //  (1) presence  = Team yang online hari ini (heartbeat device role Dispatch,
+      //      action 'getTeamPresenceToday') -> sumber utama "Team Online".
+      //  (2) task aktif = Team dengan task On Delivery/Arrived + Geolocation (sumber
+      //      lama) -> tetap dipakai supaya Team yang sedang jalan tidak hilang dari
+      //      peta dan untuk menampilkan Status Task/Estimasi Tiba di popup.
+      // Kalau satu Team punya >1 task aktif, ambil yang update GPS-nya PALING BARU.
+      // Hasil: { key, pic, pos ({lat,lng} atau null), online, updatedAt, taskStatus, eta }
       function _poolDriverGroupByTeam_() {
-        const byTeam = {};
+        const taskByTeam = {};
         _poolDriverRows.forEach(row => {
           const pos = _parseGeolocationString_(row['Geolocation']);
           if (!pos) return;
           const key = _poolDriverTeamKey_(row);
-          const existing = byTeam[key];
+          const existing = taskByTeam[key];
           if (!existing || String(row['Geolocation Updated At'] || '') > String(existing.row['Geolocation Updated At'] || '')) {
-            byTeam[key] = { key: key, row: row, pos: pos };
+            taskByTeam[key] = { row: row, pos: pos };
           }
         });
-        return Object.values(byTeam);
+
+        const byTeam = {};
+        _poolDriverPresence.forEach(p => {
+          const key = String(p.teamKey || '').trim();
+          if (!key) return;
+          byTeam[key] = {
+            key: key,
+            pic: p.pic || p.divisi || '-',
+            pos: _parseGeolocationString_(p.geolocation),
+            online: !!p.online,
+            updatedAt: p.lastSeen || '-',
+            taskStatus: '',
+            eta: ''
+          };
+        });
+
+        Object.keys(taskByTeam).forEach(key => {
+          const row = taskByTeam[key].row;
+          const taskPos = taskByTeam[key].pos;
+          const team = byTeam[key];
+          if (!team) {
+            // Belum ada presence (mis. device belum update / GAS lama) — pakai data task saja.
+            byTeam[key] = {
+              key: key,
+              pic: row['PIC'] || row['Divisi'] || '-',
+              pos: taskPos,
+              online: true,
+              updatedAt: row['Geolocation Updated At'] || '-',
+              taskStatus: String(row['Status'] || '').trim(),
+              eta: row['Estimasi Tiba'] || ''
+            };
+            return;
+          }
+          team.taskStatus = String(row['Status'] || '').trim();
+          team.eta = row['Estimasi Tiba'] || '';
+          // Posisi presence yang masih online = paling segar. Kalau presence tidak
+          // punya posisi / sudah offline, pakai posisi terakhir dari task.
+          if (!team.pos || !team.online) {
+            team.pos = taskPos;
+            team.updatedAt = row['Geolocation Updated At'] || team.updatedAt;
+          }
+        });
+
+        let teams = Object.keys(byTeam).map(k => byTeam[k]);
+        if (!POOL_DRIVER_SHOW_OFFLINE) teams = teams.filter(t => t.online);
+        teams.sort((a, b) => (a.online === b.online)
+          ? String(a.pic).localeCompare(String(b.pic))
+          : (a.online ? -1 : 1));
+        return teams;
       }
 
       // =============================================
@@ -7810,10 +7880,7 @@
       }
 
       function _poolDriverPopupHtml_(team) {
-        const row = team.row;
-        const status = String(row['Status'] || '').trim();
-        const updatedAt = row['Geolocation Updated At'] || '-';
-        const addr = _poolDriverCachedAddress_(team);
+        const addr = team.pos ? _poolDriverCachedAddress_(team) : null;
         let addrText;
         if (addr !== null) {
           addrText = addr || ('Alamat tidak ditemukan (' + team.pos.lat.toFixed(5) + ', ' + team.pos.lng.toFixed(5) + ')');
@@ -7822,13 +7889,18 @@
         } else {
           addrText = 'Memuat alamat...';
         }
-        return '<div style="font-size:12px;line-height:1.5;">' +
-            '<b>' + (row['PIC'] || row['Divisi'] || '-') + '</b><br>' +
+        let html = '<div style="font-size:12px;line-height:1.5;">' +
+            '<b>' + _escapeHtmlAttr_(team.pic) + '</b><br>' +
             'Lokasi: ' + _escapeHtmlAttr_(addrText) + '<br>' +
-            'Status: ' + status + '<br>' +
-            'Estimasi Tiba: ' + (row['Estimasi Tiba'] || '-') + '<br>' +
-            'Update GPS terakhir: ' + updatedAt +
-          '</div>';
+            'Status: ' + (team.online ? '🟢 Online' : '⚪ Offline') + '<br>';
+        if (team.taskStatus) {
+          html += 'Status Task: ' + _escapeHtmlAttr_(team.taskStatus) + '<br>';
+          if (team.taskStatus.toLowerCase() === 'on delivery') {
+            html += 'Estimasi Tiba: ' + _escapeHtmlAttr_(team.eta || '-') + '<br>';
+          }
+        }
+        html += (team.online ? 'Update GPS terakhir: ' : 'Terakhir online: ') + _escapeHtmlAttr_(team.updatedAt || '-') + '</div>';
+        return html;
       }
 
       async function _resolvePoolDriverAddress_(team) {
@@ -7871,15 +7943,34 @@
       // Ikon marker custom (pin oranye khas warna brand Dashboard) supaya beda
       // dari pin default Leaflet, dibuat lewat divIcon (SVG inline, tidak perlu
       // file gambar tambahan — tetap sesuai CSP img-src yang sudah ada).
-      function _poolDriverDivIcon_() {
+      function _poolDriverDivIcon_(online) {
+        // Oranye brand = online, abu-abu = offline (sudah online hari ini tapi sekarang tidak aktif).
+        const color = (online === false) ? '#94a3b8' : '#F5A623';
         return L.divIcon({
           className: '',
-          html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:#F5A623;' +
+          html: '<div style="width:28px;height:28px;border-radius:50% 50% 50% 0;background:' + color + ';' +
             'border:2px solid #ffffff;box-shadow:0 1px 4px rgba(0,0,0,.4);transform:rotate(-45deg);"></div>',
           iconSize: [28, 28],
           iconAnchor: [14, 28],
           popupAnchor: [0, -28]
         });
+      }
+
+      // Pastikan container peta terlihat & Leaflet siap. Dipanggil SEBELUM data
+      // dimuat, jadi peta (walau kosong) selalu tampil — tidak lagi menunggu
+      // ada Team On Delivery. Return false kalau library Leaflet gagal dimuat
+      // (mis. CDN cdnjs terblokir/offline).
+      function _showPoolDriverMap_() {
+        if (typeof L === 'undefined') return false;
+        const wrap = document.getElementById('pool-driver-map-wrap');
+        if (wrap) wrap.classList.remove('hidden');
+        const map = _ensurePoolDriverMap_();
+        // Leaflet butuh invalidateSize() setelah container-nya sempat display:none
+        // (halaman "Pool Driver" baru saja ditampilkan), kalau tidak peta akan
+        // ter-render abu-abu/terpotong sampai window di-resize manual.
+        setTimeout(() => map.invalidateSize(), 0);
+        setTimeout(() => map.invalidateSize(), 300);
+        return true;
       }
 
       async function loadPoolDriverMap(forceRefresh) {
@@ -7888,43 +7979,60 @@
           statusEl.textContent = '⚠️ GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.';
           return;
         }
+        if (!_showPoolDriverMap_()) {
+          statusEl.textContent = '⚠️ Library peta (Leaflet) gagal dimuat — cek koneksi internet lalu refresh halaman.';
+          return;
+        }
         statusEl.textContent = 'Memuat posisi Team Dispatch...';
         try {
-          // Marker peta (getPlanTaskActive) & badge Timeline (getPlanTaskTimelineToday)
-          // dimuat bersamaan supaya tombol Refresh & auto-refresh cukup satu panggilan.
-          const [mapRes, timelineRes] = await Promise.all([
-            fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive').then(r => r.json()),
-            fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskTimelineToday').then(r => r.json())
+          // Tiga sumber dimuat bersamaan (tombol Refresh & auto-refresh cukup satu
+          // putaran): presence Team online, task aktif (fallback posisi), timeline.
+          // Masing-masing dibungkus supaya satu yang gagal TIDAK menjatuhkan peta.
+          const getJson = (action) => fetch(INVENTORY_JS_GAS_URL + '?action=' + action)
+            .then(r => r.json())
+            .catch(err => ({ success: false, message: err.message }));
+          const [mapRes, timelineRes, presenceRes] = await Promise.all([
+            getJson('getPlanTaskActive'),
+            getJson('getPlanTaskTimelineToday'),
+            getJson('getTeamPresenceToday')
           ]);
 
-          if (!mapRes.success) {
-            statusEl.textContent = '❌ ' + (mapRes.message || 'Gagal memuat data peta');
+          if (!mapRes.success && !presenceRes.success) {
+            statusEl.textContent = '❌ ' + (presenceRes.message || mapRes.message || 'Gagal memuat data peta');
+            renderPoolDriverMap();
             return;
           }
+
+          _poolDriverPresence = presenceRes.success ? (presenceRes.teams || []) : [];
+
           // FIX (Sept 2026): getPlanTaskActive_ TIDAK memfilter Plan Date (dipakai
           // bersama oleh Task On Going & Task Team Dispatch, yang memang perlu tetap
-          // menampilkan Task lama yang belum selesai). Akibatnya, Task dari hari
-          // sebelumnya yang lupa/gagal di-set "Closed" (mis. tombol Delivered lupa
-          // diklik) ikut lolos filter Status di bawah dan marker Team itu terus
-          // "menempel" di peta Pool Driver — dengan posisi GPS basi — walau Team-nya
-          // sudah selesai/Delivered secara fisik. Peta Pool Driver dimaksudkan untuk
-          // posisi real-time HARI INI saja, jadi tambahkan filter Plan Date = hari
-          // ini (WIB) KHUSUS untuk sumber marker peta ini (tidak mengubah data
-          // _teamDispatchRows/Task On Going).
+          // menampilkan Task lama yang belum selesai). Tanpa filter Plan Date = hari
+          // ini, Task kemarin yang lupa di-set "Closed" akan membuat marker Team
+          // "menempel" di peta dengan posisi GPS basi. Filter hanya untuk sumber
+          // marker peta ini (tidak mengubah _teamDispatchRows/Task On Going).
           const todayStrPoolDriver = _todayDateStrWIB_();
-          _poolDriverRows = (mapRes.rows || []).filter(r => {
+          _poolDriverRows = mapRes.success ? (mapRes.rows || []).filter(r => {
             const st = String(r['Status'] || '').trim().toLowerCase();
             if (st !== 'on delivery' && st !== 'arrived') return false;
             if (!_parseGeolocationString_(r['Geolocation'])) return false;
             return String(r['Plan Date'] || '').trim() === todayStrPoolDriver;
-          });
+          }) : [];
 
           if (timelineRes.success) {
             _poolDriverTimelineRows = timelineRes.rows || [];
           }
 
-          const teamCount = _poolDriverGroupByTeam_().length;
-          statusEl.textContent = teamCount + ' Team sedang berjalan — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          const teams = _poolDriverGroupByTeam_();
+          const onlineCount = teams.filter(t => t.online).length;
+          const offlineCount = teams.length - onlineCount;
+          let statusText = onlineCount + ' Team online' + (offlineCount ? ' · ' + offlineCount + ' offline' : '') +
+            ' hari ini — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          if (!presenceRes.success) {
+            statusText += ' ⚠️ Data Team online belum bisa dimuat (' + (presenceRes.message || 'tidak ada respons') +
+              ') — pastikan GAS sudah di-deploy ulang (New version).';
+          }
+          statusEl.textContent = statusText;
           renderPoolDriverMap();
           renderPoolDriverTimelineBadges();
         } catch (err) {
@@ -7932,44 +8040,65 @@
         }
       }
 
+      function _renderPoolDriverOnlineList_(teams) {
+        const el = document.getElementById('pool-driver-online-list');
+        if (!el) return;
+        el.innerHTML = teams.map(t => {
+          const cls = t.online
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+            : 'bg-slate-100 text-slate-500 border-slate-300';
+          const label = (t.online ? '🟢 ' : '⚪ ') + t.pic +
+            (t.online ? '' : ' · terakhir ' + t.updatedAt) +
+            (t.pos ? '' : ' · lokasi belum tersedia');
+          return '<span class="td-team-badge text-xs font-semibold px-3 py-1.5 rounded-full border ' + cls + '" ' +
+            'data-team-key="' + _escapeHtmlAttr_(t.key) + '">' + _escapeHtmlAttr_(label) + '</span>';
+        }).join('');
+      }
+
+      // Klik chip Team -> peta fokus ke marker Team itu + buka popup-nya.
+      function focusPoolDriverTeam(key) {
+        const marker = _poolDriverMarkers[key];
+        if (!marker || !_poolDriverMap) return;
+        _poolDriverMap.setView(marker.getLatLng(), Math.max(_poolDriverMap.getZoom(), 15));
+        marker.openPopup();
+      }
+      document.addEventListener('click', function (ev) {
+        const chip = ev.target && ev.target.closest ? ev.target.closest('#pool-driver-online-list [data-team-key]') : null;
+        if (chip) focusPoolDriverTeam(chip.getAttribute('data-team-key'));
+      });
+
       function renderPoolDriverMap() {
         const emptyEl = document.getElementById('pool-driver-empty');
-        const mapWrap = document.getElementById('pool-driver-map-wrap');
         const teams = _poolDriverGroupByTeam_();
-        if (!teams.length) {
-          emptyEl.classList.remove('hidden');
-          mapWrap.classList.add('hidden');
-          return;
-        }
-        emptyEl.classList.add('hidden');
-        mapWrap.classList.remove('hidden');
-
-        const map = _ensurePoolDriverMap_();
-        // Leaflet butuh invalidateSize() setelah container-nya sempat display:none
-        // (halaman "Pool Driver" baru saja ditampilkan), kalau tidak peta akan
-        // ter-render abu-abu/terpotong sampai window di-resize manual.
-        setTimeout(() => map.invalidateSize(), 0);
+        // Peta TIDAK PERNAH disembunyikan — kalau belum ada Team online, cukup
+        // tampilkan keterangan di atasnya.
+        emptyEl.classList.toggle('hidden', teams.length > 0);
+        _renderPoolDriverOnlineList_(teams);
+        if (!_showPoolDriverMap_()) return;
+        const map = _poolDriverMap;
 
         const seenKeys = new Set();
         const latLngs = [];
         teams.forEach(team => {
           const pos = team.pos;
+          if (!pos) return; // Team online tapi GPS belum ada -> hanya tampil di daftar chip
           seenKeys.add(team.key);
           latLngs.push([pos.lat, pos.lng]);
 
           let marker = _poolDriverMarkers[team.key];
           if (marker) {
             marker.setLatLng([pos.lat, pos.lng]);
+            marker.setIcon(_poolDriverDivIcon_(team.online));
             // Popup sedang terbuka -> pastikan alamat mengikuti posisi terbaru.
             if (marker.isPopupOpen()) _resolvePoolDriverAddress_(team);
             marker.setPopupContent(_poolDriverPopupHtml_(team));
           } else {
-            marker = L.marker([pos.lat, pos.lng], { icon: _poolDriverDivIcon_() }).addTo(map);
+            marker = L.marker([pos.lat, pos.lng], { icon: _poolDriverDivIcon_(team.online) }).addTo(map);
             marker.bindPopup(_poolDriverPopupHtml_(team));
             // Alamat dimuat otomatis begitu popup marker dibuka.
             marker.on('popupopen', () => {
               const latest = _poolDriverTeamByKey_(team.key);
-              if (!latest) return;
+              if (!latest || !latest.pos) return;
               _resolvePoolDriverAddress_(latest);
               marker.setPopupContent(_poolDriverPopupHtml_(latest));
             });
@@ -7977,8 +8106,7 @@
           }
         });
 
-        // Buang marker Team yang sudah tidak aktif lagi (Delivered/Cancel/Closed)
-        // supaya peta tidak menumpuk pin basi.
+        // Buang marker Team yang sudah tidak ada lagi supaya peta tidak menumpuk pin basi.
         Object.keys(_poolDriverMarkers).forEach(key => {
           if (!seenKeys.has(key)) {
             map.removeLayer(_poolDriverMarkers[key]);
@@ -9024,6 +9152,76 @@
         activeRows.forEach(r => {
           _getFromGasWithRetry_('updateDispatchGeolocation', { rowNumber: r.rowNumber, geoLat: pos.lat, geoLng: pos.lng }, 1).catch(() => {});
         });
+      }
+
+      // =============================================
+      // PRESENCE TEAM DISPATCH — penanda "Team ONLINE hari ini" untuk peta Pool Driver.
+      // Selama device role Dispatch login (Team sudah dipilih di halaman Login),
+      // kirim heartbeat ke GAS action 'updateTeamPresence' (posisi GPS + Team) tiap
+      // TEAM_PRESENCE_INTERVAL_MS — TIDAK bergantung menu mana yang sedang dibuka
+      // dan TIDAK menunggu tombol Start ditekan. Mulai dari applyRoleAccess()
+      // (login & pemulihan sesi), berhenti + kirim status "Offline" saat logout.
+      // Hanya role Dispatch: ADMIN/Prepare tidak pernah mengirim presence, jadi
+      // ADMIN tidak akan muncul di peta. Gagal kirim diabaikan senyap (dicoba lagi
+      // di tick berikutnya); izin lokasi ditolak -> Team tetap tercatat online
+      // tanpa posisi. Server menganggap Team offline kalau ping terakhir > 5 menit.
+      // =============================================
+      const TEAM_PRESENCE_INTERVAL_MS = 60000;
+      let _teamPresenceTimer = null;
+      let _teamPresenceVisBound = false;
+      let _teamPresenceInflight = false;
+
+      async function _sendTeamPresence_(status) {
+        if (currentRole !== 'Dispatch' || !currentTeamKey) return;
+        const isOffline = status === 'Offline';
+        if (_teamPresenceInflight && !isOffline) return;
+        const teamKey = currentTeamKey;
+        const parts = teamKey.split('||');
+        const payload = {
+          teamKey: teamKey,
+          divisi: parts[0] || '',
+          pic: parts[1] || currentTeamPic || '',
+          noKendaraan: parts[2] || '',
+          geoLat: '', geoLng: '',
+          status: isOffline ? 'Offline' : 'Online'
+        };
+        _teamPresenceInflight = true;
+        try {
+          if (!isOffline) {
+            const pos = await _getCurrentGeolocation_();
+            // Selama menunggu GPS, user bisa saja sudah logout / ganti Team.
+            if (currentRole !== 'Dispatch' || currentTeamKey !== teamKey) return;
+            if (pos) { payload.geoLat = pos.lat; payload.geoLng = pos.lng; }
+          }
+          await _getFromGasWithRetry_('updateTeamPresence', payload, 1);
+        } catch (err) {
+          /* senyap — ini cuma penanda online, coba lagi di tick berikutnya */
+        } finally {
+          _teamPresenceInflight = false;
+        }
+      }
+
+      function _stopTeamPresenceTimer_() {
+        if (_teamPresenceTimer) { clearInterval(_teamPresenceTimer); _teamPresenceTimer = null; }
+      }
+
+      function startTeamPresenceHeartbeat_() {
+        _stopTeamPresenceTimer_();
+        if (currentRole !== 'Dispatch' || !currentTeamKey) return;
+        _sendTeamPresence_('Online');
+        _teamPresenceTimer = setInterval(() => { _sendTeamPresence_('Online'); }, TEAM_PRESENCE_INTERVAL_MS);
+        if (!_teamPresenceVisBound) {
+          _teamPresenceVisBound = true;
+          // Tab/app kembali aktif (mis. habis buka WhatsApp/Google Maps) -> ping langsung.
+          document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && _teamPresenceTimer) _sendTeamPresence_('Online');
+          });
+        }
+      }
+
+      function stopTeamPresenceHeartbeat_(sendOffline) {
+        _stopTeamPresenceTimer_();
+        if (sendOffline) _sendTeamPresence_('Offline');
       }
 
       // Render satu Task Card (dipakai di dalam tiap kelompok Team pada
