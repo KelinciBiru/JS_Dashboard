@@ -9678,7 +9678,7 @@
         // actionPlan ikut disimpan di context supaya bisa dikirim ke server saat
         // Simpan — dipakai GAS untuk menentukan apakah & bagaimana update balik ke
         // sheet Inventory JS (Withdrawal -> EX. LOCATION/INBOUND DATE/FINAL STATUS
-        // "Stock"; Machine Exchange/Relocation -> diabaikan sama sekali; selain itu
+        // "Stock"; Machine Exchange -> update baris mesin yang dikirim (termasuk MACHINE TYPE) + baris baru mesin yang ditarik; Relocation -> update LOCATION NAME/OUTBOUND DATE; selain itu
         // -> perilaku lama seperti sebelumnya). Lihat _saveDispatchDeliveredNow_ di Code.gs.
         _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '' };
         _ddPhotos = [];
@@ -9820,16 +9820,20 @@
       async function populateDispatchMachineTypeSelect(selectedValue) {
         const selectEl = document.getElementById('dd-machine-type');
         if (!_dispatchMachineTypeOptions) {
+          // Hanya di-cache kalau fetch BERHASIL. Kalau gagal (jaringan putus,
+          // dll.), cache dibiarkan kosong supaya popup berikutnya mencoba
+          // fetch ulang — sebelumnya kegagalan ikut di-cache sebagai [] dan
+          // dropdown kosong terus sampai halaman di-refresh.
           try {
             const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabekMachineTypeOptions');
             const json = await res.json();
-            _dispatchMachineTypeOptions = (json.success && Array.isArray(json.options)) ? json.options : [];
-          } catch (err) {
-            _dispatchMachineTypeOptions = [];
-          }
+            if (json.success && Array.isArray(json.options) && json.options.length) {
+              _dispatchMachineTypeOptions = json.options;
+            }
+          } catch (err) { /* dicoba lagi saat popup dibuka berikutnya */ }
         }
 
-        let options = _dispatchMachineTypeOptions.slice();
+        let options = (_dispatchMachineTypeOptions || []).slice();
         if (selectedValue && !options.includes(selectedValue)) {
           options = [selectedValue].concat(options);
         }
@@ -10223,6 +10227,14 @@
           // (K) "Delivered"; kalau kosong, update itu terlewat diam-diam.
           if (!document.getElementById('dd-no-vmc').value.trim()) {
             _setStatus(statusEl, 'error', 'NO VMC JUMPSTART (mesin yang dikirim dari WH) wajib diisi untuk Machine Exchange sebelum Simpan.');
+            return;
+          }
+          // MACHINE TYPE (sent from WH) juga wajib untuk Machine Exchange —
+          // GAS mencatatnya ke kolom MACHINE TYPE (E) baris mesin yang dikirim
+          // di Inventory JS (selain ke sheet Jabodetabek/Event & log Task Team
+          // Dispatch), jadi kalau kosong datanya tidak akan tercatat.
+          if (!document.getElementById('dd-machine-type').value.trim()) {
+            _setStatus(statusEl, 'error', 'MACHINE TYPE (sent from WH) wajib dipilih untuk Machine Exchange sebelum Simpan.');
             return;
           }
           const meVmcNo = document.getElementById('dd-me-vmc-no').value.trim();
