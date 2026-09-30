@@ -7632,31 +7632,38 @@
         if (y > 210) { doc.addPage(); y = _drawJumpstartLetterhead(doc, pageWidth); }
 
         // Blok tanda tangan
+        // Default (Delivery/Relocation): kiri = Diserahkan oleh (Team Dispatch — Jumpstart),
+        //   kanan = Diterima oleh (Site PIC).
+        // Withdrawal (Return Note): posisi DITUKAR — kiri = Diserahkan oleh (Site PIC),
+        //   kanan = Diterima oleh (Team Dispatch — Jumpstart).
+        const isWithdrawal = note.code === 'RN';
         const colW = (pageWidth - marginX * 2) / 2;
+        const jumpstartX = isWithdrawal ? marginX + colW : marginX;
+        const sitePicX = isWithdrawal ? marginX : marginX + colW;
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9.5);
-        doc.text('Diserahkan oleh,', marginX, y);
-        doc.text('Diterima oleh,', marginX + colW, y);
+        doc.text(isWithdrawal ? 'Diterima oleh,' : 'Diserahkan oleh,', jumpstartX, y);
+        doc.text(isWithdrawal ? 'Diserahkan oleh,' : 'Diterima oleh,', sitePicX, y);
         y += 3;
         doc.setFontSize(8.5);
         doc.setTextColor(110, 110, 110);
-        doc.text('(Team Dispatch — Jumpstart)', marginX, y);
-        doc.text('(Site PIC)', marginX + colW, y);
+        doc.text('(Team Dispatch — Jumpstart)', jumpstartX, y);
+        doc.text('(Site PIC)', sitePicX, y);
         doc.setTextColor(0, 0, 0);
-        // Stempel perusahaan ditempelkan di atas garis tanda tangan "Diserahkan oleh,"
+        // Stempel perusahaan selalu ditempelkan di atas garis tanda tangan Jumpstart
         try {
           const stampW = 26;
           const stampH = stampW / PLAN_TASK_STAMP_ASPECT;
-          doc.addImage(PLAN_TASK_STAMP_BASE64, 'PNG', marginX + 8, y - 1, stampW, stampH);
+          doc.addImage(PLAN_TASK_STAMP_BASE64, 'PNG', jumpstartX + 8, y - 1, stampW, stampH);
         } catch (stampErr) { /* abaikan bila gambar stempel gagal dimuat */ }
         y += 22;
-        doc.line(marginX, y, marginX + 55, y);
-        doc.line(marginX + colW, y, marginX + colW + 55, y);
+        doc.line(jumpstartX, y, jumpstartX + 55, y);
+        doc.line(sitePicX, y, sitePicX + 55, y);
         y += 5;
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9.5);
-        doc.text('Jumpstart', marginX, y);
-        doc.text(String(row['SITE PIC'] || '-'), marginX + colW, y);
+        doc.text('Jumpstart', jumpstartX, y);
+        doc.text(String(row['SITE PIC'] || '-'), sitePicX, y);
 
         // Footer
         const pageCount = doc.internal.getNumberOfPages();
