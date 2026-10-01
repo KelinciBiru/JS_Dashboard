@@ -2703,6 +2703,68 @@
           </table>
         </div>
       </div>
+      <div id="content-RequestBDAdHoc" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <h1 class="text-lg font-bold text-slate-800">Request BD - Ad Hoc</h1>
+          <div class="flex flex-col items-stretch sm:items-end gap-2">
+            <div class="w-full sm:w-auto flex flex-col sm:flex-row sm:flex-nowrap gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Landmark</label>
+                <select id="adhoc-filter-landmark" onchange="renderAdHocTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Landmark</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Kota</label>
+                <select id="adhoc-filter-kota" onchange="onAdHocKotaFilterChange()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Kota</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Kecamatan</label>
+                <select id="adhoc-filter-kecamatan" onchange="renderAdHocTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Kecamatan</option>
+                </select>
+              </div>
+              <div class="sm:shrink-0">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">Action Plan</label>
+                <select id="adhoc-filter-actionplan" onchange="renderAdHocTable()"
+                  class="w-full sm:w-auto px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                  <option value="">Semua Action Plan</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="adhoc-search" type="text" placeholder="Cari data..."
+                oninput="renderAdHocTable()"
+                class="w-full sm:w-64 px-3 py-2 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+              <button onclick="loadAdHoc(true)"
+                class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">
+                ⟳ Refresh
+              </button>
+            </div>
+            <div class="flex items-center gap-2 justify-end">
+              <!-- Add Task Ad Hoc SEMENTARA NON-AKTIF (lihat ADHOC_ADD_TASK_ENABLED) -->
+              <button id="adhoc-addtask-btn" onclick="toggleAdHocAddTask()" disabled
+                title="Fitur Add Task untuk Ad Hoc belum diaktifkan"
+                class="px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed whitespace-nowrap">
+                + Add Task
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="adhoc-status" class="text-xs text-slate-400 mb-2"></div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+          <table id="adhoc-table" class="table-fixed text-xs sm:text-sm border-collapse">
+            <colgroup id="adhoc-colgroup"></colgroup>
+            <thead id="adhoc-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="adhoc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </main>
 
     <!-- ============================================================
@@ -3724,6 +3786,7 @@
           items: [
             { label: 'Jabodetabek', action: "showJabodetabek()" },
             { label: 'Event', action: "showEvent()" },
+            { label: 'Ad Hoc', action: "showAdHoc()" },
           ],
         },
         {
@@ -4003,6 +4066,7 @@
         'StockOpname': () => loadStockOpnameSource(true),
         'RequestBDJabodetabek': () => loadJabodetabek(true),
         'RequestBDEvent': () => loadEvent(true),
+        'RequestBDAdHoc': () => loadAdHoc(true),
         'InputTask': () => loadPlanTaskDropdowns(true),
         'PlanTask': () => loadPlanTaskBatches(true),
         'StatusTask': () => loadTaskOnGoing(true),
@@ -6309,6 +6373,10 @@
       function onEventKotaFilterChange() {
         _refreshKecamatanFilterOptions('event', _eventData);
         renderEventTable();
+      }
+      function onAdHocKotaFilterChange() {
+        _refreshKecamatanFilterOptions('adhoc', _adhocData);
+        renderAdHocTable();
       }
 
       // Terapkan filter Landmark/Kota/Kecamatan + kata kunci pencarian ke satu baris data.
@@ -11483,6 +11551,129 @@
             ).join('') +
             '</tr>';
         }).join('');
+      }
+
+      // =============================================
+      // REQUEST BD - AD HOC
+      // Sumber: sheet "Ad Hoc" (spreadsheet Logistic Request 2026) via GAS action
+      // getAdHoc; baris LOGISTICS UPDATE (kolom R) = "Done" sudah disaring di server.
+      // Filter (Landmark/Kota/Kecamatan/Action Plan + pencarian) & tampilan sama
+      // dengan Jabodetabek/Event. Fitur "+ Add Task" sementara NON-AKTIF.
+      // =============================================
+      const ADHOC_ADD_TASK_ENABLED = false;
+      let _adhocHeaders = [];
+      let _adhocData = [];
+      let _adhocLoaded = false;
+      let _adhocMissingHeaders = [];
+      let _adhocFetching = false;
+      let _adhocLastFetch = null;
+
+      function toggleAdHocAddTask() {
+        if (!ADHOC_ADD_TASK_ENABLED) {
+          showAppAlert('Fitur Add Task untuk Ad Hoc belum diaktifkan.', 'warning');
+          return;
+        }
+      }
+
+      function _getFilteredAdHocData() {
+        const keyword = (document.getElementById('adhoc-search').value || '').toLowerCase().trim();
+        return _adhocData.filter(row => {
+          if (keyword && !_adhocHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))) return false;
+          return _matchesLocationFilters(row, 'adhoc');
+        });
+      }
+
+      function showAdHoc() {
+        showPage('Request BD Ad Hoc');
+        loadAdHoc(false);
+      }
+
+      function _applyAdHocData_() {
+        _enrichLocationFilters(_adhocData, _adhocHeaders, 'DELIVERY / PICK UP ADDRESS');
+        _populateLocationFilterOptions('adhoc-filter-landmark', _adhocData, '__landmark', 'Semua Landmark');
+        _populateLocationFilterOptions('adhoc-filter-kota', _adhocData, '__kota', 'Semua Kota');
+        _populateLocationFilterOptions('adhoc-filter-actionplan', _adhocData, '__actionplan', 'Semua Action Plan');
+        _refreshKecamatanFilterOptions('adhoc', _adhocData);
+      }
+
+      async function loadAdHoc(forceRefresh) {
+        const statusEl = document.getElementById('adhoc-status');
+
+        if (!_adhocLoaded) {
+          const cached = loadDataCache('adhoc');
+          if (cached) {
+            _adhocHeaders = cached.payload.headers || [];
+            _adhocData = cached.payload.data || [];
+            _adhocLoaded = true;
+            _applyAdHocData_();
+            renderAdHocTable();
+            statusEl.textContent = _adhocData.length + ' baris data (cache) — memuat data terbaru...';
+          }
+        }
+
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
+          return;
+        }
+
+        if (_adhocFetching) return;
+        if (_adhocLoaded && !forceRefresh && _adhocLastFetch && (Date.now() - _adhocLastFetch) < REVALIDATE_THROTTLE_MS) return;
+
+        _adhocFetching = true;
+        if (!_adhocLoaded) statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getAdHoc');
+          const json = await res.json();
+          if (!json.success) {
+            _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
+            return;
+          }
+          _adhocHeaders = json.headers || [];
+          _adhocData = json.data || [];
+          _adhocMissingHeaders = json.missingHeaders || [];
+          _adhocLoaded = true;
+          _adhocLastFetch = Date.now();
+          _applyAdHocData_();
+          saveDataCache('adhoc', { headers: _adhocHeaders, data: _adhocData });
+          statusEl.textContent = _adhocData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+          if (_adhocMissingHeaders.length) {
+            statusEl.textContent += ' — header tidak ditemukan di sheet: ' + _adhocMissingHeaders.join(', ');
+          }
+          renderAdHocTable();
+        } catch (err) {
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
+        } finally {
+          _adhocFetching = false;
+        }
+      }
+
+      function renderAdHocTable() {
+        const thead = document.getElementById('adhoc-thead');
+        const tbody = document.getElementById('adhoc-tbody');
+
+        applyEqualColumns('adhoc-table', 'adhoc-colgroup', _adhocHeaders, false);
+
+        thead.innerHTML = '<tr>' + _adhocHeaders.map(h =>
+          '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
+          (h || '') + '</th>'
+        ).join('') + '</tr>';
+
+        const filtered = _getFilteredAdHocData();
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="' + (_adhocHeaders.length || 1) +
+            '" class="px-3 py-8 text-center text-slate-400">Tidak ada data.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map((row, i) =>
+          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+          _adhocHeaders.map(h =>
+            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
+            String(row[h] ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</td>'
+          ).join('') +
+          '</tr>'
+        ).join('');
       }
 
       // =============================================
