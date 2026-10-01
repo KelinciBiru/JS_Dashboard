@@ -2756,6 +2756,7 @@
             </div>
           </div>
         </div>
+        <div id="adhoc-status-filter-wrap" class="flex flex-wrap items-center gap-2 mb-3"></div>
         <div id="adhoc-status" class="text-xs text-slate-400 mb-2"></div>
         <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
           <table id="adhoc-table" class="table-fixed text-xs sm:text-sm border-collapse">
@@ -11575,12 +11576,66 @@
         }
       }
 
-      function _getFilteredAdHocData() {
+      // Kolom "LOGISTIC UPDATE" (dari kolom R sheet Ad Hoc): kosong = "Open", "Cancel", "Hold".
+      // Badge filter Open & Cancel di atas tabel (klik lagi = matikan filter).
+      const ADHOC_STATUS_HEADER = 'LOGISTIC UPDATE';
+      let _adhocStatusFilter = null; // null | 'open' | 'cancel'
+      const ADHOC_STATUS_FILTER_DEFS = [
+        { key: 'open', label: 'Open', activeClass: 'bg-sky-500 text-white border-sky-500', idleClass: 'bg-sky-50 text-sky-600 border-sky-300 hover:bg-sky-100' },
+        { key: 'cancel', label: 'Cancel', activeClass: 'bg-red-500 text-white border-red-500', idleClass: 'bg-red-50 text-red-600 border-red-300 hover:bg-red-100' }
+      ];
+
+      function _adhocStatusKey_(row) {
+        return String(row[ADHOC_STATUS_HEADER] ?? '').trim().toLowerCase();
+      }
+
+      function _adhocStatusBadgeHtml_(val) {
+        const v = String(val ?? '').trim() || 'Open';
+        const k = v.toLowerCase();
+        let cls = 'bg-slate-100 text-slate-600 border border-slate-300';
+        if (k === 'open') cls = 'bg-sky-100 text-sky-700 border border-sky-300';
+        else if (k === 'cancel') cls = 'bg-red-100 text-red-700 border border-red-300';
+        else if (k === 'hold') cls = 'bg-amber-100 text-amber-700 border border-amber-300';
+        return '<span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap ' + cls + '">' +
+          v.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+      }
+
+      // Data setelah filter pencarian + lokasi (BELUM ikut badge status) — dipakai utk hitung angka badge
+      function _getFilteredAdHocDataBase_() {
         const keyword = (document.getElementById('adhoc-search').value || '').toLowerCase().trim();
         return _adhocData.filter(row => {
           if (keyword && !_adhocHeaders.some(h => String(row[h] ?? '').toLowerCase().includes(keyword))) return false;
           return _matchesLocationFilters(row, 'adhoc');
         });
+      }
+
+      function _getFilteredAdHocData() {
+        const base = _getFilteredAdHocDataBase_();
+        if (!_adhocStatusFilter) return base;
+        return base.filter(row => _adhocStatusKey_(row) === _adhocStatusFilter);
+      }
+
+      function _renderAdHocStatusFilterBadges_() {
+        const wrap = document.getElementById('adhoc-status-filter-wrap');
+        if (!wrap) return;
+        if (!_adhocHeaders.includes(ADHOC_STATUS_HEADER)) { wrap.innerHTML = ''; return; }
+        const counts = { open: 0, cancel: 0 };
+        _getFilteredAdHocDataBase_().forEach(row => {
+          const k = _adhocStatusKey_(row);
+          if (counts.hasOwnProperty(k)) counts[k]++;
+        });
+        wrap.innerHTML = ADHOC_STATUS_FILTER_DEFS.map(def => {
+          const isActive = _adhocStatusFilter === def.key;
+          return '<button type="button" onclick="toggleAdHocStatusFilter(\'' + def.key + '\')" ' +
+            'class="btn-press px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap ' +
+            (isActive ? def.activeClass : def.idleClass) + '">' +
+            def.label + ' (' + counts[def.key] + ')</button>';
+        }).join('');
+      }
+
+      function toggleAdHocStatusFilter(key) {
+        _adhocStatusFilter = (_adhocStatusFilter === key) ? null : key;
+        renderAdHocTable();
       }
 
       function showAdHoc() {
@@ -11652,6 +11707,7 @@
         const tbody = document.getElementById('adhoc-tbody');
 
         applyEqualColumns('adhoc-table', 'adhoc-colgroup', _adhocHeaders, false);
+        _renderAdHocStatusFilterBadges_();
 
         thead.innerHTML = '<tr>' + _adhocHeaders.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
@@ -11670,7 +11726,9 @@
           '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
           _adhocHeaders.map(h =>
             '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
-            String(row[h] ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</td>'
+            (h === ADHOC_STATUS_HEADER
+              ? _adhocStatusBadgeHtml_(row[h])
+              : String(row[h] ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')) + '</td>'
           ).join('') +
           '</tr>'
         ).join('');
