@@ -7539,6 +7539,14 @@
         return 34; // posisi Y untuk konten berikutnya, di bawah kop surat template
       }
 
+      // Action Plan yang PDF-nya menampilkan baris "New VM Position".
+      function _planTaskActionNeedsNewVmPosition(actionPlanRaw) {
+        const a = String(actionPlanRaw || '').toLowerCase();
+        return a.indexOf('delivery approval') !== -1
+          || a.indexOf('machine exchange') !== -1
+          || a.indexOf('relocation') !== -1;
+      }
+
       function printPlanTaskNote(batchIndex, rowIndex) {
         if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
           showAppAlert('Library PDF belum termuat, coba refresh halaman.', 'error');
@@ -7595,6 +7603,12 @@
           ['Proposed VM Type', row['PROPOSED VM TYPE']],
           ['VM Type On Site', row['VM TYPE ON SITE']],
           ['Alamat Pengiriman/Pengambilan', row['DELIVERY / PICK UP ADDRESS']],
+          // NEW VM POSITION — hanya untuk Delivery Approval, Machine Exchange & Relocation.
+          // Nilai dari GAS (getPlanTaskBatches_): TICKET Jabodetabek -> kolom I, Event -> kolom H
+          // sheet "Logistic Request 2026". Posisinya tepat di atas "Site PIC".
+          ...(_planTaskActionNeedsNewVmPosition(row['ACTION PLAN'])
+            ? [['New VM Position', row['NEW VM POSITION']]]
+            : []),
           ['Site PIC', row['SITE PIC']],
           ['No. HP Site PIC', row['SITE PIC PHONE NO.']],
           ['Divisi / Team Dispatch', batch.divisi],
