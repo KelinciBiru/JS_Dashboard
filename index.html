@@ -7617,7 +7617,8 @@
       // Action Plan yang PDF-nya menampilkan baris "New VM Position".
       function _planTaskActionNeedsNewVmPosition(actionPlanRaw) {
         const a = String(actionPlanRaw || '').toLowerCase();
-        return a.indexOf('delivery approval') !== -1
+        // 'delivery' mencakup "Delivery Approval" & "Delivery" (tiket Event).
+        return a.indexOf('delivery') !== -1
           || a.indexOf('machine exchange') !== -1
           || a.indexOf('relocation') !== -1;
       }
@@ -7671,19 +7672,21 @@
         y += 8;
 
         // Rincian data (key-value, 2 kolom)
+        // NEW VM POSITION digabung ke baris Lokasi: "<LOCATION NAME> (<NEW VM POSITION>)"
+        // (hanya Delivery / Delivery Approval, Machine Exchange & Relocation). Kalau NEW VM
+        // POSITION kosong, Lokasi tampil apa adanya.
+        const _lokasiBase = String(row['LOCATION NAME'] ?? '').trim();
+        const _newVmPos = _planTaskActionNeedsNewVmPosition(row['ACTION PLAN'])
+          ? String(row['NEW VM POSITION'] ?? '').trim() : '';
+        const lokasiText = (_lokasiBase && _newVmPos) ? (_lokasiBase + ' (' + _newVmPos + ')') : (_lokasiBase || _newVmPos);
         const fields = [
-          ['Lokasi', row['LOCATION NAME']],
+          ['Lokasi', lokasiText],
           ['Action Plan', row['ACTION PLAN']],
           ['No. VMC Jumpstart', row['NO VMC JUMPSTART']],
           ['Proposed VM Type', row['PDF PROPOSED VM TYPE'] || row['PROPOSED VM TYPE'] || row['PRODUCT TYPE']],
           ['VM Type On Site', row['PDF VM TYPE ON SITE'] || row['VM TYPE ON SITE'] || row['PRODUCT TYPE']],
           ['Alamat Pengiriman/Pengambilan', row['DELIVERY / PICK UP ADDRESS']],
-          // NEW VM POSITION — hanya untuk Delivery Approval, Machine Exchange & Relocation.
-          // Nilai dari GAS (getPlanTaskBatches_): TICKET Jabodetabek -> kolom I, Event -> kolom H
-          // sheet "Logistic Request 2026". Posisinya tepat di atas "Site PIC".
-          ...(_planTaskActionNeedsNewVmPosition(row['ACTION PLAN'])
-            ? [['New VM Position', row['NEW VM POSITION']]]
-            : []),
+          // (NEW VM POSITION sekarang digabung ke baris "Lokasi" di atas, bukan baris terpisah.)
           ['Site PIC', row['SITE PIC']],
           ['No. HP Site PIC', row['SITE PIC PHONE NO.']],
           ['Divisi / Team Dispatch', batch.divisi],
