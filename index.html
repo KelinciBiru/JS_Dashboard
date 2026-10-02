@@ -7675,8 +7675,8 @@
           ['Lokasi', row['LOCATION NAME']],
           ['Action Plan', row['ACTION PLAN']],
           ['No. VMC Jumpstart', row['NO VMC JUMPSTART']],
-          ['Proposed VM Type', row['PROPOSED VM TYPE']],
-          ['VM Type On Site', row['VM TYPE ON SITE']],
+          ['Proposed VM Type', row['PDF PROPOSED VM TYPE'] || row['PROPOSED VM TYPE'] || row['PRODUCT TYPE']],
+          ['VM Type On Site', row['PDF VM TYPE ON SITE'] || row['VM TYPE ON SITE'] || row['PRODUCT TYPE']],
           ['Alamat Pengiriman/Pengambilan', row['DELIVERY / PICK UP ADDRESS']],
           // NEW VM POSITION — hanya untuk Delivery Approval, Machine Exchange & Relocation.
           // Nilai dari GAS (getPlanTaskBatches_): TICKET Jabodetabek -> kolom I, Event -> kolom H
