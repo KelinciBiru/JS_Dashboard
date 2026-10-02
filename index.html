@@ -6416,7 +6416,13 @@
         const baseKey = [row[tsKey], row[locKey], row[apKey], row[addrKey]]
           .map(v => String(v ?? '').trim()).join('||');
         const idx = dataArray ? dataArray.indexOf(row) : -1;
-        return baseKey + '||' + idx;
+        // FIX: key ini disisipkan ke atribut onchange/onclick inline ('...key...').
+        // Alamat/Location Name Event sering berisi baris baru (Enter), tanda kutip ganda,
+        // atau backslash -> string JS inline putus (SyntaxError) sehingga checkbox tidak
+        // pernah masuk ke _eventSelectedRows (tidak muncul di "Site Terpilih" & tidak
+        // terkirim ke Input Task). Karakter di luar [A-Za-z0-9|_.-] diganti '_'; keunikan
+        // tetap terjaga oleh index baris (idx) di belakang key.
+        return (baseKey + '||' + idx).replace(/[^A-Za-z0-9|_.\-]/g, '_');
       }
 
       function _mapRowToInputTaskColumns(row, headers) {
