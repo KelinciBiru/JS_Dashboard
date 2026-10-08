@@ -4111,6 +4111,7 @@
       function startAutoRefresh() {
         if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
         _autoRefreshTimer = setInterval(_runAutoRefreshTick_, AUTO_REFRESH_INTERVAL_MS);
+        _startTdRevWatcher_(); // sinkron real-time Task Team Dispatch (lihat _tdRevTick_)
         // Begitu tab kembali aktif (habis diminimize/pindah tab), langsung
         // refresh sekali di luar jadwal supaya user tidak perlu menunggu
         // sampai tick berikutnya untuk melihat data terbaru.
@@ -7981,6 +7982,45 @@
         return (row['Divisi'] || '-') + '||' + (row['PIC'] || '-') + '||' + (row['No. Kendaraan'] || '-');
       }
 
+      // ------------------------------------------------------------
+      // PENCOCOKAN TEAM YANG TOLERAN (Task Team Dispatch)
+      // Dulu Team dicocokkan dengan teks PERSIS "Divisi||PIC||No. Kendaraan". Akibatnya
+      // task baru dari ADMIN yang bedanya cuma spasi/huruf besar-kecil/format plat
+      // ("B 1234 XYZ" vs "B1234XYZ"), atau No. Kendaraan yang baru diisi belakangan,
+      // dianggap Team lain dan TIDAK muncul di HP Team yang dituju. Sekarang dibandingkan
+      // secara kanonik: Divisi & PIC (huruf kecil, spasi dirapikan) harus sama; No.
+      // Kendaraan cocok kalau sama (huruf+angka saja) ATAU salah satunya masih kosong.
+      // ------------------------------------------------------------
+      function _tdCanonText_(s) {
+        const v = String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
+        return v === '-' ? '' : v;
+      }
+      function _tdCanonPlate_(s) {
+        return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
+      }
+      function _tdPartsFromKey_(key) {
+        const p = String(key == null ? '' : key).split('||');
+        return { divisi: _tdCanonText_(p[0]), pic: _tdCanonText_(p[1]), plate: _tdCanonPlate_(p[2]) };
+      }
+      function _tdPartsFromRow_(row) {
+        return {
+          divisi: _tdCanonText_(row['Divisi']),
+          pic: _tdCanonText_(row['PIC']),
+          plate: _tdCanonPlate_(row['No. Kendaraan'])
+        };
+      }
+      function _teamRowMatchesKey_(row, key) {
+        const a = _tdPartsFromRow_(row);
+        const b = _tdPartsFromKey_(key);
+        if (a.divisi !== b.divisi || a.pic !== b.pic) return false;
+        return a.plate === b.plate || !a.plate || !b.plate;
+      }
+      // Key pengelompokan kartu untuk ADMIN (kanonik, tanpa wildcard kosong).
+      function _teamDispatchGroupKey_(row) {
+        const p = _tdPartsFromRow_(row);
+        return p.divisi + '||' + p.pic + '||' + p.plate;
+      }
+
       // Gabungkan dua sumber jadi SATU entri per Team (key = Divisi+PIC+No. Kendaraan):
       //  (1) presence  = Team yang online hari ini (heartbeat device role Dispatch,
       //      action 'getTeamPresenceToday') -> sumber utama "Team Online".
@@ -8782,6 +8822,12 @@
       // Going & Task Team Dispatch di refresh berikutnya).
       // =============================================
       let _teamDispatchRows = [];
+      // Penjaga respons basi: kalau dua pemuatan berjalan tumpang-tindih (auto-refresh +
+      // pengecekan revisi), HANYA respons dari permintaan TERAKHIR yang dipakai — supaya
+      // data lama yang telat datang tidak menimpa task baru yang sudah tampil.
+      let _tdLoadSeq = 0;
+      // Nomor revisi sheet "Plan Task" terakhir yang sudah dimuat (lihat getPlanTaskRev di GAS).
+      let _tdRevLast = null;
 
       async function loadTeamDispatchTasks(forceRefresh) {
         const statusEl = document.getElementById('team-dispatch-status');
@@ -8790,20 +8836,26 @@
           return;
         }
 
+        const mySeq = ++_tdLoadSeq;
         statusEl.textContent = 'Memuat data...';
         try {
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive');
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskActive&_=' + Date.now());
           const json = await res.json();
+          if (mySeq !== _tdLoadSeq) return; // sudah ada permintaan yang lebih baru
           if (!json.success) {
             _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
           }
+          if (json.rev) _tdRevLast = json.rev;
           let rows = json.rows || []; // "Closed" sudah difilter di server
           // Role Dispatch: batasi cuma Task milik Team yang dipilih saat
           // Login (currentTeamKey) — Team lain TIDAK ikut tampil di Cardview
           // ini sama sekali (beda dengan ADMIN yang tetap lihat semua Team).
+          // Pencocokan Team toleran (lihat _teamRowMatchesKey_): beda spasi/huruf
+          // besar-kecil/format plat atau No. Kendaraan yang masih kosong tetap dianggap
+          // Team yang sama, supaya task baru dari ADMIN tidak "hilang".
           if (currentRole === 'Dispatch' && currentTeamKey) {
-            rows = rows.filter(r => _poolDriverTeamKey_(r) === currentTeamKey);
+            rows = rows.filter(r => _teamRowMatchesKey_(r, currentTeamKey));
           }
           _teamDispatchRows = rows;
           saveTeamDispatchRows();
@@ -8812,6 +8864,44 @@
         } catch (err) {
           _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
         }
+      }
+
+      // ------------------------------------------------------------
+      // REAL-TIME: task baru dari ADMIN langsung muncul di Team yang dituju.
+      // Tiap _TD_REV_POLL_MS selama menu Task Team Dispatch terbuka, cek nomor revisi
+      // sheet "Plan Task" lewat action ringan 'getPlanTaskRev' (server TIDAK membaca
+      // spreadsheet untuk ini). Begitu nomornya berubah (ADMIN submit task baru, atau
+      // Start/Tiba/Delivered/Remove dari device lain) -> langsung muat ulang Cardview.
+      // Kalau ada popup terbuka, pemuatan ditunda (nomor revisi TIDAK dianggap sudah
+      // dimuat) dan otomatis dicoba lagi di pengecekan berikutnya setelah popup ditutup.
+      // ------------------------------------------------------------
+      const _TD_REV_POLL_MS = 6000;
+      let _tdRevTimer = null;
+      let _tdRevBusy = false;
+
+      async function _tdRevTick_() {
+        if (_tdRevBusy || document.hidden) return;
+        if (_getActivePageKey_() !== 'TeamDispatch') return;
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) return;
+        _tdRevBusy = true;
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getPlanTaskRev&_=' + Date.now());
+          const json = await res.json();
+          if (!json || !json.success || !json.rev) return;
+          if (_tdRevLast === null) { _tdRevLast = json.rev; return; }
+          if (json.rev !== _tdRevLast && !_isAutoRefreshBlocked_()) {
+            loadTeamDispatchTasks(true); // _tdRevLast diperbarui di dalam saat data berhasil dimuat
+          }
+        } catch (err) {
+          /* diam-diam: pengecekan berikutnya akan mencoba lagi */
+        } finally {
+          _tdRevBusy = false;
+        }
+      }
+
+      function _startTdRevWatcher_() {
+        if (_tdRevTimer) return;
+        _tdRevTimer = setInterval(_tdRevTick_, _TD_REV_POLL_MS);
       }
 
       // Filter badge Team yang sedang aktif dipilih di Cardview Task Team
@@ -9012,7 +9102,9 @@
           const divisi = row['Divisi'] || '-';
           const pic = row['PIC'] || '-';
           const noKendaraan = row['No. Kendaraan'] || '-';
-          const key = divisi + '||' + pic + '||' + noKendaraan;
+          // Key kanonik (spasi/huruf besar-kecil/format plat diabaikan). Role Dispatch cuma
+          // melihat SATU Team (sudah difilter saat dimuat), jadi semuanya satu grup.
+          const key = (currentRole === 'Dispatch') ? '__team_dispatch_self__' : _teamDispatchGroupKey_(row);
           if (!(key in groupIndexByKey)) {
             groupIndexByKey[key] = groups.length;
             groups.push({ key: key, divisi: divisi, pic: pic, noKendaraan: noKendaraan, rows: [] });
