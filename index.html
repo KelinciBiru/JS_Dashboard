@@ -334,6 +334,14 @@
       display: block;
     }
 
+    /* Role BD: sembunyikan bagian Menu Utama selain jumlah RTD */
+    body.role-bd .admin-only {
+      display: none !important;
+    }
+    body.role-bd .dash-rtd-card {
+      cursor: default;
+    }
+
     /* ============================================================
        ISI TABEL — RATA TENGAH (global, berlaku di SEMUA tabel
        di seluruh dashboard: header maupun isi baris). !important
@@ -1438,6 +1446,10 @@
             style="flex:1;min-width:90px;padding:8px 12px;border-radius:10px;border:2px solid #e2e8f0;
                    font-size:12px;font-weight:600;background:#f8fafc;color:#64748b;cursor:pointer;transition:all .2s;">Prepare
           </button>
+          <button onclick="selectRole('BD')" id="role-BD"
+            style="flex:1;min-width:90px;padding:8px 12px;border-radius:10px;border:2px solid #e2e8f0;
+                   font-size:12px;font-weight:600;background:#f8fafc;color:#64748b;cursor:pointer;transition:all .2s;">BD
+          </button>
         </div>
       </div>
 
@@ -1648,7 +1660,7 @@
       <div id="content-Dashboard" class="page-content active-page">
         <div class="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h1 class="text-lg font-bold text-slate-800">Menu Utama</h1>
-          <button onclick="loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true);"
+          <button onclick="refreshDashboardAll()"
             class="btn-press px-3 py-2 text-xs font-bold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-400">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Refresh
           </button>
@@ -1662,57 +1674,57 @@
         <h2 class="text-sm font-bold text-slate-700 mb-2">Machine</h2>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <button onclick="openDashboardDetail('Stock')"
-            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            class="admin-only btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
             <div id="dash-count-Stock" class="text-3xl font-extrabold text-slate-800">0</div>
             <div class="text-xs font-semibold text-slate-500 mt-1">Stock</div>
           </button>
           <button onclick="openDashboardDetail('Need Teknisi')"
-            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            class="admin-only btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
             <div id="dash-count-NeedTeknisi" class="text-3xl font-extrabold text-slate-800">0</div>
             <div class="text-xs font-semibold text-slate-500 mt-1">Need Teknisi</div>
           </button>
           <button onclick="openDashboardDetail('RTD')"
-            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            class="dash-rtd-card btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
             <div id="dash-count-RTD" class="text-3xl font-extrabold text-slate-800">0</div>
             <div class="text-xs font-semibold text-slate-500 mt-1">RTD</div>
           </button>
           <button onclick="openDashboardDetail('Karantina')"
-            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            class="admin-only btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
             <div id="dash-count-Karantina" class="text-3xl font-extrabold text-slate-800">0</div>
             <div class="text-xs font-semibold text-slate-500 mt-1">Karantina</div>
           </button>
           <button onclick="openDashboardDetail('Delivered')"
-            class="btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
+            class="admin-only btn-press text-left rounded-2xl p-4 shadow-sm border-2 border-slate-100 bg-white hover:border-amber-300 transition-colors">
             <div id="dash-count-Delivered" class="text-3xl font-extrabold text-slate-800">0</div>
             <div class="text-xs font-semibold text-slate-500 mt-1">Delivered</div>
           </button>
         </div>
 
-        <div class="flex items-center justify-between mt-6 mb-2">
+        <div class="admin-only flex items-center justify-between mt-6 mb-2">
           <h2 class="text-sm font-bold text-slate-700">Status Order from BD</h2>
           <button type="button" onclick="toggleDashSection('bdStatus')" id="toggle-btn-bdStatus"
             class="text-[11px] font-semibold text-amber-700 hover:text-amber-800 px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 whitespace-nowrap">Sembunyikan</button>
         </div>
-        <div id="dash-section-bdStatus">
+        <div id="dash-section-bdStatus" class="admin-only">
           <div id="bd-status-status" class="text-xs text-slate-500 mb-2"></div>
           <div id="bd-status-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3"></div>
         </div>
 
-        <div class="flex items-center justify-between mt-6 mb-2">
+        <div class="admin-only flex items-center justify-between mt-6 mb-2">
           <h2 class="text-sm font-bold text-slate-700">Action Plan</h2>
           <button type="button" onclick="toggleDashSection('actionPlan')" id="toggle-btn-actionPlan"
             class="text-[11px] font-semibold text-amber-700 hover:text-amber-800 px-2.5 py-1 rounded-lg border border-amber-200 bg-amber-50 whitespace-nowrap">Sembunyikan</button>
         </div>
-        <div id="dash-section-actionPlan">
+        <div id="dash-section-actionPlan" class="admin-only">
           <div id="action-plan-status" class="text-xs text-slate-500 mb-2"></div>
           <div id="action-plan-cardgrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
         </div>
 
-        <h2 class="text-sm font-bold text-slate-700 mt-6 mb-2">Summary Dispatch</h2>
-        <div id="summary-dispatch-status" class="text-xs text-slate-500 mb-2"></div>
-        <div id="summary-dispatch-granularity" class="flex flex-wrap gap-2 mb-3"></div>
+        <h2 class="admin-only text-sm font-bold text-slate-700 mt-6 mb-2">Summary Dispatch</h2>
+        <div id="summary-dispatch-status" class="admin-only text-xs text-slate-500 mb-2"></div>
+        <div id="summary-dispatch-granularity" class="admin-only flex flex-wrap gap-2 mb-3"></div>
 
-        <div class="rounded-2xl border-2 border-slate-100 bg-white p-4 mb-4">
+        <div class="admin-only rounded-2xl border-2 border-slate-100 bg-white p-4 mb-4">
           <h3 class="text-xs font-bold text-slate-600 mb-2">Summary Activity Dispatch (Done)</h3>
           <div id="summary-dispatch-filter" class="flex flex-wrap gap-2 mb-3"></div>
           <div style="position:relative;height:260px;">
@@ -1720,7 +1732,7 @@
           </div>
         </div>
 
-        <div class="rounded-2xl border-2 border-slate-100 bg-white p-4">
+        <div class="admin-only rounded-2xl border-2 border-slate-100 bg-white p-4">
           <h3 class="text-xs font-bold text-slate-600 mb-1">Tabel PIC Dispatch</h3>
           <p class="text-[11px] text-slate-400 mb-2">Qty activity Done, breakdown sesuai periode terpilih (Bulan/Per-Minggu/Per-Hari) di atas.</p>
           <div class="overflow-auto border border-slate-100 rounded-lg">
@@ -2766,6 +2778,121 @@
           </table>
         </div>
       </div>
+
+      <!-- ============================================================
+           REQUEST BD — FORM BOOKING MACHINE (ADMIN + BD)
+      ============================================================ -->
+      <div id="content-FormBookingMachine" class="page-content">
+        <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+          <h1 class="text-lg font-bold text-slate-800">Form Booking Machine</h1>
+          <button onclick="loadBookingForm(true)"
+            class="btn-press px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Refresh</button>
+        </div>
+        <div id="bk-status" class="text-xs text-slate-500 mb-3"></div>
+
+        <div class="bg-white rounded-lg shadow p-4 sm:p-5 max-w-3xl">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">BD</label>
+              <select id="bk-bd" onchange="onBookingBdChange()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white">
+                <option value="">-- Pilih BD --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Action Plan</label>
+              <select id="bk-actionplan" onchange="onBookingActionPlanChange()" disabled class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white disabled:bg-slate-100">
+                <option value="">-- Pilih Action Plan --</option>
+                <option value="Delivery Approval">Delivery Approval</option>
+                <option value="Machine Exchange">Machine Exchange</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Location Name</label>
+              <select id="bk-location" onchange="updateBookingSubmitState()" disabled class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white disabled:bg-slate-100">
+                <option value="">-- Pilih BD &amp; Action Plan dulu --</option>
+              </select>
+              <p id="bk-hint-location" class="text-[11px] text-slate-400 mt-1"></p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Type Machine <span class="font-normal text-slate-400">(hanya mesin berstatus RTD)</span></label>
+              <input id="bk-machine-search" type="text" placeholder="Cari No VMC / tipe mesin..." oninput="renderBookingMachineOptions()"
+                class="w-full border border-slate-200 rounded-md px-3 py-1.5 text-xs mb-1.5 outline-none focus:border-amber-400">
+              <select id="bk-machine" onchange="updateBookingSubmitState()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white">
+                <option value="">-- Pilih Mesin RTD --</option>
+              </select>
+              <p id="bk-hint-machine" class="text-[11px] text-slate-400 mt-1"></p>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <div class="text-xs font-semibold text-slate-600 mb-2">Checklist</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+                <input type="checkbox" id="bk-akses" class="w-4 h-4 accent-amber-500"> Akses
+              </label>
+              <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+                <input type="checkbox" id="bk-pks" class="w-4 h-4 accent-amber-500"> PKS
+              </label>
+              <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+                <input type="checkbox" id="bk-permit" class="w-4 h-4 accent-amber-500"> Permit loading
+              </label>
+              <label class="flex items-center gap-2 text-sm text-slate-700 border-2 border-slate-200 rounded-lg px-3 py-2 cursor-pointer hover:border-amber-400 transition-colors">
+                <input type="checkbox" id="bk-konfirmasi" class="w-4 h-4 accent-amber-500"> Konfirmasi PIC Site
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center gap-3 flex-wrap">
+            <button id="bk-submit-btn" onclick="openBookingConfirm()" disabled
+              class="btn-press px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed">Submit</button>
+            <span id="bk-result" class="text-xs"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Konfirmasi Booking -->
+      <div id="bk-confirm-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
+          <h3 class="text-sm font-bold text-slate-800 mb-1">Konfirmasi Booking Machine</h3>
+          <p class="text-xs text-slate-500 mb-3">Mesin yang sudah dibooking tidak bisa dibooking BD lain dan jumlah RTD akan berkurang.</p>
+          <div id="bk-confirm-summary" class="text-xs text-slate-700 space-y-1.5 mb-4"></div>
+          <div class="flex justify-end gap-2">
+            <button id="bk-confirm-cancel" onclick="closeBookingConfirm()"
+              class="px-3 py-2 text-xs font-semibold rounded-md border-2 border-slate-200 text-slate-600 hover:border-slate-300">Batal</button>
+            <button id="bk-confirm-ok" onclick="confirmBookingSubmit()"
+              class="px-4 py-2 text-xs font-semibold rounded-md bg-amber-500 hover:bg-amber-600 text-white">Ya, Booking</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           REQUEST BD — MACHINE BOOKED (ADMIN)
+      ============================================================ -->
+      <div id="content-MachineBooked" class="page-content">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+          <h1 class="text-lg font-bold text-slate-800">Machine Booked</h1>
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="mb-filter-status" onchange="renderMachineBookedTable()"
+              class="px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+              <option value="">Semua Status</option>
+              <option value="Booked">Booked</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+            <input id="mb-search" type="text" placeholder="Cari data..." oninput="renderMachineBookedTable()"
+              class="w-full sm:w-56 px-3 py-1.5 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+            <button onclick="loadMachineBooked(true)"
+              class="btn-press px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold rounded-md whitespace-nowrap">Refresh</button>
+          </div>
+        </div>
+        <div id="mb-status" class="text-xs text-slate-500 mb-3"></div>
+        <div id="mb-empty" class="placeholder-box">Belum ada data booking.</div>
+        <div id="mb-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
+          <table id="mb-table" class="min-w-full text-xs sm:text-sm border-collapse">
+            <thead id="mb-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
+            <tbody id="mb-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </main>
 
     <!-- ============================================================
@@ -3153,6 +3280,7 @@
         ADMIN: 'admin123',
         Dispatch: 'dispatch123',
         Prepare: 'prepare123',
+        BD: 'bd123',
       };
 
       // =============================================
@@ -3318,7 +3446,7 @@
           'submitPlanTask', 'submitTaskMachinePrep', 'saveStockOpname',
           'saveDispatchDelivered', 'recordDispatchBerangkat', 'recordDispatchTiba',
           'saveTeamPrepareTask', 'updateTaskMachinePrepStatus',
-          'updatePlanTaskStatus', 'updateNoVmcJumpstart'
+          'updatePlanTaskStatus', 'updateNoVmcJumpstart', 'submitMachineBooking'
         ];
         const inFlight = Object.create(null); // requestId -> Promise (single-flight)
         let recoveryBanner = null;
@@ -3516,7 +3644,7 @@
 
       function selectRole(role) {
         selectedRole = role;
-        ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
+        ['ADMIN', 'Dispatch', 'Prepare', 'BD'].forEach(r => {
           const btn = document.getElementById('role-' + r);
           if (r === role) {
             btn.style.background = '#f5a623';
@@ -3708,7 +3836,7 @@
         document.getElementById('login-error').style.display = 'none';
         document.getElementById('login-team-wrap').style.display = 'none';
         document.getElementById('loginTeamSelect').innerHTML = '<option value="">-- Pilih Team --</option>';
-        ['ADMIN', 'Dispatch', 'Prepare'].forEach(r => {
+        ['ADMIN', 'Dispatch', 'Prepare', 'BD'].forEach(r => {
           const btn = document.getElementById('role-' + r);
           btn.style.background = '#f8fafc';
           btn.style.color = '#64748b';
@@ -3761,6 +3889,7 @@
        * - ADMIN     → semua menu tampil, langsung ke Dashboard
        * - Dispatch  → hanya menu Team Dispatch, langsung ke Team Dispatch
        * - Prepare   → hanya menu Team Prepare, langsung ke Team Prepare
+       * - BD        → Menu Utama (hanya jumlah RTD), Form Booking Machine, Historycal Dispatch
        */
       // =============================================
       // KONFIGURASI MENU SIDEBAR — SATU-SATUNYA SUMBER KEBENARAN
@@ -3773,6 +3902,9 @@
       //   items -> [{ label, action }] — action adalah string JS onclick;
       //            > 1 item otomatis tampil sebagai pill di topbar (PC/Laptop)
       // =============================================
+      // roles (grup)  -> role yang boleh melihat grup
+      // roles (item)  -> OPSIONAL, membatasi item di dalam grup (kosong = ikut roles grup)
+      // roleLabels    -> OPSIONAL, label grup khusus untuk role tertentu
       const SIDEBAR_MENU_GROUPS = [
         {
           id: 'inventory', label: 'Inventory', roles: ['ADMIN'],
@@ -3783,11 +3915,14 @@
           ],
         },
         {
-          id: 'requestbd', label: 'Request BD', roles: ['ADMIN'],
+          id: 'requestbd', label: 'Request BD', roles: ['ADMIN', 'BD'],
+          roleLabels: { BD: 'Form Booking Machine' },
           items: [
-            { label: 'Jabodetabek', action: "showJabodetabek()" },
-            { label: 'Event', action: "showEvent()" },
-            { label: 'Ad Hoc', action: "showAdHoc()" },
+            { label: 'Jabodetabek', action: "showJabodetabek()", roles: ['ADMIN'] },
+            { label: 'Event', action: "showEvent()", roles: ['ADMIN'] },
+            { label: 'Ad Hoc', action: "showAdHoc()", roles: ['ADMIN'] },
+            { label: 'Form Booking Machine', action: "showInventory('Form Booking Machine')", roles: ['ADMIN', 'BD'] },
+            { label: 'Machine Booked', action: "showInventory('Machine Booked')", roles: ['ADMIN'] },
           ],
         },
         {
@@ -3799,13 +3934,14 @@
           ],
         },
         {
-          id: 'plantask', label: 'Plan Task', roles: ['ADMIN'],
+          id: 'plantask', label: 'Plan Task', roles: ['ADMIN', 'BD'],
+          roleLabels: { BD: 'Historycal Dispatch' },
           items: [
-            { label: 'Input Task', action: "showInventory('Input Task')" },
-            { label: 'Plan Task', action: "showInventory('Plan Task')" },
-            { label: 'Pool Driver', action: "showInventory('Pool Driver')" },
-            { label: 'Task on Going', action: "showInventory('Status Task')" },
-            { label: 'Historycal Dispatch', action: "showInventory('Historycal Dispatch')" },
+            { label: 'Input Task', action: "showInventory('Input Task')", roles: ['ADMIN'] },
+            { label: 'Plan Task', action: "showInventory('Plan Task')", roles: ['ADMIN'] },
+            { label: 'Pool Driver', action: "showInventory('Pool Driver')", roles: ['ADMIN'] },
+            { label: 'Task on Going', action: "showInventory('Status Task')", roles: ['ADMIN'] },
+            { label: 'Historycal Dispatch', action: "showInventory('Historycal Dispatch')", roles: ['ADMIN', 'BD'] },
           ],
         },
         {
@@ -3822,13 +3958,22 @@
         },
       ];
 
+      // Item grup yang boleh dilihat role yang sedang login (item tanpa `roles` = ikut grup).
+      function _menuItemsForRole_(g) {
+        return (g.items || []).filter(function (it) { return !it.roles || it.roles.includes(currentRole); });
+      }
+      // Label grup untuk role yang sedang login (mis. BD melihat "Historycal Dispatch", bukan "Plan Task").
+      function _menuGroupLabel_(g) {
+        return (g.roleLabels && g.roleLabels[currentRole]) || g.label;
+      }
+
       // Satu sumber data untuk deck sidebar (PC & HP): "Menu Utama"
       // (Dashboard) + semua grup dari SIDEBAR_MENU_GROUPS. Dipakai bareng
       // oleh renderSidebarMenus(), selectDeckGroup(), applyRoleAccess(),
       // dan _mobileMenuEntries_() supaya selalu sinkron satu sama lain.
       function _allMenuEntries_() {
         return [
-          { id: 'dashboard', label: 'Menu Utama', roles: ['ADMIN'], items: [{ label: 'Menu Utama', action: 'showDashboard()' }] }
+          { id: 'dashboard', label: 'Menu Utama', roles: ['ADMIN', 'BD'], items: [{ label: 'Menu Utama', action: 'showDashboard()' }] }
         ].concat(SIDEBAR_MENU_GROUPS);
       }
 
@@ -3844,7 +3989,7 @@
           return (
             '<button type="button" id="deck-' + g.id + '" onclick="selectDeckGroup(\'' + g.id + '\')" class="side-deck-item">' +
               '<span class="side-deck-icon mh-icon-surface">' + icon + '</span>' +
-              '<span class="side-deck-label">' + g.label + '</span>' +
+              '<span class="side-deck-label">' + _menuGroupLabel_(g) + '</span>' +
             '</button>'
           );
         }).join('');
@@ -3859,11 +4004,12 @@
       function selectDeckGroup(groupId) {
         const group = _allMenuEntries_().find(function (g) { return g.id === groupId; });
         if (!group) return;
+        const items = _menuItemsForRole_(group);
 
         if (window.innerWidth <= 768) {
           closeMobileSidebar();
-          if (!group.items || group.items.length <= 1) {
-            goMobileToPage(group.items && group.items[0] ? group.items[0].action : '');
+          if (items.length <= 1) {
+            goMobileToPage(items[0] ? items[0].action : '');
           } else {
             openMobileFolder(groupId);
           }
@@ -3876,15 +4022,15 @@
 
         const inner = document.getElementById('desktop-submenu-topbar-inner');
         if (inner) {
-          const pillsHtml = (group.items && group.items.length > 1)
-            ? '<div class="topbar-pills">' + group.items.map(function (it, idx) {
+          const pillsHtml = (items.length > 1)
+            ? '<div class="topbar-pills">' + items.map(function (it, idx) {
                 return '<button type="button" class="topbar-pill' + (idx === 0 ? ' is-active' : '') + '" onclick="selectTopbarItem(\'' + groupId + '\',' + idx + ',this)">' + it.label + '</button>';
               }).join('') + '</div>'
             : '';
-          inner.innerHTML = '<span class="topbar-group-label">' + group.label + '</span>' + pillsHtml;
+          inner.innerHTML = '<span class="topbar-group-label">' + _menuGroupLabel_(group) + '</span>' + pillsHtml;
         }
 
-        const firstItem = group.items && group.items[0];
+        const firstItem = items[0];
         if (firstItem && firstItem.action) {
           try { (0, eval)(firstItem.action); } catch (e) { /* abaikan action kosong/invalid */ }
         }
@@ -3893,7 +4039,7 @@
       // Diklik dari pill sub-halaman di topbar.
       function selectTopbarItem(groupId, idx, el) {
         const group = _allMenuEntries_().find(function (g) { return g.id === groupId; });
-        const item = group && group.items && group.items[idx];
+        const item = group && _menuItemsForRole_(group)[idx];
         if (!item) return;
 
         document.querySelectorAll('#desktop-submenu-topbar-inner .topbar-pill').forEach(function (p) { p.classList.remove('is-active'); });
@@ -3905,6 +4051,10 @@
       }
 
       function applyRoleAccess() {
+        // Role BD: Menu Utama hanya menampilkan jumlah RTD (lihat .admin-only di CSS).
+        document.body.classList.toggle('role-bd', currentRole === 'BD');
+        // Render ulang deck supaya label grup mengikuti role yang login.
+        renderSidebarMenus();
         _allMenuEntries_().forEach(function (g) {
           const btn = document.getElementById('deck-' + g.id);
           if (btn) btn.style.display = g.roles.includes(currentRole) ? '' : 'none';
@@ -3916,6 +4066,8 @@
           selectDeckGroup('dispatch');
         } else if (currentRole === 'Prepare') {
           selectDeckGroup('prepare');
+        } else if (currentRole === 'BD') {
+          selectDeckGroup('dashboard');
         }
 
         // Presence "Team online" untuk peta Pool Driver — hanya role Dispatch.
@@ -3961,15 +4113,16 @@
 
         grid.innerHTML = _mobileMenuEntries_().map(function (g) {
           const icon = MOBILE_MENU_ICONS[g.id] || MOBILE_MENU_ICONS.dashboard;
-          const isSingle = !g.items || g.items.length <= 1;
-          const rawAction = g.action || (g.items && g.items[0] && g.items[0].action) || '';
+          const visibleItems = _menuItemsForRole_(g);
+          const isSingle = visibleItems.length <= 1;
+          const rawAction = g.action || (visibleItems[0] && visibleItems[0].action) || '';
           const clickAction = isSingle
             ? 'goMobileToPage(&quot;' + rawAction.replace(/"/g, '&quot;') + '&quot;)'
             : "openMobileFolder('" + g.id + "')";
           return (
             '<button type="button" class="mh-tile" onclick="' + clickAction + '">' +
               '<span class="mh-icon-surface">' + icon + '</span>' +
-              '<span class="mh-tile-label">' + g.label + '</span>' +
+              '<span class="mh-tile-label">' + _menuGroupLabel_(g) + '</span>' +
             '</button>'
           );
         }).join('');
@@ -3978,9 +4131,9 @@
       function openMobileFolder(groupId) {
         const group = SIDEBAR_MENU_GROUPS.find(function (g) { return g.id === groupId; });
         if (!group) return;
-        document.getElementById('mobile-folder-title').textContent = group.label;
+        document.getElementById('mobile-folder-title').textContent = _menuGroupLabel_(group);
         const grid = document.getElementById('mobile-folder-grid');
-        grid.innerHTML = group.items.map(function (it) {
+        grid.innerHTML = _menuItemsForRole_(group).map(function (it) {
           const icon = MOBILE_MENU_ICONS[groupId] || MOBILE_MENU_ICONS.dashboard;
           return (
             '<button type="button" class="mh-tile" onclick="closeMobileFolder(); goMobileToPage(&quot;' + it.action.replace(/"/g, '&quot;') + '&quot;)">' +
@@ -4059,7 +4212,7 @@
       const AUTO_REFRESH_INTERVAL_MS = 20000;
 
       const AUTO_REFRESH_LOADERS = {
-        'Dashboard': () => { loadDashboardSummary(true); loadBDStatusSummary(true); loadActionPlanSummary(true); loadSummaryDispatch(true); },
+        'Dashboard': () => { refreshDashboardAll(); },
         'ReportInventoryJS': () => loadInventoryJS(true),
         'ReportInventoryCIMB': () => loadInventoryCIMB(true),
         'ListMachinePreparation': () => loadMachinePrepList(true),
@@ -4068,6 +4221,7 @@
         'RequestBDJabodetabek': () => loadJabodetabek(true),
         'RequestBDEvent': () => loadEvent(true),
         'RequestBDAdHoc': () => loadAdHoc(true),
+        'MachineBooked': () => loadMachineBooked(true),
         'InputTask': () => loadPlanTaskDropdowns(true),
         'PlanTask': () => loadPlanTaskBatches(true),
         'StatusTask': () => loadTaskOnGoing(true),
@@ -4268,11 +4422,300 @@
         if (n === 'Historycal Preparation') { loadHistorycalPreparation(false); }
         if (n === 'Team Dispatch') { loadTeamDispatchTasks(false); _pingDispatchGeolocation_(); }
         if (n === 'Team Prepare') { loadTeamPrepareCards(false); }
+        if (n === 'Form Booking Machine') { loadBookingForm(false); }
+        if (n === 'Machine Booked') { loadMachineBooked(false); }
       }
 
       function showJabodetabek() {
         showPage('Request BD Jabodetabek');
         loadJabodetabek(false);
+      }
+
+      // =============================================
+      // REQUEST BD — FORM BOOKING MACHINE + MACHINE BOOKED
+      // Sumber data & penyimpanan: GAS (getBookingFormData / submitMachineBooking /
+      // getMachineBooked). Anti-double: requestId sekali-pakai (_getFromGasWithRetry_)
+      // + flag _bookingSubmitting + validasi ulang & lock di server (lihat GAS).
+      // =============================================
+      let _bookingData = { bdList: [], locations: [], machines: [] };
+      let _bookingLoaded = false;
+      let _bookingFetching = false;
+      let _bookingSubmitting = false;
+      let _bookingPendingPayload = null;
+
+      function _bkEl(id) { return document.getElementById(id); }
+
+      async function loadBookingForm(forceRefresh) {
+        const statusEl = _bkEl('bk-status');
+        if (_bookingFetching) return;
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
+          return;
+        }
+        _bookingFetching = true;
+        if (statusEl && !_bookingLoaded) statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getBookingFormData');
+          const json = await res.json();
+          if (!json.success) {
+            _setStatus(statusEl, 'error', json.message || 'Gagal memuat data');
+            return;
+          }
+          _bookingData = {
+            bdList: json.bdList || [],
+            locations: json.locations || [],
+            machines: json.machines || []
+          };
+          _bookingLoaded = true;
+          _renderBookingForm();
+          statusEl.textContent = _bookingData.machines.length + ' mesin RTD tersedia — terakhir dimuat ' +
+            new Date().toLocaleTimeString('id-ID');
+        } catch (err) {
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
+        } finally {
+          _bookingFetching = false;
+        }
+      }
+
+      // Bangun ulang semua dropdown sambil mempertahankan pilihan user yang masih valid.
+      function _renderBookingForm() {
+        const bdSel = _bkEl('bk-bd');
+        const prevBd = bdSel.value;
+        bdSel.innerHTML = '<option value="">-- Pilih BD --</option>' +
+          _bookingData.bdList.map(b => '<option value="' + _escapeHtmlAttr_(b) + '">' + _escapeHtmlAttr_(b) + '</option>').join('');
+        if (prevBd && _bookingData.bdList.indexOf(prevBd) !== -1) bdSel.value = prevBd;
+        _bkEl('bk-actionplan').disabled = !bdSel.value;
+        if (!bdSel.value) _bkEl('bk-actionplan').value = '';
+        renderBookingLocationOptions();
+        renderBookingMachineOptions();
+      }
+
+      function onBookingBdChange() {
+        _bkEl('bk-actionplan').value = '';
+        _bkEl('bk-actionplan').disabled = !_bkEl('bk-bd').value;
+        renderBookingLocationOptions();
+      }
+
+      function onBookingActionPlanChange() {
+        renderBookingLocationOptions();
+      }
+
+      function renderBookingLocationOptions() {
+        const bd = _bkEl('bk-bd').value;
+        const ap = _bkEl('bk-actionplan').value;
+        const sel = _bkEl('bk-location');
+        const hint = _bkEl('bk-hint-location');
+        const prev = sel.value;
+
+        if (!bd || !ap) {
+          sel.innerHTML = '<option value="">-- Pilih BD &amp; Action Plan dulu --</option>';
+          sel.disabled = true;
+          hint.textContent = '';
+          updateBookingSubmitState();
+          return;
+        }
+        const list = _bookingData.locations.filter(l =>
+          String(l.bd).trim().toLowerCase() === bd.trim().toLowerCase() && l.actionPlan === ap);
+        // Kalau ada Location Name yang kembar, tambahkan TICKET supaya bisa dibedakan.
+        const labelCount = {};
+        list.forEach(l => { labelCount[l.label] = (labelCount[l.label] || 0) + 1; });
+        sel.innerHTML = '<option value="">-- Pilih Location Name --</option>' + list.map(l => {
+          const text = labelCount[l.label] > 1 ? (l.label + ' — ' + l.ticket) : l.label;
+          return '<option value="' + _escapeHtmlAttr_(l.ticket) + '">' + _escapeHtmlAttr_(text) + '</option>';
+        }).join('');
+        sel.disabled = false;
+        if (prev && list.some(l => l.ticket === prev)) sel.value = prev;
+        hint.textContent = list.length
+          ? list.length + ' lokasi tersedia (LOGISTICS UPDATE masih kosong)'
+          : 'Tidak ada lokasi ' + ap + ' yang masih kosong untuk BD ini.';
+        updateBookingSubmitState();
+      }
+
+      function renderBookingMachineOptions() {
+        const sel = _bkEl('bk-machine');
+        const prev = sel.value;
+        const q = (_bkEl('bk-machine-search').value || '').trim().toLowerCase();
+        const list = _bookingData.machines.filter(m =>
+          !q || (m.label + ' ' + m.serialNumber + ' ' + m.sheet).toLowerCase().indexOf(q) !== -1);
+        sel.innerHTML = '<option value="">-- Pilih Mesin RTD --</option>' + list.map(m =>
+          '<option value="' + _escapeHtmlAttr_(m.key) + '">' + _escapeHtmlAttr_(m.label) + '</option>').join('');
+        if (prev && list.some(m => m.key === prev)) sel.value = prev;
+        _bkEl('bk-hint-machine').textContent = _bookingData.machines.length
+          ? list.length + ' dari ' + _bookingData.machines.length + ' mesin RTD ditampilkan'
+          : 'Tidak ada mesin RTD yang tersedia.';
+        updateBookingSubmitState();
+      }
+
+      function updateBookingSubmitState() {
+        const ok = !!(_bkEl('bk-bd').value && _bkEl('bk-actionplan').value &&
+                      _bkEl('bk-location').value && _bkEl('bk-machine').value);
+        const btn = _bkEl('bk-submit-btn');
+        if (btn && !_bookingSubmitting) btn.disabled = !ok;
+      }
+
+      function _bookingCollectPayload() {
+        const bd = _bkEl('bk-bd').value;
+        const ap = _bkEl('bk-actionplan').value;
+        const ticket = _bkEl('bk-location').value;
+        const machineKey = _bkEl('bk-machine').value;
+        const loc = _bookingData.locations.find(l => l.ticket === ticket) || {};
+        const mc = _bookingData.machines.find(m => m.key === machineKey) || {};
+        return {
+          payload: {
+            bd: bd, actionPlan: ap, ticket: ticket, machineKey: machineKey,
+            akses: _bkEl('bk-akses').checked,
+            pks: _bkEl('bk-pks').checked,
+            permitLoading: _bkEl('bk-permit').checked,
+            konfirmasiPicSite: _bkEl('bk-konfirmasi').checked
+          },
+          locLabel: loc.label || ticket,
+          machineLabel: mc.label || machineKey
+        };
+      }
+
+      function openBookingConfirm() {
+        if (_bookingSubmitting) return;
+        const c = _bookingCollectPayload();
+        if (!c.payload.bd || !c.payload.actionPlan || !c.payload.ticket || !c.payload.machineKey) {
+          showToast('Lengkapi BD, Action Plan, Location Name dan Type Machine.', 'warning');
+          return;
+        }
+        _bookingPendingPayload = c.payload;
+        const yn = v => v ? 'Ya' : 'Belum';
+        const row = (k, v) => '<div class="flex gap-2"><span class="w-28 shrink-0 font-semibold text-slate-500">' + k +
+          '</span><span class="break-words">' + _escapeHtmlAttr_(v) + '</span></div>';
+        _bkEl('bk-confirm-summary').innerHTML =
+          row('BD', c.payload.bd) + row('Action Plan', c.payload.actionPlan) +
+          row('Location', c.locLabel) + row('Mesin', c.machineLabel) +
+          row('Akses', yn(c.payload.akses)) + row('PKS', yn(c.payload.pks)) +
+          row('Permit loading', yn(c.payload.permitLoading)) +
+          row('Konfirmasi PIC Site', yn(c.payload.konfirmasiPicSite));
+        _bkEl('bk-confirm-modal').classList.remove('hidden');
+      }
+
+      function closeBookingConfirm() {
+        if (_bookingSubmitting) return;
+        _bkEl('bk-confirm-modal').classList.add('hidden');
+      }
+
+      async function confirmBookingSubmit() {
+        if (_bookingSubmitting || !_bookingPendingPayload) return;
+        _bookingSubmitting = true;
+        const okBtn = _bkEl('bk-confirm-ok');
+        const cancelBtn = _bkEl('bk-confirm-cancel');
+        const submitBtn = _bkEl('bk-submit-btn');
+        const resultEl = _bkEl('bk-result');
+        _setBtnLoading_(okBtn, 'Menyimpan...');
+        cancelBtn.disabled = true;
+        submitBtn.disabled = true;
+        resultEl.textContent = '';
+        try {
+          // requestId dibuat sekali di _getFromGasWithRetry_ dan dipakai ulang di tiap retry.
+          const json = await _getFromGasWithRetry_('submitMachineBooking', _bookingPendingPayload, 2);
+          _bookingSubmitting = false;
+          _clearBtnLoading_(okBtn);
+          cancelBtn.disabled = false;
+          _bkEl('bk-confirm-modal').classList.add('hidden');
+
+          if (json && json.success) {
+            showToast(json.message || 'Booking berhasil disimpan.', 'success');
+            _setStatus(resultEl, 'success', (json.message || 'Booking berhasil disimpan.') +
+              (json.bookingId ? ' (' + json.bookingId + ')' : ''));
+            _bookingPendingPayload = null;
+            ['bk-akses', 'bk-pks', 'bk-permit', 'bk-konfirmasi'].forEach(id => { _bkEl(id).checked = false; });
+            _bkEl('bk-location').value = '';
+            _bkEl('bk-machine').value = '';
+            _bkEl('bk-machine-search').value = '';
+            // Angka RTD di Menu Utama harus berkurang -> buang cache & paksa fetch ulang.
+            _dashboardLastFetch = null;
+            try { localStorage.removeItem(DATA_CACHE_PREFIX + 'dashboardSummary'); } catch (e) { /* abaikan */ }
+            _machineBookedLastFetch = null;
+            loadBookingForm(true);
+          } else {
+            _setStatus(resultEl, 'error', (json && json.message) || 'Booking gagal disimpan.');
+            showToast((json && json.message) || 'Booking gagal disimpan.', 'error');
+            _bookingPendingPayload = null;
+            loadBookingForm(true); // mesin/lokasi yang baru direbut BD lain langsung hilang dari pilihan
+          }
+        } catch (err) {
+          _bookingSubmitting = false;
+          _clearBtnLoading_(okBtn);
+          cancelBtn.disabled = false;
+          _bkEl('bk-confirm-modal').classList.add('hidden');
+          _setStatus(resultEl, 'error', 'Koneksi terputus: ' + err.message +
+            '. Cek menu Machine Booked / Refresh form sebelum mengulang — booking mungkin sudah tersimpan.');
+        } finally {
+          updateBookingSubmitState();
+        }
+      }
+
+      // ---------- Machine Booked ----------
+      const MACHINE_BOOKED_COLUMNS = [
+        'Timestamp', 'BD PIC', 'Action Plan', 'TICKET', 'Location Name', 'NEW VM POSITION',
+        'NO VMC', 'Machine Type', 'Akses', 'PKS', 'Permit Loading', 'Konfirmasi PIC Site', 'Status', 'Booking ID'
+      ];
+      let _machineBookedRows = [];
+      let _machineBookedFetching = false;
+      let _machineBookedLastFetch = null;
+
+      async function loadMachineBooked(forceRefresh) {
+        const statusEl = _bkEl('mb-status');
+        if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
+          _setStatus(statusEl, 'warning', 'GAS URL belum diisi. Isi INVENTORY_JS_GAS_URL di script.');
+          return;
+        }
+        if (_machineBookedFetching) return;
+        if (!forceRefresh && _machineBookedLastFetch && (Date.now() - _machineBookedLastFetch) < REVALIDATE_THROTTLE_MS) return;
+        _machineBookedFetching = true;
+        if (!_machineBookedRows.length) statusEl.textContent = 'Memuat data...';
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getMachineBooked');
+          const json = await res.json();
+          if (!json.success) {
+            _setStatus(statusEl, 'error', json.message || 'Gagal memuat data');
+            return;
+          }
+          _machineBookedRows = json.data || [];
+          _machineBookedLastFetch = Date.now();
+          renderMachineBookedTable();
+        } catch (err) {
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
+        } finally {
+          _machineBookedFetching = false;
+        }
+      }
+
+      function renderMachineBookedTable() {
+        const q = (_bkEl('mb-search').value || '').trim().toLowerCase();
+        const st = _bkEl('mb-filter-status').value;
+        const rows = _machineBookedRows.filter(r => {
+          if (st && String(r['Status'] || '').trim().toLowerCase() !== st.toLowerCase()) return false;
+          if (!q) return true;
+          return MACHINE_BOOKED_COLUMNS.some(c => String(r[c] == null ? '' : r[c]).toLowerCase().indexOf(q) !== -1);
+        });
+        const activeCount = _machineBookedRows.filter(r => String(r['Status'] || '').trim().toLowerCase() === 'booked').length;
+        _bkEl('mb-status').textContent = rows.length + ' data tampil — ' + activeCount +
+          ' mesin sedang Booked — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
+
+        _bkEl('mb-empty').classList.toggle('hidden', rows.length > 0);
+        _bkEl('mb-table-wrap').classList.toggle('hidden', rows.length === 0);
+        if (!rows.length) return;
+
+        _bkEl('mb-thead').innerHTML = '<tr>' + MACHINE_BOOKED_COLUMNS.map(c =>
+          '<th class="px-3 py-2 text-left font-semibold whitespace-nowrap">' + _escapeHtmlAttr_(c) + '</th>').join('') + '</tr>';
+        _bkEl('mb-tbody').innerHTML = rows.map(r => '<tr class="border-b border-slate-100 odd:bg-white even:bg-slate-50/60">' +
+          MACHINE_BOOKED_COLUMNS.map(c => {
+            const v = r[c] == null ? '' : String(r[c]);
+            if (c === 'Status') {
+              const booked = v.trim().toLowerCase() === 'booked';
+              return '<td class="px-3 py-2 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ' +
+                (booked ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600') + '">' + _escapeHtmlAttr_(v) + '</span></td>';
+            }
+            if (c === 'Akses' || c === 'PKS' || c === 'Permit Loading' || c === 'Konfirmasi PIC Site') {
+              return '<td class="px-3 py-2 whitespace-nowrap ' + (v === 'Ya' ? 'text-emerald-600 font-semibold' : 'text-slate-400') + '">' + _escapeHtmlAttr_(v) + '</td>';
+            }
+            return '<td class="px-3 py-2 ' + (c === 'Location Name' ? '' : 'whitespace-nowrap') + '">' + _escapeHtmlAttr_(v) + '</td>';
+          }).join('') + '</tr>').join('');
       }
 
       // =============================================
@@ -4304,9 +4747,19 @@
         showPage('Dashboard');
         initDashSectionToggles();
         loadDashboardSummary(false);
+        // Role BD hanya melihat jumlah RTD -> tidak perlu memuat ringkasan lain.
+        if (currentRole === 'BD') return;
         loadBDStatusSummary(false);
         loadActionPlanSummary(false);
         loadSummaryDispatch(false);
+      }
+
+      function refreshDashboardAll() {
+        loadDashboardSummary(true);
+        if (currentRole === 'BD') return;
+        loadBDStatusSummary(true);
+        loadActionPlanSummary(true);
+        loadSummaryDispatch(true);
       }
 
       // =============================================
@@ -4498,6 +4951,7 @@
       }
 
       function openDashboardDetail(status) {
+        if (currentRole === 'BD') return; // BD hanya melihat jumlah RTD, bukan detail mesin
         const modal = document.getElementById('dashboard-detail-modal');
         _dashboardDetailCurrentStatus = status;
         _dashboardDetailSelectedType = null;
