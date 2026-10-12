@@ -6670,13 +6670,61 @@
         } catch (e) { _taskOnGoingRows = []; }
       }
 
+      // ============================================================
+      // PENDING-DELIVERED GUARD (anti kartu "muncul lagi")
+      // Begitu user menyimpan Delivered, kartu dihapus optimis dari layar, tapi server
+      // baru menulis Status "Closed" beberapa detik kemudian (antre lock + tulis banyak
+      // sheet). Selama jeda itu auto-refresh / restore cache masih menerima task tsb
+      // dengan status lama, sehingga kartu muncul lagi dan Team submit ulang.
+      // Daftar ini menahan kartu itu tetap tersembunyi sampai server benar-benar tidak
+      // lagi mengembalikannya (Closed) atau TTL habis. Disimpan di localStorage supaya
+      // tahan F5.
+      // ============================================================
+      const DD_PENDING_STORAGE_KEY = 'nodDdPendingDelivered';
+      const DD_PENDING_TTL_MS = 180000; // 3 menit
+      function _ddKey_(rowNumber, ticket) {
+        return String(rowNumber) + '|' + String(ticket || '').trim().toLowerCase();
+      }
+      function _ddPendingLoad_() {
+        try { return JSON.parse(localStorage.getItem(DD_PENDING_STORAGE_KEY) || '{}') || {}; } catch (e) { return {}; }
+      }
+      function _ddPendingSave_(map) {
+        try { localStorage.setItem(DD_PENDING_STORAGE_KEY, JSON.stringify(map)); } catch (e) { /* abaikan */ }
+      }
+      function _ddPendingSet_(key) {
+        const m = _ddPendingLoad_(); m[key] = Date.now() + DD_PENDING_TTL_MS; _ddPendingSave_(m);
+      }
+      function _ddPendingDelete_(key) {
+        const m = _ddPendingLoad_(); if (key in m) { delete m[key]; _ddPendingSave_(m); }
+      }
+      function _ddIsPending_(row) {
+        const m = _ddPendingLoad_();
+        const k = _ddKey_(row.rowNumber, row['TICKET']);
+        const exp = m[k];
+        if (!exp) return false;
+        if (Date.now() > exp) { delete m[k]; _ddPendingSave_(m); return false; }
+        return true;
+      }
+      // Hapus penanda pending yang task-nya sudah tidak dikembalikan server (= sudah Closed).
+      function _ddPendingPurge_(serverRows) {
+        const m = _ddPendingLoad_();
+        const keys = Object.keys(m);
+        if (!keys.length) return;
+        const present = new Set((serverRows || []).map(r => _ddKey_(r.rowNumber, r['TICKET'])));
+        let changed = false;
+        keys.forEach(k => {
+          if (Date.now() > m[k] || !present.has(k)) { delete m[k]; changed = true; }
+        });
+        if (changed) _ddPendingSave_(m);
+      }
+
       function saveTeamDispatchRows() {
         try { localStorage.setItem(TEAM_DISPATCH_STORAGE_KEY, JSON.stringify(_teamDispatchRows)); } catch (e) { /* abaikan */ }
       }
       function restoreTeamDispatchRows() {
         try {
           const raw = localStorage.getItem(TEAM_DISPATCH_STORAGE_KEY);
-          if (raw) _teamDispatchRows = JSON.parse(raw) || [];
+          if (raw) _teamDispatchRows = (JSON.parse(raw) || []).filter(r => !_ddIsPending_(r));
         } catch (e) { _teamDispatchRows = []; }
       }
 
@@ -9302,6 +9350,7 @@
           }
           if (json.rev) _tdRevLast = json.rev;
           let rows = json.rows || []; // "Closed" sudah difilter di server
+          _ddPendingPurge_(rows); // bersihkan penanda pending untuk task yang sudah Closed di server
           // Role Dispatch: batasi cuma Task milik Team yang dipilih saat
           // Login (currentTeamKey) — Team lain TIDAK ikut tampil di Cardview
           // ini sama sekali (beda dengan ADMIN yang tetap lihat semua Team).
@@ -9311,6 +9360,7 @@
           if (currentRole === 'Dispatch' && currentTeamKey) {
             rows = rows.filter(r => _teamRowMatchesKey_(r, currentTeamKey));
           }
+          rows = rows.filter(r => !_ddIsPending_(r)); // task yang baru di-Delivered tapi server belum sempat Closed -> tetap sembunyi
           _teamDispatchRows = rows;
           saveTeamDispatchRows();
           statusEl.textContent = _teamDispatchRows.length + ' task — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
@@ -9932,7 +9982,7 @@
         if (!Array.isArray(_teamDispatchRows) || !_teamDispatchRows.length) return;
         const activeRows = _teamDispatchRows.filter(r => {
           const s = String(r['Status'] || '').trim().toLowerCase();
-          return s === 'on delivery' || s === 'arrived';
+          return (s === 'on delivery' || s === 'arrived') && !_ddIsPending_(r);
         });
         if (!activeRows.length) return;
         const pos = await _getCurrentGeolocation_();
@@ -11010,6 +11060,15 @@
           // sebelum dianggap benar-benar tercatat — kalau gagal, card
           // dikembalikan ke list + user diberi tombol "Coba Lagi" (lihat
           // _optimisticRun_ di atas), TANPA perlu upload ulang foto.
+          // ANTI-DOUBLE SUBMIT: kalau task ini sudah dalam proses simpan, jangan kirim lagi.
+          const ddPendKey = _ddKey_(_ddContext.rowNumber, _ddContext.ticket);
+          if (_ddIsPending_({ rowNumber: _ddContext.rowNumber, 'TICKET': _ddContext.ticket })) {
+            _clearBtnLoading_(saveBtn);
+            _releaseDispatchWakeLock_();
+            closeDispatchDeliveredModal();
+            showToast('Task ini sedang disimpan, mohon tunggu sebentar.', 'warning');
+            return;
+          }
           const ddRowRef = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(_ddContext.rowNumber));
           const ddRowIdx = ddRowRef ? _teamDispatchRows.indexOf(ddRowRef) : -1;
 
@@ -11018,6 +11077,7 @@
 
           _optimisticRun_({
             apply: () => {
+              _ddPendingSet_(ddPendKey); // tahan kartu agar tidak muncul lagi saat refresh
               closeDispatchDeliveredModal();
               if (ddRowIdx >= 0) _teamDispatchRows.splice(ddRowIdx, 1);
               saveTeamDispatchRows();
@@ -11027,6 +11087,7 @@
             request: () => _getFromGasWithRetry_('saveDispatchDelivered', payload, 3),
             onSuccess: () => { loadTeamDispatchTasks(true); },
             rollback: () => {
+              _ddPendingDelete_(ddPendKey); // gagal -> lepas penahan supaya kartu kembali & bisa dicoba lagi
               if (ddRowRef && ddRowIdx >= 0) {
                 _teamDispatchRows.splice(ddRowIdx, 0, ddRowRef);
                 saveTeamDispatchRows();
