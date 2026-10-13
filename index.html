@@ -1869,8 +1869,10 @@
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">No. Kendaraan</label>
-              <input id="pt-noKendaraan" type="text" placeholder="No. Kendaraan" oninput="savePlanTaskFormDraft()"
-                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+              <select id="pt-noKendaraan" onchange="savePlanTaskFormDraft()"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-white">
+                <option value="">-- Pilih No. Kendaraan --</option>
+              </select>
             </div>
           </div>
           <div class="mt-4 flex items-center gap-3">
@@ -6630,6 +6632,7 @@
       const TEAM_DISPATCH_STORAGE_KEY = 'nod_teamDispatchRows';
       const PLAN_TASK_FORM_DRAFT_STORAGE_KEY = 'nod_planTaskFormDraft';
       let _planTaskFormDraftDivisi = '';
+      let _planTaskFormDraftKendaraan = ''; // No. Kendaraan dari draft, diterapkan setelah opsi dropdown dimuat dari server
 
       function savePlanTaskResult() {
         try {
@@ -6740,7 +6743,7 @@
             divisi: divisiEl ? divisiEl.value : '',
             picSelected: Array.from(_ptPicSelected),
             planDate: dateEl ? dateEl.value : '',
-            noKendaraan: kendaraanEl ? kendaraanEl.value : ''
+            noKendaraan: (kendaraanEl && kendaraanEl.value) || _planTaskFormDraftKendaraan || ''
           };
           localStorage.setItem(PLAN_TASK_FORM_DRAFT_STORAGE_KEY, JSON.stringify(draft));
         } catch (e) { /* abaikan */ }
@@ -6753,7 +6756,15 @@
           const dateEl = document.getElementById('pt-planDate');
           const kendaraanEl = document.getElementById('pt-noKendaraan');
           if (dateEl && draft.planDate) dateEl.value = draft.planDate;
-          if (kendaraanEl && draft.noKendaraan) kendaraanEl.value = draft.noKendaraan;
+          if (draft.noKendaraan) {
+            // Opsi dropdown No. Kendaraan datang dari server (sheet Source kolom C) —
+            // kalau sudah termuat langsung pilih, kalau belum diterapkan di loadPlanTaskDropdowns().
+            _planTaskFormDraftKendaraan = draft.noKendaraan;
+            if (kendaraanEl && Array.from(kendaraanEl.options).some(o => o.value === draft.noKendaraan)) {
+              kendaraanEl.value = draft.noKendaraan;
+              _planTaskFormDraftKendaraan = '';
+            }
+          }
           if (Array.isArray(draft.picSelected) && draft.picSelected.length) {
             _ptPicSelected = new Set(draft.picSelected);
             updatePicLabel();
@@ -7670,6 +7681,23 @@
               ' onchange="handlePicCheck(this.value, this.checked)"><span>' + v + '</span></label>';
           }).join('');
 
+          // No. Kendaraan: pilihan dari sheet "Source" kolom C (Dashboard Dispatch V2).
+          // Pilihan user saat ini / draft dipertahankan walau dropdown di-refresh otomatis.
+          const kendaraanEl = document.getElementById('pt-noKendaraan');
+          if (kendaraanEl) {
+            if (Array.isArray(json.kendaraan)) {
+              const _kendaraanPrevVal = kendaraanEl.value;
+              kendaraanEl.innerHTML = '<option value="">-- Pilih No. Kendaraan --</option>' +
+                json.kendaraan.map(v => '<option value="' + _escapeHtmlAttr_(v) + '">' + _escapeHtmlAttr_(v) + '</option>').join('');
+              const wantedKendaraan = _planTaskFormDraftKendaraan || _kendaraanPrevVal;
+              if (wantedKendaraan && json.kendaraan.includes(wantedKendaraan)) kendaraanEl.value = wantedKendaraan;
+              _planTaskFormDraftKendaraan = '';
+            } else {
+              // GAS lama (belum di-deploy ulang) belum mengirim daftar kendaraan.
+              kendaraanEl.innerHTML = '<option value="">-- Daftar kendaraan belum tersedia (deploy ulang GAS) --</option>';
+            }
+          }
+
           // Hanya tandai "sudah dimuat" kalau datanya benar-benar ada, supaya
           // kalau ternyata masih kosong setelah semua percobaan, kunjungan
           // berikutnya ke menu Input Task tetap otomatis mencoba fetch lagi
@@ -8322,6 +8350,17 @@
         }
       }
 
+      // Isi sel tabel Task On Going. 'Estimasi Tiba' diisi server (dihitung ulang dari titik GPS
+      // terakhir ke tujuan); task On Delivery yang belum punya nilai ditandai "menghitung..."
+      // (server mengisinya otomatis pada refresh berikutnya), task Open/Arrived tanpa ETA = "-".
+      function _taskOnGoingCellValue_(row, col) {
+        const v = row[col] ?? '';
+        if (col !== 'Estimasi Tiba' || v) return v;
+        const st = String(row['Status'] || '').trim().toLowerCase();
+        if (st === 'on delivery' && !row['Jam Tiba']) return '<span class="italic text-slate-400">menghitung...</span>';
+        return '-';
+      }
+
       function renderTaskOnGoingTable() {
         const emptyEl = document.getElementById('task-ongoing-empty');
         const wrapEl = document.getElementById('task-ongoing-table-wrap');
@@ -8346,7 +8385,7 @@
         tbody.innerHTML = _taskOnGoingRows.map((row, i) =>
           '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
           TASK_ONGOING_COLUMNS.map(h =>
-            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + (row[h] ?? '') + '</td>'
+            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' + _taskOnGoingCellValue_(row, h) + '</td>'
           ).join('') +
           '<td class="px-4 py-2.5 align-top">' +
             // PENTING: attribut onclick di sini SENGAJA pakai kutip TUNGGAL (') di
@@ -8635,7 +8674,7 @@
         if (team.taskStatus) {
           html += 'Status Task: ' + _escapeHtmlAttr_(team.taskStatus) + '<br>';
           if (team.taskStatus.toLowerCase() === 'on delivery') {
-            html += 'Estimasi Tiba: ' + _escapeHtmlAttr_(team.eta || '-') + '<br>';
+            html += 'Estimasi Tiba: ' + _escapeHtmlAttr_(team.eta || 'Menghitung...') + '<br>';
           }
         }
         html += (team.online ? 'Update GPS terakhir: ' : 'Terakhir online: ') + _escapeHtmlAttr_(team.updatedAt || '-') + '</div>';
@@ -8942,7 +8981,8 @@
           const jamBerangkat = row['Jam Berangkat'] || '-';
           const jamTiba = row['Jam Tiba'] || (state === 'notstarted' ? 'Belum Berangkat' : 'Belum Tiba');
           const etaHtml = state === 'ontheway'
-            ? '<div class="pd-tl-eta-badge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg> Estimasi Tiba: ' + _escapeHtmlAttr_(row['Estimasi Tiba'] || '-') + '</div>'
+            ? '<div class="pd-tl-eta-badge"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg> Estimasi Tiba: ' + (row['Estimasi Tiba'] ? _escapeHtmlAttr_(row['Estimasi Tiba']) : 'Menghitung...') +
+              (row['Estimasi Tiba'] && row['Geolocation Updated At'] ? ' <span style="font-weight:400;opacity:.75;">&middot; dari posisi ' + _escapeHtmlAttr_(row['Geolocation Updated At']) + '</span>' : '') + '</div>'
             : '';
           return (
             '<div class="pd-tl-item' + itemClass + '">' +
@@ -9789,6 +9829,9 @@
         if (row['Estimasi Tiba'] && !row['Jam Tiba']) {
           html += '<div class="break-words"><span class="font-semibold text-slate-500">Estimasi Tiba:</span> ' + row['Estimasi Tiba'] + '</div>';
         }
+        if (!row['Estimasi Tiba'] && !row['Jam Tiba'] && String(row['Status'] || '').trim().toLowerCase() === 'on delivery') {
+          html += '<div class="break-words"><span class="font-semibold text-slate-500">Estimasi Tiba:</span> <span class="italic text-slate-400">menghitung...</span></div>';
+        }
         if (row['Jam Tiba']) {
           html += '<div class="break-words"><span class="font-semibold text-slate-500">Jam Tiba:</span> ' + row['Jam Tiba'] + '</div>';
         }
@@ -9891,6 +9934,7 @@
         // pencatatan Jam Berangkat yang sebenarnya jalan di belakang layar.
         const rowRef = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(rowNumber));
         const prevStatus = rowRef ? rowRef['Status'] : undefined;
+        const prevEta = rowRef ? rowRef['Estimasi Tiba'] : undefined;
         // Titik koordinat GPS user saat Start diklik (sudah didapat di atas lewat
         // _getCurrentGeolocation_ untuk hitung Estimasi Tiba) ikut dikirim & dicatat
         // permanen ke kolom "Geolocation" sheet "Plan Task", supaya menu "Pool Driver"
@@ -9901,19 +9945,28 @@
         _optimisticRun_({
           apply: () => {
             _clearBtnLoading_(btnEl);
-            if (rowRef) rowRef['Status'] = 'On Delivery';
-            renderTeamDispatchCards();
-            if (!estimasiTiba && etaFailReason) {
-              showAppAlert('Jam Berangkat tercatat, tapi Estimasi Tiba tidak bisa dihitung (' + etaFailReason + ').', 'warning');
+            if (rowRef) {
+              rowRef['Status'] = 'On Delivery';
+              // Tampilkan dulu hasil hitung browser (kalau ada); server menghitung ulang & menimpa
+              // nilainya begitu request selesai (lihat onSuccess).
+              if (estimasiTiba) rowRef['Estimasi Tiba'] = estimasiTiba;
             }
+            renderTeamDispatchCards();
           },
           request: () => _getFromGasWithRetry_('recordDispatchBerangkat', { rowNumber: rowNumber, jamBerangkat: jamBerangkat, estimasiTiba: estimasiTiba, geoLat: startGeoLat, geoLng: startGeoLng }, 3),
-          onSuccess: () => {
+          onSuccess: (json) => {
+            // ETA kini dihitung di SERVER (posisi GPS saat Start -> alamat tujuan). Peringatan
+            // hanya muncul kalau server DAN browser sama-sama gagal; selama task On Delivery,
+            // ping GPS berkala akan mencoba menghitung ulang otomatis.
+            if (!(json && json.estimasiTiba) && !estimasiTiba) {
+              const why = (json && json.etaFailReason) || etaFailReason || 'penyebab tidak diketahui';
+              showAppAlert('Jam Berangkat tercatat, tapi Estimasi Tiba belum bisa dihitung (' + why + '). Sistem akan menghitung ulang otomatis begitu posisi GPS terbaru terkirim.', 'warning');
+            }
             loadTeamDispatchTasks(true);
             if (typeof loadTaskOnGoing === 'function') loadTaskOnGoing(true);
           },
           rollback: () => {
-            if (rowRef) rowRef['Status'] = prevStatus;
+            if (rowRef) { rowRef['Status'] = prevStatus; rowRef['Estimasi Tiba'] = prevEta; }
             renderTeamDispatchCards();
           },
           errorPrefix: 'Jam Berangkat BELUM tercatat di server: '
