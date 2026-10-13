@@ -2878,6 +2878,7 @@
               class="px-2 py-1.5 text-xs border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
               <option value="">Semua Status</option>
               <option value="Booked">Booked</option>
+              <option value="Delivered">Delivered</option>
               <option value="Cancelled">Cancelled</option>
             </select>
             <input id="mb-search" type="text" placeholder="Cari data..." oninput="renderMachineBookedTable()"
@@ -2893,6 +2894,21 @@
             <thead id="mb-thead" style="background-color:#0b1f3a;color:#ffffff;"></thead>
             <tbody id="mb-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- MODAL: Konfirmasi Cancel Booking -->
+      <div id="mb-cancel-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-5">
+          <h3 class="text-sm font-bold text-slate-800 mb-1">Cancel Booking?</h3>
+          <p class="text-xs text-slate-500 mb-3">Status berubah menjadi Cancelled. Mesin kembali dihitung RTD, lokasi bisa di-booking ulang, dan data ini hilang dari tampilan setelah 1 bulan.</p>
+          <div id="mb-cancel-summary" class="text-xs text-slate-700 space-y-1 mb-4"></div>
+          <div class="flex justify-end gap-2">
+            <button id="mb-cancel-no" onclick="closeMachineBookedCancel()"
+              class="px-3 py-2 text-xs font-semibold rounded-md border-2 border-slate-200 text-slate-600 hover:border-slate-300">Kembali</button>
+            <button id="mb-cancel-yes" onclick="confirmMachineBookedCancel()"
+              class="px-4 py-2 text-xs font-semibold rounded-md bg-red-500 hover:bg-red-600 text-white">Ya, Cancel</button>
+          </div>
         </div>
       </div>
     </main>
@@ -4687,15 +4703,29 @@
         }
       }
 
+      // Cancelled hilang dari tampilan 1 bulan setelah dibatalkan (server juga memfilter;
+      // ini supaya baris yang sudah kedaluwarsa hilang tanpa perlu refresh).
+      function _mbCancelledExpired_(r) {
+        if (String(r['Status'] || '').trim().toLowerCase() !== 'cancelled') return false;
+        const raw = r['Cancelled At'] || r['Timestamp'];
+        if (!raw) return false;
+        const d = new Date(String(raw).replace(' ', 'T'));
+        if (isNaN(d.getTime())) return false;
+        const cutoff = new Date();
+        cutoff.setMonth(cutoff.getMonth() - 1);
+        return d < cutoff;
+      }
+
       function renderMachineBookedTable() {
         const q = (_bkEl('mb-search').value || '').trim().toLowerCase();
         const st = _bkEl('mb-filter-status').value;
-        const rows = _machineBookedRows.filter(r => {
+        const visible = _machineBookedRows.filter(r => !_mbCancelledExpired_(r));
+        const rows = visible.filter(r => {
           if (st && String(r['Status'] || '').trim().toLowerCase() !== st.toLowerCase()) return false;
           if (!q) return true;
           return MACHINE_BOOKED_COLUMNS.some(c => String(r[c] == null ? '' : r[c]).toLowerCase().indexOf(q) !== -1);
         });
-        const activeCount = _machineBookedRows.filter(r => String(r['Status'] || '').trim().toLowerCase() === 'booked').length;
+        const activeCount = visible.filter(r => String(r['Status'] || '').trim().toLowerCase() === 'booked').length;
         _bkEl('mb-status').textContent = rows.length + ' data tampil — ' + activeCount +
           ' mesin sedang Booked — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
 
@@ -4703,21 +4733,93 @@
         _bkEl('mb-table-wrap').classList.toggle('hidden', rows.length === 0);
         if (!rows.length) return;
 
-        _bkEl('mb-thead').innerHTML = '<tr>' + MACHINE_BOOKED_COLUMNS.map(c =>
+        _bkEl('mb-thead').innerHTML = '<tr>' + MACHINE_BOOKED_COLUMNS.concat(['Aksi']).map(c =>
           '<th class="px-3 py-2 text-left font-semibold whitespace-nowrap">' + _escapeHtmlAttr_(c) + '</th>').join('') + '</tr>';
-        _bkEl('mb-tbody').innerHTML = rows.map(r => '<tr class="border-b border-slate-100 odd:bg-white even:bg-slate-50/60">' +
-          MACHINE_BOOKED_COLUMNS.map(c => {
+        _bkEl('mb-tbody').innerHTML = rows.map(r => {
+          const stLower = String(r['Status'] || '').trim().toLowerCase();
+          const cells = MACHINE_BOOKED_COLUMNS.map(c => {
             const v = r[c] == null ? '' : String(r[c]);
             if (c === 'Status') {
-              const booked = v.trim().toLowerCase() === 'booked';
+              const cls = stLower === 'booked' ? 'bg-emerald-100 text-emerald-700'
+                : stLower === 'delivered' ? 'bg-sky-100 text-sky-700'
+                : stLower === 'cancelled' ? 'bg-red-100 text-red-600'
+                : 'bg-slate-200 text-slate-600';
               return '<td class="px-3 py-2 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ' +
-                (booked ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600') + '">' + _escapeHtmlAttr_(v) + '</span></td>';
+                cls + '">' + _escapeHtmlAttr_(v) + '</span></td>';
             }
             if (c === 'Akses' || c === 'PKS' || c === 'Permit Loading' || c === 'Konfirmasi PIC Site') {
               return '<td class="px-3 py-2 whitespace-nowrap ' + (v === 'Ya' ? 'text-emerald-600 font-semibold' : 'text-slate-400') + '">' + _escapeHtmlAttr_(v) + '</td>';
             }
             return '<td class="px-3 py-2 ' + (c === 'Location Name' ? '' : 'whitespace-nowrap') + '">' + _escapeHtmlAttr_(v) + '</td>';
-          }).join('') + '</tr>').join('');
+          }).join('');
+          // Cancel hanya untuk booking berstatus Booked (bukan Delivered / Cancelled).
+          const action = stLower === 'booked' && r['Booking ID']
+            ? '<button onclick="openMachineBookedCancel(\'' + _escapeHtmlAttr_(String(r['Booking ID'])) + '\')" ' +
+              'class="btn-press px-2.5 py-1 text-[11px] font-semibold rounded-md bg-red-50 text-red-600 border border-red-200 hover:bg-red-100">Cancel</button>'
+            : '<span class="text-slate-300">—</span>';
+          return '<tr class="border-b border-slate-100 odd:bg-white even:bg-slate-50/60">' + cells +
+            '<td class="px-3 py-2 whitespace-nowrap">' + action + '</td></tr>';
+        }).join('');
+      }
+
+      // ---------- Cancel Booking ----------
+      let _mbCancelBookingId = null;
+      let _mbCancelling = false;
+
+      function openMachineBookedCancel(bookingId) {
+        const r = _machineBookedRows.find(x => String(x['Booking ID']) === String(bookingId));
+        if (!r) return;
+        _mbCancelBookingId = bookingId;
+        _bkEl('mb-cancel-summary').innerHTML = [
+          ['Booking ID', r['Booking ID']], ['BD PIC', r['BD PIC']], ['Location Name', r['Location Name']],
+          ['NO VMC', r['NO VMC']], ['Machine Type', r['Machine Type']]
+        ].map(p => '<div><span class="text-slate-400">' + p[0] + ':</span> <span class="font-semibold">' +
+          _escapeHtmlAttr_(String(p[1] == null ? '' : p[1])) + '</span></div>').join('');
+        _bkEl('mb-cancel-modal').classList.remove('hidden');
+      }
+
+      function closeMachineBookedCancel() {
+        if (_mbCancelling) return;
+        _mbCancelBookingId = null;
+        _bkEl('mb-cancel-modal').classList.add('hidden');
+      }
+
+      async function confirmMachineBookedCancel() {
+        if (_mbCancelling || !_mbCancelBookingId) return;
+        _mbCancelling = true;
+        const yesBtn = _bkEl('mb-cancel-yes');
+        const noBtn = _bkEl('mb-cancel-no');
+        _setBtnLoading_(yesBtn, 'Membatalkan...');
+        noBtn.disabled = true;
+        const bookingId = _mbCancelBookingId;
+        try {
+          const json = await _getFromGasWithRetry_('cancelMachineBooking', { bookingId: bookingId }, 2);
+          if (json && json.success) {
+            showToast(json.message || 'Booking dibatalkan.', 'success');
+            const r = _machineBookedRows.find(x => String(x['Booking ID']) === String(bookingId));
+            if (r) {
+              r['Status'] = 'Cancelled';
+              r['Cancelled At'] = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            }
+            // Mesin kembali RTD -> buang cache Menu Utama; form booking dimuat ulang saat dibuka.
+            _dashboardLastFetch = null;
+            try { localStorage.removeItem(DATA_CACHE_PREFIX + 'dashboardSummary'); } catch (e) { /* abaikan */ }
+            _bookingLoaded = false;
+            renderMachineBookedTable();
+            loadMachineBooked(true); // sinkronkan (mis. kalau ternyata sudah Delivered)
+          } else {
+            showToast((json && json.message) || 'Gagal membatalkan booking.', 'error');
+            loadMachineBooked(true);
+          }
+        } catch (err) {
+          showToast('Koneksi terputus: ' + err.message + '. Tekan Refresh untuk cek status terbaru.', 'error');
+        } finally {
+          _mbCancelling = false;
+          _clearBtnLoading_(yesBtn);
+          noBtn.disabled = false;
+          _mbCancelBookingId = null;
+          _bkEl('mb-cancel-modal').classList.add('hidden');
+        }
       }
 
       // =============================================
