@@ -6805,6 +6805,7 @@
       function _ddIsPending_(row) {
         const m = _ddPendingLoad_();
         const k = _ddKey_(row.rowNumber, row['TICKET']);
+        if (_outboxHasKey_(k)) return true; // masih antre di outbox -> kartu tetap disembunyikan
         const exp = m[k];
         if (!exp) return false;
         if (Date.now() > exp) { delete m[k]; _ddPendingSave_(m); return false; }
@@ -6822,6 +6823,200 @@
         });
         if (changed) _ddPendingSave_(m);
       }
+
+      // ============================================================
+      // OUTBOX LOKAL (anti-hilang) — simpan dulu di HP, kirim di belakang layar.
+      // Data yang SUDAH dikonfirmasi user (mis. Delivered setelah foto ter-upload)
+      // ditulis ke localStorage SEBELUM dikirim, dengan requestId tetap. Baru
+      // dihapus setelah server membalas success:true. Kalau server sibuk / sinyal
+      // putus / aplikasi tertutup, pengiriman diulang otomatis (backoff) saat:
+      // interval 10 dtk, jaringan kembali (online), app aktif lagi, atau app dibuka
+      // ulang. Aman dari data dobel: requestId sama + server idempoten (Closed check).
+      // Error "permanen" (mis. TICKET tidak ditemukan) TIDAK diulang selamanya:
+      // ditandai gagal, badge merah muncul, user memilih Coba Lagi / Buang.
+      // ============================================================
+      const OUTBOX_KEY = 'nodOutboxV1';
+      const OUTBOX_LOCK_KEY = 'nodOutboxLock';
+      const OUTBOX_BACKOFF_MS = [3000, 6000, 12000, 20000, 30000];
+      const OUTBOX_MAX_ATTEMPTS = 60;
+      const OUTBOX_MAX_AGE_MS = 24 * 3600 * 1000;
+      let _outboxFlushing = false;
+
+      function _outboxRand_() { return Date.now() + '_' + Math.random().toString(36).slice(2, 10); }
+      function _outboxLoad_() {
+        try { const a = JSON.parse(localStorage.getItem(OUTBOX_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+      }
+      function _outboxSave_(arr) {
+        try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(arr)); } catch (e) { /* penyimpanan penuh: abaikan */ }
+        _outboxRenderBadge_();
+      }
+      function _outboxHasKey_(key) {
+        return _outboxLoad_().some(j => j.key === key && j.status === 'pending');
+      }
+      function _outboxEnqueue_(job) {
+        const arr = _outboxLoad_();
+        const full = Object.assign({
+          id: 'ob' + _outboxRand_(), requestId: 'r' + _outboxRand_(), createdAt: Date.now(),
+          attempts: 0, nextAt: 0, status: 'pending', lastError: '', notified: false
+        }, job);
+        arr.push(full);
+        _outboxSave_(arr);
+        return full;
+      }
+      function _outboxUpdate_(id, mutate) {
+        const arr = _outboxLoad_();
+        const j = arr.find(x => x.id === id);
+        if (!j) return null;
+        mutate(j);
+        _outboxSave_(arr);
+        return j;
+      }
+      function _outboxRemove_(id) {
+        _outboxSave_(_outboxLoad_().filter(x => x.id !== id));
+      }
+      function _outboxIsTransient_(netErr, json, msg) {
+        if (netErr) return true;
+        if (json && (json.busy || json.retryable)) return true;
+        return /sibuk|timeout|waktu tunggu|coba lagi|too many|try again|exception|terputus|failed to fetch/i.test(msg || '');
+      }
+
+      async function _outboxFlush_(force) {
+        if (_outboxFlushing) return;
+        if (typeof INVENTORY_JS_GAS_URL === 'undefined' || !INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) return;
+        // Kunci antar-tab (supaya 2 tab tidak mengirim job yang sama bersamaan).
+        const lk = Number(localStorage.getItem(OUTBOX_LOCK_KEY) || 0);
+        if (Date.now() - lk < 45000) return;
+        if (force) {
+          const arr0 = _outboxLoad_();
+          arr0.forEach(j => { if (j.status === 'pending') j.nextAt = 0; });
+          _outboxSave_(arr0);
+        }
+        if (!_outboxLoad_().some(j => j.status === 'pending')) return;
+
+        _outboxFlushing = true;
+        try {
+          for (let guard = 0; guard < 25; guard++) {
+            const job = _outboxLoad_().find(j => j.status === 'pending' && j.nextAt <= Date.now());
+            if (!job) break;
+            try { localStorage.setItem(OUTBOX_LOCK_KEY, String(Date.now())); } catch (e) { /* abaikan */ }
+
+            if (Date.now() - job.createdAt > OUTBOX_MAX_AGE_MS) {
+              _outboxUpdate_(job.id, j => { j.status = 'failed'; j.lastError = 'Data tertunda lebih dari 24 jam (kadaluarsa).'; });
+              _outboxNotifyFailed_(job.id);
+              continue;
+            }
+
+            let json = null, netErr = null;
+            try {
+              json = await _getFromGasWithRetry_(job.action, job.payload, 1, job.requestId);
+            } catch (e) { netErr = e; }
+
+            if (json && json.success) {
+              _outboxRemove_(job.id);
+              try { _ddPendingSet_(job.key); } catch (e) { /* abaikan */ }
+              try { showToast(job.successMessage || 'Data berhasil tersimpan di server.', 'success'); } catch (e) { /* abaikan */ }
+              try { if (job.action === 'saveDispatchDelivered') loadTeamDispatchTasks(true); } catch (e) { /* abaikan */ }
+              continue;
+            }
+
+            const msg = netErr ? ((netErr && netErr.message) || 'Koneksi ke server terputus.')
+                               : ((json && json.message) || 'Server menolak permintaan (tanpa pesan).');
+            const transient = _outboxIsTransient_(netErr, json, msg);
+            const updated = _outboxUpdate_(job.id, j => {
+              j.attempts = (j.attempts || 0) + 1;
+              j.lastError = msg;
+              if (transient && j.attempts < OUTBOX_MAX_ATTEMPTS) {
+                j.nextAt = Date.now() + OUTBOX_BACKOFF_MS[Math.min(j.attempts - 1, OUTBOX_BACKOFF_MS.length - 1)];
+              } else {
+                j.status = 'failed';
+              }
+            });
+            if (updated && updated.status === 'failed') _outboxNotifyFailed_(job.id);
+            else if (!transient) break;
+            // transient: lanjut ke job lain yang sudah jatuh tempo; job ini menunggu nextAt
+          }
+        } finally {
+          try { localStorage.removeItem(OUTBOX_LOCK_KEY); } catch (e) { /* abaikan */ }
+          _outboxFlushing = false;
+          _outboxRenderBadge_();
+        }
+      }
+
+      function _outboxNotifyFailed_(id) {
+        const arr = _outboxLoad_();
+        const j = arr.find(x => x.id === id);
+        if (!j || j.notified) return;
+        j.notified = true;
+        _outboxSave_(arr);
+        try { _ddPendingDelete_(j.key); } catch (e) { /* abaikan */ }   // lepas penahan agar kartu bisa kembali muncul
+        try { loadTeamDispatchTasks(true); } catch (e) { /* abaikan */ }
+        try {
+          showAppAlert('Data ' + (j.label || 'task') + ' belum bisa disimpan ke server: ' + j.lastError +
+            '\n\nData masih aman tersimpan di HP. Ketuk tombol merah di kiri bawah untuk Coba Lagi atau Buang.', 'error');
+        } catch (e) { /* abaikan */ }
+      }
+
+      function _outboxRenderBadge_() {
+        if (typeof document === 'undefined' || !document.body) return;
+        let el = document.getElementById('outbox-badge');
+        const arr = _outboxLoad_();
+        if (!arr.length) { if (el) el.remove(); return; }
+        if (!el) {
+          el = document.createElement('button');
+          el.id = 'outbox-badge';
+          el.type = 'button';
+          el.setAttribute('aria-live', 'polite');
+          el.style.cssText = 'position:fixed;left:12px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;' +
+            'padding:8px 14px;border-radius:999px;border:0;color:#fff;font-size:12px;font-weight:700;' +
+            'box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:80vw;';
+          el.addEventListener('click', _outboxBadgeClick_);
+          document.body.appendChild(el);
+        }
+        const failed = arr.filter(j => j.status === 'failed').length;
+        const pending = arr.length - failed;
+        el.textContent = failed ? ('\u26A0 ' + failed + ' data gagal \u2014 ketuk') : ('\u23F3 ' + pending + ' data menunggu sinkron');
+        el.style.background = failed ? '#dc2626' : '#d97706';
+      }
+
+      async function _outboxBadgeClick_() {
+        const arr = _outboxLoad_();
+        const failedJobs = arr.filter(j => j.status === 'failed');
+        if (!failedJobs.length) {
+          showToast('Mengirim data yang tertunda...', 'warning');
+          _outboxFlush_(true);
+          return;
+        }
+        const j = failedJobs[0];
+        const retry = await showAppConfirm(
+          'Data ' + (j.label || 'task') + ' gagal tersimpan:\n' + j.lastError + '\n\nCoba kirim lagi?',
+          { okLabel: 'Coba Lagi', cancelLabel: 'Nanti' }
+        );
+        if (retry) {
+          _outboxUpdate_(j.id, x => { x.status = 'pending'; x.attempts = 0; x.nextAt = 0; x.notified = false; });
+          try { _ddPendingSet_(j.key); } catch (e) { /* abaikan */ }
+          _outboxFlush_(true);
+          return;
+        }
+        const discard = await showAppConfirm(
+          'Buang data ' + (j.label || 'task') + ' dari HP? Task akan tampil kembali di daftar dan perlu diisi ulang.',
+          { okLabel: 'Buang', cancelLabel: 'Simpan' }
+        );
+        if (discard) {
+          _outboxRemove_(j.id);
+          try { _ddPendingDelete_(j.key); } catch (e) { /* abaikan */ }
+          try { loadTeamDispatchTasks(true); } catch (e) { /* abaikan */ }
+        }
+      }
+
+      function _outboxInit_() {
+        _outboxRenderBadge_();
+        setInterval(() => { _outboxFlush_(false); }, 10000);
+        window.addEventListener('online', () => { _outboxFlush_(true); });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) _outboxFlush_(false); });
+        setTimeout(() => { _outboxFlush_(false); }, 2500);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _outboxInit_);
+      else _outboxInit_();
 
       function saveTeamDispatchRows() {
         try { localStorage.setItem(TEAM_DISPATCH_STORAGE_KEY, JSON.stringify(_teamDispatchRows)); } catch (e) { /* abaikan */ }
@@ -10931,7 +11126,7 @@
        * selalu berhasil normal. TIDAK cocok untuk payload besar (mis. foto
        * base64) karena URL punya batas panjang — tetap pakai POST untuk itu.
        */
-      async function _getFromGasWithRetry_(actionName, data, maxRetries) {
+      async function _getFromGasWithRetry_(actionName, data, maxRetries, fixedRequestId) {
         if (maxRetries === undefined) maxRetries = 2;
         // requestId dibuat SEKALI di sini (bukan di dalam window.fetch), lalu
         // dipakai ulang di SETIAP percobaan retry di bawah — supaya kalau
@@ -10939,16 +11134,27 @@
         // balasannya terputus, percobaan berikutnya dengan requestId yang
         // sama tidak akan membuat data dobel (lihat _handleGuardedWrite_ di
         // Code.gs).
-        const requestId = 'r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+        const requestId = fixedRequestId || ('r' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
         const dataWithRid = Object.assign({}, data, { requestId: requestId });
         const url = INVENTORY_JS_GAS_URL +
           '?action=' + encodeURIComponent(actionName) +
           '&data=' + encodeURIComponent(JSON.stringify(dataWithRid));
         let lastErr = null;
+        let busyTries = 0;
+        const BUSY_BACKOFF_MS = [2000, 3500, 5000, 8000];
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
             const res = await fetch(url);
-            return await res.json();
+            const json = await res.json();
+            // Server antri (lock penuh): BELUM ada yang ditulis, aman diulang dengan
+            // requestId yang sama. Tunggu bertahap + jitter agar banyak HP tidak serentak.
+            if (json && json.busy && busyTries < BUSY_BACKOFF_MS.length) {
+              if (busyTries === 0) { try { showToast('Server sedang antri, mencoba otomatis...', 'warning'); } catch (e) {} }
+              await new Promise(r => setTimeout(r, BUSY_BACKOFF_MS[busyTries++] + Math.random() * 1000));
+              attempt--; // antrian server bukan kegagalan jaringan, jangan habiskan jatah retry
+              continue;
+            }
+            return json;
           } catch (err) {
             lastErr = err;
             if (attempt < maxRetries) {
@@ -11230,27 +11436,22 @@
           _clearBtnLoading_(saveBtn);
           _releaseDispatchWakeLock_();
 
-          _optimisticRun_({
-            apply: () => {
-              _ddPendingSet_(ddPendKey); // tahan kartu agar tidak muncul lagi saat refresh
-              closeDispatchDeliveredModal();
-              if (ddRowIdx >= 0) _teamDispatchRows.splice(ddRowIdx, 1);
-              saveTeamDispatchRows();
-              renderTeamDispatchCards();
-            },
-            successMessage: 'Task Team Dispatch berhasil diselesaikan!',
-            request: () => _getFromGasWithRetry_('saveDispatchDelivered', payload, 3),
-            onSuccess: () => { loadTeamDispatchTasks(true); },
-            rollback: () => {
-              _ddPendingDelete_(ddPendKey); // gagal -> lepas penahan supaya kartu kembali & bisa dicoba lagi
-              if (ddRowRef && ddRowIdx >= 0) {
-                _teamDispatchRows.splice(ddRowIdx, 0, ddRowRef);
-                saveTeamDispatchRows();
-                renderTeamDispatchCards();
-              }
-            },
-            errorPrefix: 'Foto sudah ter-upload, tapi data Delivered BELUM tersimpan di server: '
+          // OUTBOX: simpan dulu di HP (anti-hilang), baru kirim di belakang layar dengan
+          // retry otomatis. Kartu disembunyikan selama job masih antre.
+          _outboxEnqueue_({
+            action: 'saveDispatchDelivered',
+            payload: payload,
+            key: ddPendKey,
+            label: 'Delivered ' + (_ddContext.ticket || ''),
+            successMessage: 'Task Team Dispatch berhasil diselesaikan!'
           });
+          _ddPendingSet_(ddPendKey);
+          closeDispatchDeliveredModal();
+          if (ddRowIdx >= 0) _teamDispatchRows.splice(ddRowIdx, 1);
+          saveTeamDispatchRows();
+          renderTeamDispatchCards();
+          showToast('Delivered tersimpan di HP, sedang dikirim ke server...', 'success');
+          _outboxFlush_(true);
         } catch (err) {
           _setStatus(statusEl, 'error', err.message);
           _clearBtnLoading_(saveBtn);
