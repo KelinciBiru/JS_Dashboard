@@ -1062,6 +1062,18 @@
       --dock-h: 74px;
     }
 
+    /* ---- FIX: elemen KHUSUS MOBILE harus disembunyikan di Desktop ----
+       Sebelumnya #mobile-dock & #mobile-sidebar-backdrop hanya didefinisikan di
+       dalam @media (max-width:768px), tanpa aturan dasar "display:none".
+       Akibatnya di PC/Laptop (>768px) markup dock tampil sebagai elemen biasa
+       (tanpa style) -> SVG ikon Role/Keluar membesar & teks "Raka, Fajry" muncul
+       di pojok kiri atas. Aturan di bawah dimenangkan lagi oleh display:flex di
+       dalam @media (max-width:768px) sehingga tampilan HP tidak berubah. */
+    #mobile-dock,
+    #mobile-sidebar-backdrop {
+      display: none;
+    }
+
     /* ---- Ikon bulat generik (dipakai homescreen, dock, folder) ---- */
     .mh-icon-surface {
       display: flex;
