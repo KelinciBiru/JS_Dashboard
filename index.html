@@ -1473,6 +1473,27 @@
            dipakai untuk: (1) membatasi Cardview Task Team Dispatch cuma
            menampilkan Task milik Team ini, (2) menandai device ini boleh
            mengirim ping Geolocation ke peta Pool Driver. -->
+      <!-- Region dropdown — HANYA muncul untuk role ADMIN (lihat selectRole()).
+           Region yang dipilih disimpan (localStorage 'nod_currentRegion'),
+           ditampilkan di badge (ADMIN · Region) dan dipakai memfilter data
+           Request BD - Recap BAU (GAS action getJabodetabek&region=...). -->
+      <div id="login-region-wrap" style="margin-bottom:14px;display:none;">
+        <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
+          Region
+        </label>
+        <select id="loginRegionSelect" style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
+               font-size:14px;outline:none;transition:border .2s;box-sizing:border-box;background:#fff;color:#1e293b;">
+          <option value="">-- Pilih Region --</option>
+          <option value="Jakarta">Jakarta</option>
+          <option value="Bandung">Bandung</option>
+          <option value="Yogyakarta">Yogyakarta</option>
+          <option value="Semarang">Semarang</option>
+          <option value="Surabaya">Surabaya</option>
+          <option value="Bali">Bali</option>
+          <option value="Makasar">Makasar</option>
+        </select>
+      </div>
+
       <div id="login-team-wrap" style="margin-bottom:16px;display:none;">
         <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
           Team (Task Hari Ini)
@@ -2568,7 +2589,7 @@
       <!-- REQUEST BD - JABODETABEK -->
       <div id="content-RequestBDJabodetabek" class="page-content">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-          <h1 class="text-lg font-bold text-slate-800">Request BD - Jabodetabek</h1>
+          <h1 id="jabodetabek-title" class="text-lg font-bold text-slate-800">Request BD - Recap BAU</h1>
           <div class="flex flex-col items-stretch sm:items-end gap-2">
             <div class="w-full sm:w-auto flex flex-col sm:flex-row sm:flex-nowrap gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50/70">
               <div class="sm:shrink-0">
@@ -3356,6 +3377,7 @@
        */
       function _forceSessionExpiredReturnToLogin_() {
         localStorage.removeItem('nod_currentRole');
+        localStorage.removeItem('nod_currentRegion');
         localStorage.removeItem(LS_LAST_ACTIVE_KEY);
         const baseUrl = window.location.href.split('#')[0].split('?')[0];
         window.location.href = baseUrl + '?_r=' + Date.now();
@@ -3671,6 +3693,11 @@
       let currentTeamKey = '';
       let currentTeamPic = '';
       let selectedTeamKey = '';
+      // Region yang dipilih role ADMIN di halaman Login (Jakarta, Bandung,
+      // Yogyakarta, Semarang, Surabaya, Bali, Makasar). Dipakai untuk badge
+      // "ADMIN · Region" & memfilter data Request BD - Recap BAU.
+      let currentRegion = '';
+      const REGION_OPTIONS = ['Jakarta', 'Bandung', 'Yogyakarta', 'Semarang', 'Surabaya', 'Bali', 'Makasar'];
 
       function selectRole(role) {
         selectedRole = role;
@@ -3688,6 +3715,13 @@
             btn.style.boxShadow = 'none';
           }
         });
+
+        // Dropdown Region cuma untuk role ADMIN.
+        const regionWrap = document.getElementById('login-region-wrap');
+        if (regionWrap) {
+          regionWrap.style.display = (role === 'ADMIN') ? 'block' : 'none';
+          if (role !== 'ADMIN') document.getElementById('loginRegionSelect').value = '';
+        }
 
         // Dropdown Team cuma relevan buat role Dispatch — role lain (ADMIN/
         // Prepare) tidak terikat satu Team tertentu.
@@ -3780,6 +3814,9 @@
         if (currentRole === 'Dispatch' && currentTeamPic) {
           return currentRole + ' · ' + currentTeamPic;
         }
+        if (currentRole === 'ADMIN' && currentRegion) {
+          return currentRole + ' · ' + currentRegion;
+        }
         return currentRole || 'Role';
       }
 
@@ -3788,6 +3825,8 @@
         const err = document.getElementById('login-error');
         const teamSelect = document.getElementById('loginTeamSelect');
         selectedTeamKey = selectedRole === 'Dispatch' ? teamSelect.value : '';
+        const regionSelect = document.getElementById('loginRegionSelect');
+        const selectedRegion = selectedRole === 'ADMIN' ? (regionSelect ? regionSelect.value : '') : '';
 
         if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
           _setStatus(err, 'error', 'Password salah atau role belum dipilih.');
@@ -3804,8 +3843,21 @@
           err.style.display = 'block';
           return;
         }
+        // Role ADMIN WAJIB pilih Region sebelum masuk.
+        if (selectedRole === 'ADMIN' && !selectedRegion) {
+          _setStatus(err, 'error', 'Pilih Region terlebih dahulu.');
+          err.style.display = 'block';
+          return;
+        }
         err.style.display = 'none';
         currentRole = selectedRole;
+
+        // Region berubah -> buang data Request BD - Recap BAU yang sudah termuat
+        // (milik region sebelumnya) supaya dimuat ulang sesuai region baru.
+        currentRegion = selectedRegion;
+        if (currentRegion) localStorage.setItem('nod_currentRegion', currentRegion);
+        else localStorage.removeItem('nod_currentRegion');
+        _resetRecapBauState_();
 
         localStorage.setItem('nod_currentRole', currentRole);
         if (currentRole === 'Dispatch') {
@@ -3858,6 +3910,13 @@
         currentTeamKey = '';
         currentTeamPic = '';
         selectedTeamKey = '';
+        currentRegion = '';
+        localStorage.removeItem('nod_currentRegion');
+        _resetRecapBauState_();
+        const _regionSel = document.getElementById('loginRegionSelect');
+        if (_regionSel) _regionSel.value = '';
+        const _regionWrap = document.getElementById('login-region-wrap');
+        if (_regionWrap) _regionWrap.style.display = 'none';
         localStorage.removeItem('nod_currentRole');
         localStorage.removeItem('nod_currentTeamKey');
         localStorage.removeItem('nod_currentTeamPic');
@@ -3889,6 +3948,7 @@
         // index.html terbaru karena ini request baru dari server).
         if (_isSessionExpired_()) {
           localStorage.removeItem('nod_currentRole');
+          localStorage.removeItem('nod_currentRegion');
           localStorage.removeItem('nod_currentTeamKey');
           localStorage.removeItem('nod_currentTeamPic');
           localStorage.removeItem(LS_LAST_ACTIVE_KEY);
@@ -3898,6 +3958,10 @@
         const savedRole = localStorage.getItem('nod_currentRole');
         if (savedRole && PASSWORDS.hasOwnProperty(savedRole)) {
           currentRole = savedRole;
+          if (currentRole === 'ADMIN') {
+            const savedRegion = localStorage.getItem('nod_currentRegion') || '';
+            currentRegion = REGION_OPTIONS.indexOf(savedRegion) !== -1 ? savedRegion : '';
+          }
           if (currentRole === 'Dispatch') {
             currentTeamKey = localStorage.getItem('nod_currentTeamKey') || '';
             currentTeamPic = localStorage.getItem('nod_currentTeamPic') || '';
@@ -3948,7 +4012,7 @@
           id: 'requestbd', label: 'Request BD', roles: ['ADMIN', 'BD'],
           roleLabels: { BD: 'Form Booking Machine' },
           items: [
-            { label: 'Jabodetabek', action: "showJabodetabek()", roles: ['ADMIN'] },
+            { label: 'Recap BAU', action: "showJabodetabek()", roles: ['ADMIN'] },
             { label: 'Event', action: "showEvent()", roles: ['ADMIN'] },
             { label: 'Ad Hoc', action: "showAdHoc()", roles: ['ADMIN'] },
             { label: 'Form Booking Machine', action: "showInventory('Form Booking Machine')", roles: ['ADMIN', 'BD'] },
@@ -6509,6 +6573,34 @@
       let _jabodetabekFetching = false;
       let _jabodetabekLastFetch = null;
 
+      // Request BD - Recap BAU (dulu Jabodetabek) difilter per Region login.
+      // Cache lokal dipisah per region supaya pindah region tidak menampilkan
+      // data region lain.
+      function _recapBauCacheKey_() {
+        return 'jabodetabek_' + (currentRegion ? currentRegion.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'all');
+      }
+
+      // Dipanggil saat login/logout: buang data & seleksi Recap BAU milik region sebelumnya.
+      function _resetRecapBauState_() {
+        _jabodetabekLoaded = false;
+        _jabodetabekData = [];
+        _jabodetabekHeaders = [];
+        _jabodetabekLastFetch = null;
+        _jabodetabekFetching = false;
+        _jabodetabekSelectedRows = new Map();
+        _jabodetabekVisibleRowsByKey = {};
+        _jabodetabekAddTaskMode = false;
+        // Request BD - Event ikut direset (difilter region yang sama)
+        _eventLoaded = false;
+        _eventData = [];
+        _eventHeaders = [];
+        _eventLastFetch = null;
+        _eventFetching = false;
+        _eventSelectedRows = new Map();
+        _eventVisibleRowsByKey = {};
+        _eventAddTaskMode = false;
+      }
+
       // Kolom yang ditampilkan di menu "Input Task" setelah data dikirim dari Jabodetabek/Event.
       // 'VMC NO' BUKAN kolom sheet Request BD — nilainya diisi lewat dropdown (ACTION PLAN
       // "Delivery Approval"/"Machine Exchange", lihat _vmcRtdOptionsCache) atau otomatis
@@ -7397,7 +7489,7 @@
         const statusEl = document.getElementById('jabodetabek-status');
 
         if (!_jabodetabekLoaded) {
-          const cached = loadDataCache('jabodetabek');
+          const cached = loadDataCache(_recapBauCacheKey_());
           if (cached) {
             _jabodetabekHeaders = cached.payload.headers || [];
             _jabodetabekData = cached.payload.data || [];
@@ -7424,7 +7516,9 @@
         _jabodetabekFetching = true;
         if (!_jabodetabekLoaded) statusEl.textContent = 'Memuat data...';
         try {
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabek');
+          const regionAtRequest = currentRegion;
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabek' +
+            (regionAtRequest ? '&region=' + encodeURIComponent(regionAtRequest) : ''));
           const json = await res.json();
           if (!json.success) {
             _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
@@ -7439,7 +7533,9 @@
           _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
           _populateLocationFilterOptions('jabodetabek-filter-actionplan', _jabodetabekData, '__actionplan', 'Semua Action Plan');
           _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
-          saveDataCache('jabodetabek', { headers: _jabodetabekHeaders, data: _jabodetabekData });
+          // Abaikan hasil kalau region berubah (logout/login ulang) saat request berjalan.
+          if (regionAtRequest !== currentRegion) return;
+          saveDataCache(_recapBauCacheKey_(), { headers: _jabodetabekHeaders, data: _jabodetabekData });
           statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderJabodetabekTable();
           if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
@@ -12320,6 +12416,11 @@
       let _eventFetching = false;
       let _eventLastFetch = null;
 
+      // Request BD - Event juga difilter per Region login; cache lokal per region.
+      function _eventCacheKey_() {
+        return 'event_' + (currentRegion ? currentRegion.toLowerCase().replace(/[^a-z0-9]/g, '_') : 'all');
+      }
+
       // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
       function toggleEventAddTask() {
         _eventAddTaskMode = true;
@@ -12440,7 +12541,7 @@
         const statusEl = document.getElementById('event-status');
 
         if (!_eventLoaded) {
-          const cached = loadDataCache('event');
+          const cached = loadDataCache(_eventCacheKey_());
           if (cached) {
             _eventHeaders = cached.payload.headers || [];
             _eventData = cached.payload.data || [];
@@ -12466,7 +12567,9 @@
         _eventFetching = true;
         if (!_eventLoaded) statusEl.textContent = 'Memuat data...';
         try {
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getEvent');
+          const regionAtRequestEv = currentRegion;
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getEvent' +
+            (regionAtRequestEv ? '&region=' + encodeURIComponent(regionAtRequestEv) : ''));
           const json = await res.json();
           if (!json.success) {
             _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
@@ -12481,7 +12584,8 @@
           _populateLocationFilterOptions('event-filter-kota', _eventData, '__kota', 'Semua Kota');
           _populateLocationFilterOptions('event-filter-actionplan', _eventData, '__actionplan', 'Semua Action Plan');
           _refreshKecamatanFilterOptions('event', _eventData);
-          saveDataCache('event', { headers: _eventHeaders, data: _eventData });
+          if (regionAtRequestEv !== currentRegion) return; // region berubah saat request berjalan
+          saveDataCache(_eventCacheKey_(), { headers: _eventHeaders, data: _eventData });
           statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderEventTable();
         } catch (err) {
