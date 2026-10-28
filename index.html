@@ -3599,11 +3599,42 @@
           return { url, options, rid, action };
         }
 
+        // REGION LOGIN -> backend. Region yang dipilih di halaman Login (currentRegion)
+        // otomatis ditempelkan ke setiap panggilan ke GAS Inventory (GET: &region=...,
+        // POST: field "region" di body) supaya Menu Utama, Machine, Status Order from BD,
+        // Action Plan, Summary Dispatch, Plan Task, dan pencatatan Delivered memakai data /
+        // spreadsheet region yang dipilih. Panggilan yang sudah membawa region sendiri
+        // (mis. Request BD - Recap BAU/Event) dibiarkan apa adanya. Role tanpa region
+        // (Dispatch/Prepare/BD) tidak mengirim apa-apa -> GAS memakai Jakarta seperti sebelumnya.
+        function withRegion(url, options) {
+          let reg = '';
+          try { reg = (typeof currentRegion === 'string') ? currentRegion : ''; } catch (e) { reg = ''; }
+          if (!reg || url.indexOf(INVENTORY_JS_GAS_URL) !== 0) return { url, options };
+          if (options && typeof options.body === 'string') {
+            try {
+              const b = JSON.parse(options.body);
+              if (b && typeof b === 'object' && !b.region) {
+                b.region = reg;
+                return { url, options: Object.assign({}, options, { body: JSON.stringify(b) }) };
+              }
+            } catch (e) { /* body bukan JSON action GAS, biarkan */ }
+            return { url, options };
+          }
+          if (!/[?&]region=/.test(url)) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + 'region=' + encodeURIComponent(reg);
+          }
+          return { url, options };
+        }
+
         window.fetch = function (url, options) {
           options = options || {};
           if (typeof url !== 'string' || url.indexOf('script.google.com') === -1) {
             return NATIVE_FETCH(url, options); // bukan panggilan ke GAS NOD, lewatkan apa adanya
           }
+
+          const regioned = withRegion(url, options);
+          url = regioned.url;
+          options = regioned.options;
 
           const prepared = prepareRequest(url, options);
           const finalUrl = prepared.url;
@@ -4458,15 +4489,28 @@
       const DATA_CACHE_PREFIX = 'nod_datacache_';
       const REVALIDATE_THROTTLE_MS = 20000;
 
+      // Cache yang isinya bergantung Region login: kuncinya diberi akhiran region supaya
+      // pindah region (login ulang) tidak sempat menampilkan data region sebelumnya.
+      const REGION_SCOPED_CACHE_KEYS = [
+        'dashboardSummary', 'bdStatusSummary', 'actionPlanSummary', 'summaryDispatch',
+        'planTaskBatches', 'stockOpnameDropdowns'
+      ];
+      function _dataCacheKey_(key) {
+        if (typeof currentRegion === 'string' && currentRegion && REGION_SCOPED_CACHE_KEYS.indexOf(key) !== -1) {
+          return key + '_' + currentRegion.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        }
+        return key;
+      }
+
       function saveDataCache(key, payload) {
         try {
-          localStorage.setItem(DATA_CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), payload: payload }));
+          localStorage.setItem(DATA_CACHE_PREFIX + _dataCacheKey_(key), JSON.stringify({ t: Date.now(), payload: payload }));
         } catch (e) { /* storage penuh/diblokir, abaikan — tidak fatal */ }
       }
 
       function loadDataCache(key) {
         try {
-          const raw = localStorage.getItem(DATA_CACHE_PREFIX + key);
+          const raw = localStorage.getItem(DATA_CACHE_PREFIX + _dataCacheKey_(key));
           if (!raw) return null;
           return JSON.parse(raw);
         } catch (e) { return null; }
@@ -6581,7 +6625,34 @@
       }
 
       // Dipanggil saat login/logout: buang data & seleksi Recap BAU milik region sebelumnya.
+      // Buang SEMUA data di memori/localStorage yang bergantung Region login (Menu Utama,
+      // Machine, Status Order from BD, Action Plan, Summary Dispatch, Plan Task, Team
+      // Dispatch, lookup VMC, Booking) supaya dimuat ulang sesuai region baru.
+      function _resetRegionScopedState_() {
+        _dashboardLoaded = false; _dashboardSummary = { counts: {}, details: {} }; _dashboardFetching = false; _dashboardLastFetch = null;
+        _bdStatusLoaded = false; _bdStatusSummary = { counts: {}, details: {} }; _bdStatusFetching = false; _bdStatusLastFetch = null;
+        _actionPlanLoaded = false; _actionPlanSummary = { counts: {}, details: {} }; _actionPlanFetching = false; _actionPlanLastFetch = null;
+        _summaryDispatchLoaded = false;
+        _summaryDispatchData = { months: [], actionPlanList: [], series: {}, picTable: [], rawRows: [] };
+        _summaryDispatchFetching = false; _summaryDispatchLastFetch = null;
+        _planTaskBatches = []; _planTaskLoaded = false;
+        _teamDispatchRows = [];
+        _vmcRtdOptionsCache = {}; _vmcLatestByLocationCache = {};
+        _bookingLoaded = false; _bookingFetching = false;
+        _bookingData = { bdList: [], locations: [], machines: [] };
+        // Cache localStorage yang tidak ber-akhiran region: buang kalau region berubah.
+        try {
+          const prev = localStorage.getItem('nod_dataRegion') || '';
+          if (prev !== (currentRegion || '')) {
+            localStorage.removeItem(PLAN_TASK_RESULT_STORAGE_KEY);
+            localStorage.removeItem(TEAM_DISPATCH_STORAGE_KEY);
+            localStorage.setItem('nod_dataRegion', currentRegion || '');
+          }
+        } catch (e) { /* abaikan */ }
+      }
+
       function _resetRecapBauState_() {
+        _resetRegionScopedState_();
         _jabodetabekLoaded = false;
         _jabodetabekData = [];
         _jabodetabekHeaders = [];
