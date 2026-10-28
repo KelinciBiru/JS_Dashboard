@@ -1473,7 +1473,7 @@
            dipakai untuk: (1) membatasi Cardview Task Team Dispatch cuma
            menampilkan Task milik Team ini, (2) menandai device ini boleh
            mengirim ping Geolocation ke peta Pool Driver. -->
-      <!-- Region dropdown — HANYA muncul untuk role ADMIN (lihat selectRole()).
+      <!-- Region dropdown — muncul untuk role ADMIN dan Prepare (lihat selectRole()).
            Region yang dipilih disimpan (localStorage 'nod_currentRegion'),
            ditampilkan di badge (ADMIN · Region) dan dipakai memfilter data
            Request BD - Recap BAU (GAS action getJabodetabek&region=...). -->
@@ -3747,11 +3747,13 @@
           }
         });
 
-        // Dropdown Region cuma untuk role ADMIN.
+        // Dropdown Region untuk role ADMIN dan Prepare (Prepare butuh region supaya
+        // Task Preparation / Task Team Prepare hanya menampilkan task region-nya).
         const regionWrap = document.getElementById('login-region-wrap');
         if (regionWrap) {
-          regionWrap.style.display = (role === 'ADMIN') ? 'block' : 'none';
-          if (role !== 'ADMIN') document.getElementById('loginRegionSelect').value = '';
+          const _needsRegion = (role === 'ADMIN' || role === 'Prepare');
+          regionWrap.style.display = _needsRegion ? 'block' : 'none';
+          if (!_needsRegion) document.getElementById('loginRegionSelect').value = '';
         }
 
         // Dropdown Team cuma relevan buat role Dispatch — role lain (ADMIN/
@@ -3845,7 +3847,7 @@
         if (currentRole === 'Dispatch' && currentTeamPic) {
           return currentRole + ' · ' + currentTeamPic;
         }
-        if (currentRole === 'ADMIN' && currentRegion) {
+        if ((currentRole === 'ADMIN' || currentRole === 'Prepare') && currentRegion) {
           return currentRole + ' · ' + currentRegion;
         }
         return currentRole || 'Role';
@@ -3857,7 +3859,7 @@
         const teamSelect = document.getElementById('loginTeamSelect');
         selectedTeamKey = selectedRole === 'Dispatch' ? teamSelect.value : '';
         const regionSelect = document.getElementById('loginRegionSelect');
-        const selectedRegion = selectedRole === 'ADMIN' ? (regionSelect ? regionSelect.value : '') : '';
+        const selectedRegion = (selectedRole === 'ADMIN' || selectedRole === 'Prepare') ? (regionSelect ? regionSelect.value : '') : '';
 
         if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
           _setStatus(err, 'error', 'Password salah atau role belum dipilih.');
@@ -3874,8 +3876,8 @@
           err.style.display = 'block';
           return;
         }
-        // Role ADMIN WAJIB pilih Region sebelum masuk.
-        if (selectedRole === 'ADMIN' && !selectedRegion) {
+        // Role ADMIN dan Prepare WAJIB pilih Region sebelum masuk.
+        if ((selectedRole === 'ADMIN' || selectedRole === 'Prepare') && !selectedRegion) {
           _setStatus(err, 'error', 'Pilih Region terlebih dahulu.');
           err.style.display = 'block';
           return;
@@ -3989,7 +3991,7 @@
         const savedRole = localStorage.getItem('nod_currentRole');
         if (savedRole && PASSWORDS.hasOwnProperty(savedRole)) {
           currentRole = savedRole;
-          if (currentRole === 'ADMIN') {
+          if (currentRole === 'ADMIN' || currentRole === 'Prepare') {
             const savedRegion = localStorage.getItem('nod_currentRegion') || '';
             currentRegion = REGION_OPTIONS.indexOf(savedRegion) !== -1 ? savedRegion : '';
           }
@@ -4493,7 +4495,8 @@
       // pindah region (login ulang) tidak sempat menampilkan data region sebelumnya.
       const REGION_SCOPED_CACHE_KEYS = [
         'dashboardSummary', 'bdStatusSummary', 'actionPlanSummary', 'summaryDispatch',
-        'planTaskBatches', 'stockOpnameDropdowns'
+        'planTaskBatches', 'stockOpnameDropdowns',
+        'invJS', 'invCIMB', 'mprepList', 'taskMprepList', 'teamPrepareCards'
       ];
       function _dataCacheKey_(key) {
         if (typeof currentRegion === 'string' && currentRegion && REGION_SCOPED_CACHE_KEYS.indexOf(key) !== -1) {
@@ -6640,6 +6643,14 @@
         _vmcRtdOptionsCache = {}; _vmcLatestByLocationCache = {};
         _bookingLoaded = false; _bookingFetching = false;
         _bookingData = { bdList: [], locations: [], machines: [] };
+        // Inventory Machine JS/CIMB, Machine Preparation, Task Preparation & Task Team Prepare
+        // ikut region login -> data region sebelumnya harus dibuang.
+        _invJSHeaders = []; _invJSData = []; _invJSLoaded = false; _invJSFetching = false; _invJSLastFetch = null;
+        _invCIMBHeaders = []; _invCIMBData = []; _invCIMBLoaded = false; _invCIMBFetching = false; _invCIMBLastFetch = null;
+        _mprepData = []; _mprepStockCount = 0; _mprepRtdCount = 0; _mprepLoaded = false; _mprepFetching = false; _mprepLastFetch = null;
+        _mprepSelectedMap = new Map(); _mprepAddTaskMode = false;
+        _taskMprepData = []; _taskMprepLoaded = false; _taskMprepFetching = false; _taskMprepLastFetch = null;
+        _teamPrepareCards = []; _teamPrepareLoaded = false; _teamPrepareFetching = false; _teamPrepareLastFetch = null;
         // Cache localStorage yang tidak ber-akhiran region: buang kalau region berubah.
         try {
           const prev = localStorage.getItem('nod_dataRegion') || '';
