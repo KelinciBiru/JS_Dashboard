@@ -10855,7 +10855,7 @@
       //  - Reason (paragraf) -> kolom AF "LOGISTICS DETAIL REMARK"
       //  Baris dicari lewat TICKET (kolom A). Klik "Simpan" -> action
       //  'saveDispatchCancel' (lihat saveDispatchCancel_ di GAS): data dicatat,
-      //  lalu task dikembalikan ke status "Open" seperti Cancel yang lama.
+      //  lalu task di-set status "Cancelled" (hilang dari card).
       //  Klik "Batal" = tutup popup tanpa perubahan apa pun.
       // =============================================
       let _dcContext = null; // { rowNumber, ticket, actionPlan }
