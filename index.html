@@ -2190,6 +2190,38 @@
         </div>
       </div>
 
+      <!-- MODAL: Cancel — Team Dispatch -->
+      <div id="dispatch-cancel-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto">
+          <h3 class="text-sm font-bold text-slate-800 mb-1">Cancel Task</h3>
+          <p id="dc-task-info" class="text-xs text-slate-500 mb-3 break-words"></p>
+
+          <div class="flex flex-col gap-3 text-sm">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Logistic Update</label>
+              <select id="dc-logistic-update"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                <option value="">-- Pilih Logistic Update --</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Reason</label>
+              <textarea id="dc-reason" rows="4"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm"
+                placeholder="Tulis alasan cancel..."></textarea>
+            </div>
+            <div id="dc-status" class="text-xs"></div>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <button id="dc-close-btn" onclick="closeDispatchCancelModal()"
+              class="px-3 py-1.5 text-xs font-semibold text-slate-600">Batal</button>
+            <button id="dc-save-btn" onclick="submitDispatchCancel()"
+              class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-md">Simpan</button>
+          </div>
+        </div>
+      </div>
+
       <!-- TEAM PREPARE -->
       <div id="content-TeamPrepare" class="page-content">
         <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -10744,7 +10776,7 @@
             '<div class="flex flex-col gap-2 mt-2">' +
               '<button onclick="openDispatchDeliveredModal(' + row.rowNumber + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Delivered</button>' +
-              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\', this)" ' +
+              '<button onclick="openDispatchCancelModal(' + row.rowNumber + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
             '</div>'
           )
@@ -10753,7 +10785,7 @@
             '<div class="flex flex-col gap-2 mt-2">' +
               '<button onclick="handleDispatchTiba(' + row.rowNumber + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white">Tiba</button>' +
-              '<button onclick="handleDispatchAction(' + row.rowNumber + ', \'Open\', this)" ' +
+              '<button onclick="openDispatchCancelModal(' + row.rowNumber + ', this)" ' +
                 'class="w-full px-2 py-1.5 rounded-md text-xs font-semibold border bg-white border-slate-300 text-slate-600 hover:bg-slate-50">Cancel</button>' +
             '</div>'
           )
@@ -10812,6 +10844,107 @@
             showAppAlert('Gagal terhubung ke server: ' + err.message, 'error');
             _clearBtnLoading_(btnEl);
           });
+      }
+
+      // =============================================
+      // POPUP "CANCEL" — Team Dispatch (berlaku untuk semua Region)
+      // Tombol "Cancel" di card (status On Delivery / Arrived) membuka popup ini:
+      //  - Logistic Update (dropdown dari sheet "Source" F3:F18, spreadsheet
+      //    "Logistic Request 2026", action 'getLogisticsUpdateOptions')
+      //    -> dicatat ke sheet "Recap BAU" kolom AE "LOGISTICS UPDATE"
+      //  - Reason (paragraf) -> kolom AF "LOGISTICS DETAIL REMARK"
+      //  Baris dicari lewat TICKET (kolom A). Klik "Simpan" -> action
+      //  'saveDispatchCancel' (lihat saveDispatchCancel_ di GAS): data dicatat,
+      //  lalu task dikembalikan ke status "Open" seperti Cancel yang lama.
+      //  Klik "Batal" = tutup popup tanpa perubahan apa pun.
+      // =============================================
+      let _dcContext = null; // { rowNumber, ticket, actionPlan }
+      let _dcSaving = false;
+      let _dcOptions = null; // cache opsi Logistic Update
+
+      async function _populateDispatchCancelOptions_() {
+        const selectEl = document.getElementById('dc-logistic-update');
+        if (!_dcOptions) {
+          try {
+            const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getLogisticsUpdateOptions&_=' + Date.now());
+            const json = await res.json();
+            _dcOptions = (json.success && Array.isArray(json.options)) ? json.options : null;
+          } catch (err) {
+            _dcOptions = null;
+          }
+        }
+        if (!_dcOptions) {
+          selectEl.innerHTML = '<option value="">-- Gagal memuat pilihan, tutup lalu buka lagi --</option>';
+          return;
+        }
+        const keep = selectEl.value;
+        selectEl.innerHTML = '<option value="">-- Pilih Logistic Update --</option>' +
+          _dcOptions.map(v => '<option value="' + String(v).replace(/"/g, '&quot;') + '">' + v + '</option>').join('');
+        selectEl.value = keep || '';
+      }
+
+      function openDispatchCancelModal(rowNumber, btnEl) {
+        const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
+        if (!row) {
+          showAppAlert('Data task tidak ditemukan, silakan refresh dulu.', 'error');
+          return;
+        }
+        _dcContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', actionPlan: row['ACTION PLAN'] || '' };
+        document.getElementById('dc-task-info').textContent =
+          [row['TICKET'], row['LOCATION NAME']].filter(Boolean).join(' — ');
+        document.getElementById('dc-logistic-update').value = '';
+        document.getElementById('dc-reason').value = '';
+        document.getElementById('dc-status').textContent = '';
+        document.getElementById('dispatch-cancel-modal').classList.remove('hidden');
+        _populateDispatchCancelOptions_();
+      }
+
+      function closeDispatchCancelModal() {
+        if (_dcSaving) return;
+        document.getElementById('dispatch-cancel-modal').classList.add('hidden');
+        _dcContext = null;
+      }
+
+      async function submitDispatchCancel() {
+        if (_dcSaving || !_dcContext) return;
+        const statusEl = document.getElementById('dc-status');
+        const logisticsUpdate = document.getElementById('dc-logistic-update').value.trim();
+        const reason = document.getElementById('dc-reason').value.trim();
+        if (!logisticsUpdate) { _setStatus(statusEl, 'warning', 'Logistic Update wajib dipilih.'); return; }
+        if (!reason) { _setStatus(statusEl, 'warning', 'Reason wajib diisi.'); return; }
+        if (!_dcContext.ticket) { _setStatus(statusEl, 'error', 'TICKET task tidak ditemukan, refresh halaman lalu coba lagi.'); return; }
+
+        _dcSaving = true;
+        const saveBtn = document.getElementById('dc-save-btn');
+        const closeBtn = document.getElementById('dc-close-btn');
+        _setBtnLoading_(saveBtn, 'Menyimpan...');
+        closeBtn.disabled = true;
+        statusEl.textContent = '';
+        let ok = false;
+        try {
+          const json = await _getFromGasWithRetry_('saveDispatchCancel', {
+            rowNumber: _dcContext.rowNumber,
+            ticket: _dcContext.ticket,
+            actionPlan: _dcContext.actionPlan,
+            logisticsUpdate: logisticsUpdate,
+            reason: reason
+          });
+          if (!json || !json.success) {
+            _setStatus(statusEl, 'error', (json && json.message) || 'Gagal menyimpan.');
+          } else {
+            ok = true;
+          }
+        } catch (err) {
+          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
+        }
+        _dcSaving = false;
+        _clearBtnLoading_(saveBtn);
+        closeBtn.disabled = false;
+        if (ok) {
+          closeDispatchCancelModal();
+          try { showToast('Cancel tersimpan.', 'success'); } catch (e) {}
+          loadTeamDispatchTasks(true);
+        }
       }
 
       // =============================================
