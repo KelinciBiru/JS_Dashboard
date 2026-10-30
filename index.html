@@ -1473,15 +1473,17 @@
            dipakai untuk: (1) membatasi Cardview Task Team Dispatch cuma
            menampilkan Task milik Team ini, (2) menandai device ini boleh
            mengirim ping Geolocation ke peta Pool Driver. -->
-      <!-- Region dropdown — muncul untuk role ADMIN dan Prepare (lihat selectRole()).
-           Region yang dipilih disimpan (localStorage 'nod_currentRegion'),
-           ditampilkan di badge (ADMIN · Region) dan dipakai memfilter data
-           Request BD - Recap BAU (GAS action getJabodetabek&region=...). -->
+      <!-- Region dropdown — muncul untuk role ADMIN, Prepare dan Dispatch (lihat
+           selectRole() / _roleNeedsRegion_()). Region yang dipilih disimpan
+           (localStorage 'nod_currentRegion'), ditampilkan di badge (mis. ADMIN · Region)
+           dan dipakai memfilter data (Request BD - Recap BAU, Plan Task, Team Dispatch,
+           Pool Driver, dst). Untuk role Dispatch, daftar Team di bawahnya ikut difilter
+           per Region (onchange -> onLoginRegionChange()). -->
       <div id="login-region-wrap" style="margin-bottom:14px;display:none;">
         <label style="font-size:11px;font-weight:600;color:#64748b;text-align:left;display:block;margin-bottom:6px;">
           Region
         </label>
-        <select id="loginRegionSelect" style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
+        <select id="loginRegionSelect" onchange="onLoginRegionChange()" style="width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;
                font-size:14px;outline:none;transition:border .2s;box-sizing:border-box;background:#fff;color:#1e293b;">
           <option value="">-- Pilih Region --</option>
           <option value="Jakarta">Jakarta</option>
@@ -3756,11 +3758,15 @@
       let currentTeamKey = '';
       let currentTeamPic = '';
       let selectedTeamKey = '';
-      // Region yang dipilih role ADMIN di halaman Login (Jakarta, Bandung,
+      // Region yang dipilih role ADMIN/Prepare/Dispatch di halaman Login (Jakarta, Bandung,
       // Yogyakarta, Semarang, Surabaya, Bali, Makasar). Dipakai untuk badge
-      // "ADMIN · Region" & memfilter data Request BD - Recap BAU.
+      // "<Role> · Region" & memfilter data (Recap BAU, Plan Task, Team Dispatch, dst).
       let currentRegion = '';
       const REGION_OPTIONS = ['Jakarta', 'Bandung', 'Yogyakarta', 'Semarang', 'Surabaya', 'Bali', 'Makasar'];
+      // Role yang WAJIB memilih Region di halaman Login. Dispatch ditambahkan supaya Team
+      // Dispatch & Task-nya (Cardview, Pool Driver, Delivered) ikut Region yang dipilih.
+      const REGION_ROLES = ['ADMIN', 'Prepare', 'Dispatch'];
+      function _roleNeedsRegion_(role) { return REGION_ROLES.indexOf(role) !== -1; }
 
       function selectRole(role) {
         selectedRole = role;
@@ -3779,17 +3785,19 @@
           }
         });
 
-        // Dropdown Region untuk role ADMIN dan Prepare (Prepare butuh region supaya
-        // Task Preparation / Task Team Prepare hanya menampilkan task region-nya).
+        // Dropdown Region untuk role ADMIN, Prepare dan Dispatch (Prepare butuh region supaya
+        // Task Preparation / Task Team Prepare hanya menampilkan task region-nya; Dispatch
+        // supaya daftar Team & Task Team Dispatch hanya milik region-nya).
         const regionWrap = document.getElementById('login-region-wrap');
         if (regionWrap) {
-          const _needsRegion = (role === 'ADMIN' || role === 'Prepare');
+          const _needsRegion = _roleNeedsRegion_(role);
           regionWrap.style.display = _needsRegion ? 'block' : 'none';
           if (!_needsRegion) document.getElementById('loginRegionSelect').value = '';
         }
 
         // Dropdown Team cuma relevan buat role Dispatch — role lain (ADMIN/
-        // Prepare) tidak terikat satu Team tertentu.
+        // Prepare) tidak terikat satu Team tertentu. Daftar Team difilter per Region
+        // (kalau Region belum dipilih -> "Pilih Region dulu").
         const teamWrap = document.getElementById('login-team-wrap');
         if (role === 'Dispatch') {
           teamWrap.style.display = 'block';
@@ -3809,34 +3817,58 @@
        * kali tombol role "Dispatch" ditekan (biar datanya selalu fresh kalau
        * user sempat mendarat di halaman Login dari kemarin/tab ketiduran).
        */
+      let _loginTeamReqSeq_ = 0; // penanda request terbaru (abaikan respons lama kalau Region diganti cepat-cepat)
+
       async function _loadLoginTeamOptions_() {
         const select = document.getElementById('loginTeamSelect');
         const statusEl = document.getElementById('login-team-status');
+        const regionSel = document.getElementById('loginRegionSelect');
+        const region = regionSel ? regionSel.value : '';
+        const seq = ++_loginTeamReqSeq_;
+        statusEl.textContent = '';
+        // Team difilter per Region -> Region wajib dipilih dulu.
+        if (!region) {
+          select.disabled = true;
+          select.innerHTML = '<option value="">-- Pilih Region dulu --</option>';
+          return;
+        }
         select.innerHTML = '<option value="">-- Memuat Team... --</option>';
         select.disabled = true;
-        statusEl.textContent = '';
         if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) {
           select.innerHTML = '<option value="">-- GAS URL belum diisi --</option>';
           return;
         }
         try {
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamsWithTaskToday');
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getTeamsWithTaskToday&region=' + encodeURIComponent(region));
           const json = await res.json();
+          // Region/role berubah selagi menunggu -> buang hasil ini.
+          if (seq !== _loginTeamReqSeq_ || selectedRole !== 'Dispatch') return;
           const teams = (json && json.success) ? (json.teams || []) : [];
           select.disabled = false;
           if (!teams.length) {
             select.innerHTML = '<option value="">-- Belum ada Team dengan Task hari ini --</option>';
-            statusEl.textContent = 'Hubungi ADMIN kalau seharusnya sudah ada Task hari ini.';
+            statusEl.textContent = 'Belum ada Task hari ini di Region ' + region + '. Hubungi ADMIN kalau seharusnya sudah ada.';
             return;
           }
           select.innerHTML = '<option value="">-- Pilih Team --</option>' +
             teams.map(t => '<option value="' + _escapeHtmlAttr_(t.key) + '">' +
               _escapeHtmlAttr_(t.pic) + ' (' + t.taskCount + ' task)</option>').join('');
         } catch (err) {
+          if (seq !== _loginTeamReqSeq_) return;
           select.disabled = false;
           select.innerHTML = '<option value="">-- Gagal memuat Team --</option>';
           _setStatus(statusEl, 'error', err.message);
         }
+      }
+
+      // Dipanggil saat dropdown Region di halaman Login berubah. Khusus role Dispatch:
+      // daftar Team bergantung Region, jadi pilihan Team lama dibuang & daftar dimuat ulang.
+      function onLoginRegionChange() {
+        if (selectedRole !== 'Dispatch') return;
+        selectedTeamKey = '';
+        const teamSel = document.getElementById('loginTeamSelect');
+        if (teamSel) teamSel.value = '';
+        _loadLoginTeamOptions_();
       }
 
       // Ikon mata (Feather-style, stroke="currentColor") untuk toggle
@@ -3877,9 +3909,9 @@
       // supaya jelas device ini login sebagai Team yang mana.
       function _roleDisplayLabel_() {
         if (currentRole === 'Dispatch' && currentTeamPic) {
-          return currentRole + ' · ' + currentTeamPic;
+          return currentRole + ' · ' + currentTeamPic + (currentRegion ? ' · ' + currentRegion : '');
         }
-        if ((currentRole === 'ADMIN' || currentRole === 'Prepare') && currentRegion) {
+        if (_roleNeedsRegion_(currentRole) && currentRegion) {
           return currentRole + ' · ' + currentRegion;
         }
         return currentRole || 'Role';
@@ -3891,12 +3923,19 @@
         const teamSelect = document.getElementById('loginTeamSelect');
         selectedTeamKey = selectedRole === 'Dispatch' ? teamSelect.value : '';
         const regionSelect = document.getElementById('loginRegionSelect');
-        const selectedRegion = (selectedRole === 'ADMIN' || selectedRole === 'Prepare') ? (regionSelect ? regionSelect.value : '') : '';
+        const selectedRegion = _roleNeedsRegion_(selectedRole) ? (regionSelect ? regionSelect.value : '') : '';
 
         if (!selectedRole || PASSWORDS[selectedRole] !== pass) {
           _setStatus(err, 'error', 'Password salah atau role belum dipilih.');
           err.style.display = 'block';
           document.getElementById('loginPassword').value = '';
+          return;
+        }
+        // Role ADMIN, Prepare dan Dispatch WAJIB pilih Region sebelum masuk.
+        // (Dicek SEBELUM Team: daftar Team Dispatch bergantung pada Region.)
+        if (_roleNeedsRegion_(selectedRole) && REGION_OPTIONS.indexOf(selectedRegion) === -1) {
+          _setStatus(err, 'error', 'Pilih Region terlebih dahulu.');
+          err.style.display = 'block';
           return;
         }
         // Role Dispatch WAJIB pilih Team (task hari ini) sebelum masuk —
@@ -3905,12 +3944,6 @@
         // _pingDispatchGeolocation_).
         if (selectedRole === 'Dispatch' && !selectedTeamKey) {
           _setStatus(err, 'error', 'Pilih Team terlebih dahulu.');
-          err.style.display = 'block';
-          return;
-        }
-        // Role ADMIN dan Prepare WAJIB pilih Region sebelum masuk.
-        if ((selectedRole === 'ADMIN' || selectedRole === 'Prepare') && !selectedRegion) {
-          _setStatus(err, 'error', 'Pilih Region terlebih dahulu.');
           err.style.display = 'block';
           return;
         }
@@ -4024,8 +4057,21 @@
 
         const savedRole = localStorage.getItem('nod_currentRole');
         if (savedRole && PASSWORDS.hasOwnProperty(savedRole)) {
+          // Sesi lama (sebelum role ini wajib Region, mis. Dispatch yang login sebelum update)
+          // tidak punya Region -> jangan dipulihkan, minta login ulang & pilih Region.
+          if (_roleNeedsRegion_(savedRole)) {
+            const _sr = localStorage.getItem('nod_currentRegion') || '';
+            if (REGION_OPTIONS.indexOf(_sr) === -1) {
+              localStorage.removeItem('nod_currentRole');
+              localStorage.removeItem('nod_currentRegion');
+              localStorage.removeItem('nod_currentTeamKey');
+              localStorage.removeItem('nod_currentTeamPic');
+              localStorage.removeItem(LS_LAST_ACTIVE_KEY);
+              return;
+            }
+          }
           currentRole = savedRole;
-          if (currentRole === 'ADMIN' || currentRole === 'Prepare') {
+          if (_roleNeedsRegion_(currentRole)) {
             const savedRegion = localStorage.getItem('nod_currentRegion') || '';
             currentRegion = REGION_OPTIONS.indexOf(savedRegion) !== -1 ? savedRegion : '';
           }
