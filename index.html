@@ -3970,6 +3970,8 @@
       function doLogout() {
         // Tandai Team offline SEBELUM currentRole/currentTeamKey dikosongkan.
         stopTeamPresenceHeartbeat_(true);
+        _poolDriverLoadedRegion = null;
+        try { _resetPoolDriverState_(); } catch (e) { /* abaikan */ }
         currentRole = '';
         selectedRole = '';
         currentTeamKey = '';
@@ -9089,6 +9091,23 @@
       // false -> peta HANYA menampilkan Team yang sedang online sekarang.
       const POOL_DRIVER_SHOW_OFFLINE = true;
       let _poolDriverTimelineRows = []; // SEMUA Task Plan Date = hari ini (termasuk Closed) -> sumber Timeline History Dispatch
+      // Region yang datanya sedang tampil di Pool Driver. Kalau berubah (login ulang dgn region lain)
+      // semua marker/badge lama dibuang supaya tidak ada sisa Team dari region sebelumnya.
+      let _poolDriverLoadedRegion = null;
+      function _resetPoolDriverState_() {
+        _poolDriverRows = [];
+        _poolDriverPresence = [];
+        _poolDriverTimelineRows = [];
+        try {
+          Object.keys(_poolDriverMarkers).forEach(k => { if (_poolDriverMap) _poolDriverMap.removeLayer(_poolDriverMarkers[k]); });
+        } catch (e) { /* abaikan */ }
+        _poolDriverMarkers = {};
+        _poolDriverAddrCache = {};
+        _poolDriverAddrInflight = {};
+        _poolDriverAddrError = {};
+        const bd = document.getElementById('pool-driver-timeline-badges'); if (bd) bd.innerHTML = '';
+        const ol = document.getElementById('pool-driver-online-list'); if (ol) ol.innerHTML = '';
+      }
 
       // Tanggal hari ini format "yyyy-MM-dd" berbasis Asia/Jakarta (WIB), supaya
       // cocok dengan format "Plan Date" yang dikirim backend (lihat
@@ -9361,7 +9380,11 @@
           _setStatus(statusEl, 'warning', 'Library peta (Leaflet) gagal dimuat — cek koneksi internet lalu refresh halaman.');
           return;
         }
-        statusEl.textContent = 'Memuat posisi Team Dispatch...';
+        statusEl.textContent = 'Memuat posisi Team Dispatch' + (currentRegion ? ' — Region ' + currentRegion : '') + '...';
+        if (_poolDriverLoadedRegion !== (currentRegion || '')) {
+          _resetPoolDriverState_();
+          _poolDriverLoadedRegion = currentRegion || '';
+        }
         try {
           // Tiga sumber dimuat bersamaan (tombol Refresh & auto-refresh cukup satu
           // putaran): presence Team online, task aktif (fallback posisi), timeline.
@@ -9397,9 +9420,8 @@
             return String(r['Plan Date'] || '').trim() === todayStrPoolDriver;
           }) : [];
 
-          if (timelineRes.success) {
-            _poolDriverTimelineRows = timelineRes.rows || [];
-          }
+          // Gagal muat -> kosongkan (jangan pertahankan data lama yang bisa milik region lain).
+          _poolDriverTimelineRows = timelineRes.success ? (timelineRes.rows || []) : [];
 
           const teams = _poolDriverGroupByTeam_();
           const onlineCount = teams.filter(t => t.online).length;
