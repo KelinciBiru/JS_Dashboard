@@ -2229,6 +2229,32 @@
         </div>
       </div>
 
+      <!-- MODAL: Attachment card Task Team Dispatch (Surat Jalan PDF, Placement / Access Documentation, Form Pengiriman) -->
+      <div id="dispatch-attachment-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-4" onclick="if(event.target===this) closeDispatchAttachmentModal()">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-5 max-h-[90vh] overflow-y-auto">
+          <div class="flex items-start justify-between gap-3 mb-1">
+            <h3 class="text-sm font-bold text-slate-800">Attachment</h3>
+            <button type="button" onclick="closeDispatchAttachmentModal()" class="px-2 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700">Tutup</button>
+          </div>
+          <p id="da-task-info" class="text-xs text-slate-500 mb-3 break-words"></p>
+
+          <div class="flex flex-col gap-4 text-sm">
+            <section>
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Surat Jalan</h4>
+              <div id="da-surat-jalan" class="text-xs text-slate-500">Memuat...</div>
+            </section>
+            <section>
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Placement / Access Documentation</h4>
+              <div id="da-placement" class="text-xs text-slate-500">Memuat...</div>
+            </section>
+            <section>
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Form Pengiriman</h4>
+              <div id="da-form" class="text-xs text-slate-500">Memuat...</div>
+            </section>
+          </div>
+        </div>
+      </div>
+
       <!-- TEAM PREPARE -->
       <div id="content-TeamPrepare" class="page-content">
         <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -8804,18 +8830,10 @@
           || a.indexOf('relocation') !== -1;
       }
 
-      function printPlanTaskNote(batchIndex, rowIndex) {
-        if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
-          showAppAlert('Library PDF belum termuat, coba refresh halaman.', 'error');
-          return;
-        }
-        const batch = _planTaskBatches[batchIndex];
-        const row = batch && batch.rows[rowIndex];
-        if (!row) {
-          showAppAlert('Data baris tidak ditemukan.', 'error');
-          return;
-        }
-
+      // Membangun dokumen PDF Surat Jalan (jsPDF) dari satu baris task. Dipakai oleh tombol
+      // Cetak di menu Plan Task (printPlanTaskNote) DAN popup Attachment di card Team Dispatch.
+      // batch = { divisi, pic, noKendaraan }. Return { doc, fileName }.
+      function _buildPlanTaskNoteDoc_(row, batch) {
         const note = _resolvePlanTaskNoteType(row['ACTION PLAN']);
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -8951,6 +8969,23 @@
         }
 
         const fileName = note.code + '_' + String(row['TICKET'] || 'task').replace(/[\\/:*?"<>|]+/g, '-') + '.pdf';
+        return { doc: doc, fileName: fileName };
+      }
+
+      function printPlanTaskNote(batchIndex, rowIndex) {
+        if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+          showAppAlert('Library PDF belum termuat, coba refresh halaman.', 'error');
+          return;
+        }
+        const batch = _planTaskBatches[batchIndex];
+        const row = batch && batch.rows[rowIndex];
+        if (!row) {
+          showAppAlert('Data baris tidak ditemukan.', 'error');
+          return;
+        }
+        const built = _buildPlanTaskNoteDoc_(row, batch);
+        const doc = built.doc;
+        const fileName = built.fileName;
         try {
           const blobUrl = doc.output('bloburl');
           const win = window.open(blobUrl, '_blank');
@@ -10834,6 +10869,17 @@
               : '<span class="flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-slate-200 text-slate-300 cursor-not-allowed">' + ICON_WHATSAPP + ' WhatsApp</span>') +
           '</div>';
 
+        // Tombol Attachment: buka popup berisi Surat Jalan (PDF) + PLACEMENT / ACCESS
+        // DOCUMENTATION + FORM PENGIRIMAN sesuai TICKET. Hanya MELIHAT (tidak mengubah data),
+        // jadi Team Dispatch tidak perlu bertanya ke ADMIN.
+        const attachmentBtnHtml =
+          '<div class="mt-2">' +
+            '<button type="button" onclick="openDispatchAttachmentModal(' + row.rowNumber + ')" ' +
+              'class="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-semibold border border-indigo-300 text-indigo-700 hover:bg-indigo-50">' +
+              '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>' +
+              ' Attachment</button>' +
+          '</div>';
+
         // Status "Open": hanya tombol Start yang tampil.
         // Status "On Delivery" (setelah Start diklik, mencatat Jam Berangkat +
         // estimasi tiba): tombol berganti jadi "Tiba" + Cancel.
@@ -10892,9 +10938,173 @@
             _buildDispatchTimingRowsHtml_(row) +
           '</div>' +
           quickLinksHtml +
+          attachmentBtnHtml +
           actionButtons +
         '</div>';
       }
+
+      // =============================================
+      // ATTACHMENT — card Task Team Dispatch
+      // Popup berisi: (1) Surat Jalan PDF sesuai task (dibuat di browser, template sama
+      // dengan tombol Cetak menu Plan Task), (2) PLACEMENT / ACCESS DOCUMENTATION
+      // (kolom Y) dan (3) FORM PENGIRIMAN (kolom Z) dari spreadsheet "Logistic Request
+      // 2026" sesuai nomor TICKET (action GAS 'getDispatchAttachments'). Murni MEMBACA —
+      // tidak mengubah data dan tidak mengganggu aktivitas ADMIN.
+      // =============================================
+      let _daSeq = 0;
+      let _daPdfUrl = null;
+      const _daCache = {}; // TICKET + ACTION PLAN -> respons server (30 detik)
+      const DA_CACHE_MS = 30000;
+
+      function _daSetHtml_(id, html) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+      }
+
+      function _daRevokePdf_() {
+        if (_daPdfUrl) { try { URL.revokeObjectURL(_daPdfUrl); } catch (e) { /* abaikan */ } }
+        _daPdfUrl = null;
+      }
+
+      // Daftar file dokumentasi: gambar tampil sebagai thumbnail (klik = perbesar, memakai
+      // lightbox Recap BAU), file lain (PDF/folder/dll) tampil sebagai link.
+      function _daRenderFiles_(files) {
+        if (!files || !files.length) {
+          return '<div class="italic text-slate-400">Belum ada dokumen untuk TICKET ini.</div>';
+        }
+        const parts = files.map((f, n) => {
+          const label = files.length > 1 ? ('File ' + (n + 1)) : 'Buka file';
+          const link = '<a href="' + _recapBauEsc_(f.url) + '" target="_blank" rel="noopener" ' +
+            'class="text-indigo-600 underline break-all">' + _recapBauEsc_(label + (f.isFolder ? ' (folder)' : '')) + '</a>';
+          if (f.isImage || f.unknown) {
+            return '<img src="' + _recapBauEsc_(_recapBauThumbSrc_(f, 600)) + '" alt="' + _recapBauEsc_(label) + '" loading="lazy" ' +
+              'referrerpolicy="no-referrer" ' +
+              'data-full="' + _recapBauEsc_(_recapBauThumbSrc_(f, 1600)) + '" data-url="' + _recapBauEsc_(f.url) + '" ' +
+              'data-label="' + _recapBauEsc_(label) + '" ' +
+              'onclick="openRecapBauImage(this)" onerror="_recapBauImgFallback_(this)" ' +
+              'class="max-h-40 max-w-[200px] rounded-md border border-slate-200 object-cover cursor-zoom-in hover:opacity-90 bg-slate-100">';
+          }
+          return link;
+        });
+        return '<div class="flex flex-wrap items-start gap-2">' + parts.join('') + '</div>';
+      }
+
+      // Gabungkan baris card dengan data pelengkap dari server (NEW VM POSITION, SITE PIC,
+      // tipe VM tiket Event) -> bentuk yang sama dengan baris menu Plan Task, supaya isi PDF identik.
+      function _daBuildNoteRow_(row, extras) {
+        const r = Object.assign({}, row);
+        extras = extras || {};
+        if (extras.newVmPosition) r['NEW VM POSITION'] = extras.newVmPosition;
+        if (!r['SITE PIC'] && extras.sitePic) r['SITE PIC'] = extras.sitePic;
+        if (!r['SITE PIC PHONE NO.'] && extras.sitePicPhone) r['SITE PIC PHONE NO.'] = extras.sitePicPhone;
+        const ev = String(extras.eventProductType || '').trim();
+        if (ev && !String(r['PRODUCT TYPE'] || '').trim()) r['PRODUCT TYPE'] = ev;
+        r['PDF PROPOSED VM TYPE'] = r['PROPOSED VM TYPE'] || ev || '';
+        r['PDF VM TYPE ON SITE'] = r['VM TYPE ON SITE'] || ev || '';
+        return r;
+      }
+
+      function _daRenderSuratJalan_(row, extras, serverNote) {
+        _daRevokePdf_();
+        if (typeof window.jspdf === 'undefined' || !window.jspdf.jsPDF) {
+          _daSetHtml_('da-surat-jalan', '<div class="text-red-600">Library PDF belum termuat, coba refresh halaman.</div>');
+          return;
+        }
+        try {
+          const noteRow = _daBuildNoteRow_(row, extras);
+          const built = _buildPlanTaskNoteDoc_(noteRow, {
+            divisi: row['Divisi'], pic: row['PIC'], noKendaraan: row['No. Kendaraan']
+          });
+          const blob = built.doc.output('blob');
+          _daPdfUrl = URL.createObjectURL(blob);
+          const fileName = built.fileName;
+          const note = _resolvePlanTaskNoteType(row['ACTION PLAN']);
+          const showInline = window.innerWidth > 768; // preview tertanam hanya di layar lebar (HP tidak mendukung PDF tertanam)
+          _daSetHtml_('da-surat-jalan',
+            '<div class="flex flex-wrap items-center gap-2 mb-2">' +
+              '<span class="text-xs font-semibold text-slate-700">' + _recapBauEsc_(note.title) + ' — ' + _recapBauEsc_(row['TICKET'] || '-') + '</span>' +
+            '</div>' +
+            '<div class="flex flex-wrap gap-2 mb-2">' +
+              '<a href="' + _daPdfUrl + '" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white">Buka PDF</a>' +
+              '<a href="' + _daPdfUrl + '" download="' + _recapBauEsc_(fileName) + '" class="px-3 py-1.5 rounded-md text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-50">Unduh PDF</a>' +
+            '</div>' +
+            (serverNote ? '<div class="text-[11px] text-amber-600 mb-2">' + _recapBauEsc_(serverNote) + '</div>' : '') +
+            (showInline ? '<iframe src="' + _daPdfUrl + '" title="Surat Jalan" class="w-full rounded-md border border-slate-200" style="height:60vh;"></iframe>' : '')
+          );
+        } catch (err) {
+          _daSetHtml_('da-surat-jalan', '<div class="text-red-600">Gagal membuat PDF Surat Jalan: ' + _recapBauEsc_(err.message) + '</div>');
+        }
+      }
+
+      async function openDispatchAttachmentModal(rowNumber) {
+        const row = _teamDispatchRows.find(r => Number(r.rowNumber) === Number(rowNumber));
+        if (!row) {
+          showAppAlert('Data task tidak ditemukan, coba Refresh.', 'error');
+          return;
+        }
+        const ticket = String(row['TICKET'] || '').trim();
+        const mySeq = ++_daSeq;
+        _daRevokePdf_();
+        _daSetHtml_('da-task-info', _recapBauEsc_((row['LOCATION NAME'] || '-') + ' • ' + (ticket || '-') + ' • ' + (row['ACTION PLAN'] || '-')));
+        _daSetHtml_('da-surat-jalan', 'Memuat...');
+        _daSetHtml_('da-placement', 'Memuat...');
+        _daSetHtml_('da-form', 'Memuat...');
+        document.getElementById('dispatch-attachment-modal').classList.remove('hidden');
+
+        if (!ticket) {
+          _daRenderSuratJalan_(row, {}, 'TICKET kosong — dokumen Placement/Form tidak bisa dicari.');
+          _daSetHtml_('da-placement', _daRenderFiles_([]));
+          _daSetHtml_('da-form', _daRenderFiles_([]));
+          return;
+        }
+
+        const cacheKey = ticket + '||' + String(row['ACTION PLAN'] || '');
+        let data = null;
+        const cached = _daCache[cacheKey];
+        if (cached && (Date.now() - cached.t) < DA_CACHE_MS) {
+          data = cached.data;
+        } else {
+          try {
+            if (!INVENTORY_JS_GAS_URL || INVENTORY_JS_GAS_URL.indexOf('PASTE_') === 0) throw new Error('GAS URL belum diisi');
+            const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getDispatchAttachments&ticket=' + encodeURIComponent(ticket) +
+              '&actionPlan=' + encodeURIComponent(row['ACTION PLAN'] || '') + '&_=' + Date.now());
+            const json = await res.json();
+            if (!json.success) throw new Error(json.message || 'Gagal memuat attachment');
+            data = json;
+            _daCache[cacheKey] = { t: Date.now(), data: json };
+          } catch (err) {
+            if (mySeq !== _daSeq) return;
+            // Server gagal: Surat Jalan tetap dibuat dari data card (tanpa data pelengkap)
+            _daRenderSuratJalan_(row, {}, 'Data pelengkap (New VM Position dll) gagal dimuat dari server, PDF dibuat dari data card.');
+            const failHtml = '<div class="text-red-600">Gagal memuat dokumen: ' + _recapBauEsc_(err.message) + '</div>';
+            _daSetHtml_('da-placement', failHtml);
+            _daSetHtml_('da-form', failHtml);
+            return;
+          }
+        }
+        if (mySeq !== _daSeq) return; // popup sudah ditutup / dibuka untuk task lain
+
+        _daRenderSuratJalan_(row, data.extras, '');
+        const notFound = data.found === false
+          ? '<div class="italic text-slate-400">TICKET ini tidak ditemukan di spreadsheet Logistic Request 2026.</div>' : null;
+        _daSetHtml_('da-placement', notFound || _daRenderFiles_(data.placement));
+        _daSetHtml_('da-form', notFound || _daRenderFiles_(data.formPengiriman));
+      }
+
+      function closeDispatchAttachmentModal() {
+        _daSeq++; // batalkan render yang masih menunggu server
+        const modal = document.getElementById('dispatch-attachment-modal');
+        if (modal) modal.classList.add('hidden');
+        _daSetHtml_('da-surat-jalan', '');
+        _daRevokePdf_();
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          const modal = document.getElementById('dispatch-attachment-modal');
+          if (modal && !modal.classList.contains('hidden')) closeDispatchAttachmentModal();
+        }
+      });
 
       // Kirim perubahan status ke sheet "Plan Task" (kolom R = Status) lewat action
       // 'updatePlanTaskStatus', lalu refresh Cardview Team Dispatch. Pakai GET
