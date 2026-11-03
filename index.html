@@ -1862,6 +1862,8 @@
               class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-md whitespace-nowrap">Bersihkan Halaman</button>
           </div>
         </div>
+        <input id="input-task-vmsetting-file" type="file" accept=".csv,text/csv" class="hidden"
+          onchange="handleInputTaskVmSettingFile(this)">
         <div id="input-task-empty" class="placeholder-box">Belum ada data yang dikirim dari menu Jabodetabek. Buka menu Request BD &gt; Jabodetabek, centang data, lalu klik tombol "Add".</div>
         <div id="input-task-table-wrap" class="overflow-x-auto rounded-lg shadow hidden">
           <table id="input-task-table" class="table-fixed text-xs sm:text-sm border-collapse">
@@ -2157,6 +2159,14 @@
                 class="w-full text-xs text-slate-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-amber-500 file:text-white file:text-xs file:font-semibold hover:file:bg-amber-600">
               <div id="dd-photo-preview" class="flex flex-wrap gap-2 mt-2"></div>
             </div>
+            <div id="dd-vmsetting-section" class="hidden">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">VMSetting</label>
+              <button type="button" id="dd-vmsetting-btn" onclick="openVmSettingModal(this)"
+                class="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 flex items-center justify-between gap-2">
+                <span>Set VMSetting</span>
+              </button>
+              <div id="dd-vmsetting-state" class="text-[11px] mt-1"></div>
+            </div>
             <div id="dd-machine-exchange-section" class="hidden border border-slate-200 rounded-md p-3 space-y-3 bg-slate-50">
               <div class="text-xs font-bold text-slate-700">Machine Exchange (Sent To WH)</div>
               <div>
@@ -2193,6 +2203,51 @@
               class="px-3 py-1.5 text-xs font-semibold text-slate-600">Batal</button>
             <button id="dd-save-btn" onclick="submitDispatchDelivered()"
               class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md">Simpan</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Set VMSetting — dibuka dari Konfirmasi Delivered -->
+      <div id="vmsetting-modal" class="hidden fixed inset-0 z-[20001] flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+          <div class="p-5 pb-3 border-b border-slate-100">
+            <h3 class="text-sm font-bold text-slate-800 mb-2">Set VMSetting</h3>
+            <div class="text-[11px] font-semibold text-slate-500">File Name</div>
+            <div id="vms-file-name" class="text-sm font-semibold text-slate-800 break-all mb-2"></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div>
+                <div class="text-[11px] font-semibold text-slate-500">Location Name</div>
+                <div id="vms-location" class="text-slate-800 break-words"></div>
+              </div>
+              <div>
+                <div class="text-[11px] font-semibold text-slate-500">NO VMC JUMPSTART</div>
+                <div id="vms-no-vmc" class="text-slate-800 break-words"></div>
+              </div>
+            </div>
+            <div id="vms-notice" class="hidden mt-2 text-[11px] rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200"></div>
+          </div>
+          <div class="px-5 py-3 overflow-y-auto flex-1 min-h-0">
+            <table class="w-full text-xs border-collapse">
+              <thead style="background-color:#0b1f3a;color:#ffffff;position:sticky;top:0;">
+                <tr>
+                  <th class="px-2 py-2 text-left font-bold uppercase tracking-wide text-[11px]">product_id</th>
+                  <th class="px-2 py-2 text-left font-bold uppercase tracking-wide text-[11px]">product_name</th>
+                  <th class="px-2 py-2 text-center font-bold uppercase tracking-wide text-[11px]">Qty</th>
+                </tr>
+              </thead>
+              <tbody id="vms-tbody"></tbody>
+            </table>
+          </div>
+          <div class="p-5 pt-3 border-t border-slate-100">
+            <div id="vms-status" class="text-xs mb-2"></div>
+            <div class="flex items-center justify-between gap-2">
+              <span id="vms-summary" class="text-[11px] text-slate-500"></span>
+              <div class="flex gap-2">
+                <button type="button" onclick="closeVmSettingModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-600">Tutup</button>
+                <button type="button" id="vms-save-btn" onclick="vmsSave()"
+                  class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md">Simpan Data</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3563,7 +3618,8 @@
           'submitPlanTask', 'submitTaskMachinePrep', 'saveStockOpname',
           'saveDispatchDelivered', 'recordDispatchBerangkat', 'recordDispatchTiba',
           'saveTeamPrepareTask', 'updateTaskMachinePrepStatus',
-          'updatePlanTaskStatus', 'updateNoVmcJumpstart', 'submitMachineBooking'
+          'updatePlanTaskStatus', 'updateNoVmcJumpstart', 'submitMachineBooking',
+          'saveVMSettingImport', 'deleteVMSettingImport', 'saveVMSettingData'
         ];
         const inFlight = Object.create(null); // requestId -> Promise (single-flight)
         let recoveryBanner = null;
@@ -6801,7 +6857,7 @@
       // refreshInputTaskVmcNo() & renderInputTaskTable().
       const INPUT_TASK_COLUMNS = [
         'TICKET', 'ACTION PLAN', 'VMC NO', 'PROPOSED VM TYPE',
-        'LOCATION NAME', 'VM TYPE ON SITE', 'DELIVERY / PICK UP ADDRESS', 'COMMENT'
+        'LOCATION NAME', 'VM TYPE ON SITE', 'DELIVERY / PICK UP ADDRESS', 'COMMENT', 'VMSETTING'
       ];
       let _inputTaskRows = [];
 
@@ -7537,6 +7593,7 @@
         const obj = {};
         INPUT_TASK_COLUMNS.forEach(col => {
           if (col === 'VMC NO') { obj[col] = ''; return; } // diisi lewat refreshInputTaskVmcNo()
+          if (col === 'VMSETTING') { obj[col] = ''; return; } // diisi lewat import .csv (ADMIN) di tabel Input Task
           const key = _findHeaderKey(headers, col);
           obj[col] = row[key] ?? '';
         });
@@ -8162,6 +8219,10 @@
               return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
                 _buildInputTaskVmcNoCell(row, i) + '</td>';
             }
+            if (h === 'VMSETTING') {
+              return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
+                _buildInputTaskVmSettingCell(row, i) + '</td>';
+            }
             if (h === 'COMMENT') {
               return '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
                 '<textarea rows="2" placeholder="Tulis komentar..." ' +
@@ -8217,6 +8278,220 @@
             : '<span class="text-slate-400 italic">' + (_vmcLookupFetching ? 'Mencari...' : 'Tidak ditemukan') + '</span>';
         }
         return '<span class="text-slate-400">-</span>';
+      }
+
+
+      // =============================================
+      // VMSETTING — kolom di tabel Input Task (import .csv oleh ADMIN)
+      // =============================================
+      // ADMIN meng-import file .csv (format slotsetting_format.csv) per task. Isi file dikirim
+      // ke GAS (sheet staging "VMSetting Import", kunci = TICKET) supaya bisa dibuka dari card
+      // "Konfirmasi Delivered" di perangkat/role lain (Team Dispatch). Di browser cukup
+      // disimpan metadata {fileName, count} pada baris Input Task. ACTION PLAN "Withdrawal"
+      // tidak memakai VMSetting (sel tampil "-").
+      const VMSETTING_DEFAULT_QTY = 5;
+      const VMSETTING_MAX_ROWS = 1000;
+      const VMSETTING_CSV_COLUMNS = [
+        'slot_setting_id', 'slot_setting_stock_in_id', 'slot_setting_stock_in_product_id',
+        'slot_setting_name', 'slot_setting_combination_name', 'product_id', 'product_name',
+        'price', 'discounted_price', 'minimum_stock_in'
+      ];
+      let _inputTaskVmPickTicket = '';
+      const _inputTaskVmBusy = {}; // TICKET -> true selama upload/hapus berjalan
+
+      function _isWithdrawalActionPlan_(ap) {
+        return String(ap || '').toLowerCase().indexOf('withdrawal') !== -1;
+      }
+
+      // Parser CSV ringan: kutip ganda, koma/baris-baru di dalam kutip, BOM, CRLF, dan deteksi
+      // pemisah otomatis (koma / titik-koma / tab — Excel versi Indonesia sering memakai ";").
+      function _parseCsvText_(text) {
+        text = String(text || '').replace(/^\uFEFF/, '');
+        const firstLine = (text.split(/\r\n|\n|\r/)[0]) || '';
+        let delim = ',';
+        let best = -1;
+        [',', ';', '\t'].forEach(d => {
+          let n = 0, q = false;
+          for (const ch of firstLine) { if (ch === '"') q = !q; else if (ch === d && !q) n++; }
+          if (n > best) { best = n; delim = d; }
+        });
+        const rows = [];
+        let row = [], cur = '', inQ = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (inQ) {
+            if (ch === '"') {
+              if (text[i + 1] === '"') { cur += '"'; i++; } else { inQ = false; }
+            } else { cur += ch; }
+          } else if (ch === '"') {
+            inQ = true;
+          } else if (ch === delim) {
+            row.push(cur); cur = '';
+          } else if (ch === '\n' || ch === '\r') {
+            if (ch === '\r' && text[i + 1] === '\n') i++;
+            row.push(cur); cur = '';
+            rows.push(row); row = [];
+          } else {
+            cur += ch;
+          }
+        }
+        if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+        return rows.filter(r => r.some(c => String(c).trim() !== ''));
+      }
+
+      // CSV -> array objek berkunci VMSETTING_CSV_COLUMNS. Kolom wajib: product_id & product_name.
+      function _csvToVmSettingRows_(text) {
+        const table = _parseCsvText_(text);
+        if (table.length < 2) throw new Error('File CSV kosong atau hanya berisi header.');
+        const header = table[0].map(h => String(h).replace(/^\uFEFF/, '').trim().toLowerCase());
+        const idx = {};
+        VMSETTING_CSV_COLUMNS.forEach(c => { idx[c] = header.indexOf(c); });
+        if (idx['product_id'] === -1 || idx['product_name'] === -1) {
+          throw new Error('Header CSV tidak sesuai. Kolom "product_id" dan "product_name" wajib ada (lihat contoh slotsetting_format.csv).');
+        }
+        const seen = new Set();
+        const out = [];
+        let dup = 0;
+        for (let r = 1; r < table.length; r++) {
+          const obj = {};
+          VMSETTING_CSV_COLUMNS.forEach(c => {
+            obj[c] = idx[c] === -1 ? '' : String(table[r][idx[c]] === undefined ? '' : table[r][idx[c]]).trim();
+          });
+          if (!obj.product_id && !obj.product_name) continue;
+          // kunci = slot + product_id (satu produk bisa ada di beberapa slot)
+          const key = obj.slot_setting_combination_name.toLowerCase() + '|' + obj.product_id;
+          if (seen.has(key)) { dup++; continue; }
+          seen.add(key);
+          out.push(obj);
+        }
+        if (!out.length) throw new Error('Tidak ada baris data yang valid di file CSV.');
+        if (out.length > VMSETTING_MAX_ROWS) throw new Error('Baris CSV terlalu banyak (maks ' + VMSETTING_MAX_ROWS + ').');
+        return { rows: out, duplicates: dup };
+      }
+
+      function _buildInputTaskVmSettingCell(row, i) {
+        const ap = row['ACTION PLAN'];
+        const meta = row['VMSETTING'];
+        const hasFile = !!(meta && meta.fileName);
+        if (_isWithdrawalActionPlan_(ap)) return '<span class="text-slate-400">-</span>';
+        const ticket = String(row['TICKET'] || '').trim();
+        if (ticket && _inputTaskVmBusy[ticket]) {
+          return '<span class="text-xs text-slate-500 italic">Memproses...</span>';
+        }
+        if (currentRole !== 'ADMIN') {
+          return hasFile
+            ? '<span class="text-xs font-semibold break-all">' + _escapeHtmlAttr_(meta.fileName) + '</span>'
+            : '<span class="text-slate-400">-</span>';
+        }
+        if (hasFile) {
+          return '<div class="flex flex-col gap-1">' +
+            '<div class="text-xs font-semibold text-slate-800 break-all">' + _escapeHtmlAttr_(meta.fileName) + '</div>' +
+            '<div class="text-[11px] text-slate-500">' + (Number(meta.count) || 0) + ' SKU</div>' +
+            '<div class="flex gap-1.5">' +
+              '<button type="button" onclick="pickInputTaskVmSettingFile(' + i + ')" ' +
+                'class="px-2 py-1 text-[11px] font-semibold rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700">Ganti</button>' +
+              '<button type="button" onclick="removeInputTaskVmSetting(' + i + ')" ' +
+                'class="px-2 py-1 text-[11px] font-semibold rounded border border-red-200 bg-white hover:bg-red-50 text-red-600">Hapus</button>' +
+            '</div></div>';
+        }
+        return '<button type="button" onclick="pickInputTaskVmSettingFile(' + i + ')" ' +
+          'class="px-2.5 py-1.5 text-xs font-semibold rounded-md bg-amber-500 hover:bg-amber-600 text-white whitespace-nowrap">Import CSV</button>';
+      }
+
+      function pickInputTaskVmSettingFile(i) {
+        const row = _inputTaskRows[i];
+        if (!row) return;
+        if (currentRole !== 'ADMIN') { showToast('Hanya ADMIN yang dapat meng-import file VMSetting.', 'warning'); return; }
+        const ticket = String(row['TICKET'] || '').trim();
+        if (!ticket) { showAppAlert('TICKET task ini kosong, VMSetting tidak bisa di-import.', 'warning'); return; }
+        if (_isWithdrawalActionPlan_(row['ACTION PLAN'])) return;
+        _inputTaskVmPickTicket = ticket;
+        const input = document.getElementById('input-task-vmsetting-file');
+        input.value = '';
+        input.click();
+      }
+
+      // Kirim ke GAS dengan percobaan ulang kalau server sibuk (busy = BELUM ada yang ditulis).
+      async function _postVmSettingWrite_(actionName, payload) {
+        const BACKOFF = [2000, 3500, 5000];
+        let json = null;
+        for (let t = 0; t <= BACKOFF.length; t++) {
+          json = await _postToGasWithRetry_(actionName, payload, 2);
+          if (json && json.busy && t < BACKOFF.length) {
+            await new Promise(r => setTimeout(r, BACKOFF[t] + Math.random() * 800));
+            continue;
+          }
+          break;
+        }
+        return json;
+      }
+
+      async function handleInputTaskVmSettingFile(input) {
+        const file = input.files && input.files[0];
+        const ticket = _inputTaskVmPickTicket;
+        input.value = '';
+        if (!file || !ticket) return;
+        if (currentRole !== 'ADMIN') { showToast('Hanya ADMIN yang dapat meng-import file VMSetting.', 'warning'); return; }
+        if (!/\.csv$/i.test(file.name)) {
+          showAppAlert('Gunakan file berformat .csv (di Excel: Save As > CSV).', 'warning');
+          return;
+        }
+        const targets = _inputTaskRows.filter(r => String(r['TICKET'] || '').trim() === ticket);
+        if (!targets.length) return;
+        if (_inputTaskVmBusy[ticket]) return;
+        _inputTaskVmBusy[ticket] = true;
+        renderInputTaskTable();
+        try {
+          const text = await file.text();
+          const parsed = _csvToVmSettingRows_(text);
+          const json = await _postVmSettingWrite_('saveVMSettingImport', {
+            ticket: ticket,
+            fileName: file.name,
+            actionPlan: targets[0]['ACTION PLAN'] || '',
+            rows: parsed.rows
+          });
+          if (json && json.success) {
+            _inputTaskRows.forEach(r => {
+              if (String(r['TICKET'] || '').trim() === ticket) {
+                r['VMSETTING'] = { fileName: json.fileName || file.name, count: json.count };
+              }
+            });
+            const extra = (parsed.duplicates || json.duplicatesIgnored) ? ' (baris kembar diabaikan)' : '';
+            showToast('VMSetting "' + file.name + '" tersimpan: ' + json.count + ' SKU' + extra, 'success');
+          } else {
+            showAppAlert((json && json.message) || 'Gagal menyimpan file VMSetting.', 'error');
+          }
+        } catch (err) {
+          showAppAlert('Gagal memproses file VMSetting: ' + (err && err.message ? err.message : err), 'error');
+        } finally {
+          delete _inputTaskVmBusy[ticket];
+          renderInputTaskTable();
+        }
+      }
+
+      async function removeInputTaskVmSetting(i) {
+        const row = _inputTaskRows[i];
+        if (!row) return;
+        const ticket = String(row['TICKET'] || '').trim();
+        if (!ticket || _inputTaskVmBusy[ticket]) return;
+        const ok = await showAppConfirm('Hapus file VMSetting untuk task ini?', { okLabel: 'Hapus', cancelLabel: 'Batal', icon: 'trash' });
+        if (!ok) return;
+        _inputTaskVmBusy[ticket] = true;
+        renderInputTaskTable();
+        try {
+          const json = await _postVmSettingWrite_('deleteVMSettingImport', { ticket: ticket });
+          if (json && json.success) {
+            _inputTaskRows.forEach(r => { if (String(r['TICKET'] || '').trim() === ticket) r['VMSETTING'] = ''; });
+            showToast('File VMSetting dihapus', 'success');
+          } else {
+            showAppAlert((json && json.message) || 'Gagal menghapus file VMSetting.', 'error');
+          }
+        } catch (err) {
+          showAppAlert('Gagal terhubung ke server: ' + (err && err.message ? err.message : err), 'error');
+        } finally {
+          delete _inputTaskVmBusy[ticket];
+          renderInputTaskTable();
+        }
       }
 
       // Tombol "Bersihkan Halaman": kosongkan tabel Input Task + reset Form Plan Task
@@ -11425,6 +11700,10 @@
         populateDispatchPicSelect();
         populateDispatchMachineTypeSelect(row['MACHINE TYPE (sent from WH)'] || '');
 
+        // "Set VMSetting": tidak muncul untuk ACTION PLAN Withdrawal.
+        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', _isWithdrawalActionPlan_(row['ACTION PLAN']));
+        document.getElementById('dd-vmsetting-state').textContent = '';
+
         // Checklist Foto untuk ACTION PLAN "Delivery Approval", "Machine
         // Exchange", dan "Relocation".
         const showChecklistFoto = _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
@@ -11616,7 +11895,209 @@
         inputEl.value = existing.join(', ');
       }
 
+
+      // =============================================
+      // SET VMSETTING — popup di Konfirmasi Delivered (Task Team Dispatch)
+      // =============================================
+      // Isi file .csv yang di-import ADMIN (menu Input Task) dimuat dari GAS berdasarkan TICKET.
+      // Hanya product_id, product_name, Qty (default 5, bisa diubah) yang tampil. "Simpan Data"
+      // langsung mencatat ke sheet region di spreadsheet Dashboard Dispatch V2. Qty selain 5 ->
+      // kolom Remark di spreadsheet "Adjusment". Anti-double: requestId + lock di server, dan
+      // simpan ulang untuk TICKET yang sama MENIMPA baris lama (bukan menambah).
+      let _vmsCtx = null;
+      let _vmsSaving = false;
+
+      function _vmsKey_(slot, productId) {
+        return String(slot || '').trim().toLowerCase() + '|' + String(productId || '').trim();
+      }
+
+      async function _vmsFetchImport_(ticket) {
+        const url = INVENTORY_JS_GAS_URL + '?action=getVMSettingImport&ticket=' + encodeURIComponent(ticket);
+        let lastErr = null;
+        for (let a = 0; a < 3; a++) {
+          try {
+            const res = await fetch(url);
+            return await res.json();
+          } catch (err) {
+            lastErr = err;
+            await new Promise(r => setTimeout(r, 700));
+          }
+        }
+        throw lastErr || new Error('Gagal terhubung ke server.');
+      }
+
+      async function openVmSettingModal(btnEl) {
+        if (!_ddContext || _vmsSaving) return;
+        if (_isWithdrawalActionPlan_(_ddContext.actionPlan)) {
+          showToast('ACTION PLAN Withdrawal tidak memakai VMSetting.', 'warning');
+          return;
+        }
+        const ticket = String(_ddContext.ticket || '').trim();
+        if (!ticket) { showAppAlert('TICKET task tidak ditemukan.', 'error'); return; }
+        _setBtnLoading_(btnEl, 'Memuat VMSetting...');
+        let json;
+        try {
+          json = await _vmsFetchImport_(ticket);
+        } catch (err) {
+          _clearBtnLoading_(btnEl);
+          showAppAlert('Gagal memuat VMSetting: ' + (err && err.message ? err.message : err), 'error');
+          return;
+        }
+        _clearBtnLoading_(btnEl);
+        if (!_ddContext) return; // modal Delivered sudah ditutup selama menunggu
+        if (!json || !json.success) {
+          showAppAlert((json && json.message) || 'Gagal memuat VMSetting.', 'error');
+          return;
+        }
+        if (!json.found || !(json.rows || []).length) {
+          showAppAlert('Belum ada file CSV VMSetting untuk task ini. Minta ADMIN meng-import file .csv di menu Input Task (kolom VMSETTING).', 'warning');
+          return;
+        }
+        const saved = json.saved || {};
+        const defQty = Number(json.defaultQty) || VMSETTING_DEFAULT_QTY;
+        const items = json.rows.map(r => {
+          const slot = r.slot_setting_combination_name || '';
+          const pid = r.product_id || '';
+          const k = _vmsKey_(slot, pid);
+          const q = (saved[k] !== undefined && saved[k] !== null && !isNaN(saved[k])) ? Number(saved[k]) : defQty;
+          return { slot: slot, productId: pid, productName: r.product_name || '', qtyRaw: String(q) };
+        });
+        const noVmc = (document.getElementById('dd-no-vmc').value || '').trim();
+        _vmsCtx = {
+          ticket: ticket,
+          locationName: _ddContext.locationName || '',
+          noVmc: noVmc,
+          actionPlan: _ddContext.actionPlan || '',
+          fileName: json.fileName || '',
+          defaultQty: defQty,
+          items: items,
+          savedAt: json.savedAt || ''
+        };
+        _vmsRender_();
+        document.getElementById('vmsetting-modal').classList.remove('hidden');
+      }
+
+      function _vmsRender_() {
+        const c = _vmsCtx;
+        if (!c) return;
+        document.getElementById('vms-file-name').textContent = c.fileName || '-';
+        document.getElementById('vms-location').textContent = c.locationName || '-';
+        document.getElementById('vms-no-vmc').textContent = c.noVmc || '-';
+        const notice = document.getElementById('vms-notice');
+        if (c.savedAt) {
+          notice.textContent = 'VMSetting task ini sudah pernah disimpan (' + c.savedAt + '). Menyimpan lagi akan MENGGANTI data lama, bukan menambah baris baru.';
+          notice.classList.remove('hidden');
+        } else {
+          notice.classList.add('hidden');
+        }
+        document.getElementById('vms-status').textContent = '';
+        document.getElementById('vms-tbody').innerHTML = c.items.map((it, i) => {
+          const changed = _vmsIsAdjusted_(it);
+          return '<tr id="vms-row-' + i + '" class="border-b border-slate-100 ' + (changed ? 'bg-amber-50' : (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60')) + '">' +
+            '<td class="px-2 py-1.5 text-slate-700 whitespace-nowrap align-middle">' + _escapeHtmlAttr_(it.productId) + '</td>' +
+            '<td class="px-2 py-1.5 text-slate-800 break-words align-middle">' + _escapeHtmlAttr_(it.productName) + '</td>' +
+            '<td class="px-2 py-1.5 text-center align-middle">' +
+              '<input id="vms-qty-' + i + '" type="number" min="0" step="1" inputmode="numeric" value="' + _escapeHtmlAttr_(it.qtyRaw) + '" ' +
+              'oninput="vmsQtyChanged(' + i + ', this)" ' +
+              'class="w-16 border border-slate-300 rounded px-2 py-1 text-xs text-center"></td>' +
+            '</tr>';
+        }).join('');
+        _vmsUpdateSummary_();
+      }
+
+      function _vmsIsValidQty_(raw) {
+        const s = String(raw).trim();
+        if (s === '') return false;
+        const n = Number(s);
+        return Number.isInteger(n) && n >= 0;
+      }
+      function _vmsIsAdjusted_(it) {
+        return _vmsIsValidQty_(it.qtyRaw) && Number(it.qtyRaw) !== (_vmsCtx ? _vmsCtx.defaultQty : VMSETTING_DEFAULT_QTY);
+      }
+
+      function _vmsUpdateSummary_() {
+        const c = _vmsCtx;
+        if (!c) return;
+        const adj = c.items.filter(_vmsIsAdjusted_).length;
+        document.getElementById('vms-summary').textContent = c.items.length + ' SKU' + (adj ? ' · ' + adj + ' Adjusment' : '');
+      }
+
+      function vmsQtyChanged(i, el) {
+        if (!_vmsCtx || !_vmsCtx.items[i]) return;
+        _vmsCtx.items[i].qtyRaw = el.value;
+        const row = document.getElementById('vms-row-' + i);
+        const valid = _vmsIsValidQty_(el.value);
+        el.classList.toggle('border-red-500', !valid);
+        el.classList.toggle('border-slate-300', valid);
+        if (row) {
+          const changed = _vmsIsAdjusted_(_vmsCtx.items[i]);
+          row.classList.toggle('bg-amber-50', changed);
+          row.classList.toggle('bg-white', !changed && i % 2 === 0);
+          row.classList.toggle('bg-slate-50/60', !changed && i % 2 !== 0);
+        }
+        _vmsUpdateSummary_();
+      }
+
+      function closeVmSettingModal() {
+        if (_vmsSaving) return; // jangan ditutup selagi proses simpan berjalan
+        document.getElementById('vmsetting-modal').classList.add('hidden');
+        _vmsCtx = null;
+      }
+
+      async function vmsSave() {
+        const c = _vmsCtx;
+        if (!c || _vmsSaving) return;
+        const statusEl = document.getElementById('vms-status');
+        const items = [];
+        for (let i = 0; i < c.items.length; i++) {
+          const it = c.items[i];
+          if (!_vmsIsValidQty_(it.qtyRaw)) {
+            statusEl.textContent = 'Qty harus bilangan bulat 0 atau lebih (product_id ' + it.productId + ').';
+            statusEl.style.color = '#ef4444';
+            const el = document.getElementById('vms-qty-' + i);
+            if (el) { el.classList.add('border-red-500'); el.scrollIntoView({ block: 'center' }); el.focus(); }
+            return;
+          }
+          items.push({ slot: it.slot, productId: it.productId, qty: Number(it.qtyRaw) });
+        }
+        const btn = document.getElementById('vms-save-btn');
+        _vmsSaving = true;
+        _setBtnLoading_(btn, 'Menyimpan...');
+        statusEl.textContent = '';
+        try {
+          const json = await _postVmSettingWrite_('saveVMSettingData', {
+            ticket: c.ticket,
+            locationName: c.locationName,
+            noVmc: c.noVmc,
+            actionPlan: c.actionPlan,
+            items: items
+          });
+          if (json && json.success) {
+            const stateEl = document.getElementById('dd-vmsetting-state');
+            if (stateEl) {
+              stateEl.textContent = 'Tersimpan ke sheet ' + (json.sheetName || '') + ' (' + json.count + ' SKU' + (json.adjusted ? ', ' + json.adjusted + ' Adjusment' : '') + ')';
+              stateEl.style.color = '#16a34a';
+            }
+            _vmsSaving = false;
+            showToast(json.message || 'VMSetting tersimpan', 'success');
+            closeVmSettingModal();
+          } else {
+            statusEl.textContent = (json && json.message) || 'Gagal menyimpan VMSetting.';
+            statusEl.style.color = '#ef4444';
+          }
+        } catch (err) {
+          statusEl.textContent = 'Gagal terhubung ke server: ' + (err && err.message ? err.message : err) +
+            '. Data mungkin sudah tersimpan — buka lagi "Set VMSetting" untuk memeriksa; menyimpan ulang tidak membuat data dobel.';
+          statusEl.style.color = '#ef4444';
+        } finally {
+          _vmsSaving = false;
+          _clearBtnLoading_(btn);
+        }
+      }
+
       function closeDispatchDeliveredModal() {
+        _vmsSaving = false;
+        closeVmSettingModal();
         document.getElementById('dispatch-delivered-modal').classList.add('hidden');
         _ddContext = null;
         _ddPhotos = [];
