@@ -4066,6 +4066,17 @@
         badge.textContent = _roleDisplayLabel_();
 
         applyRoleAccess();
+        _prefetchRequestBd_();
+      }
+
+      // Pemanasan (prefetch) data Request BD di latar belakang begitu ADMIN masuk, supaya
+      // saat menu Recap BAU/Event dibuka datanya sudah siap (pola stale-while-revalidate:
+      // tampil dari cache lokal dulu, server menyusul). Sengaja diberi jeda & diurutkan
+      // agar tidak berebut slot eksekusi GAS dengan request Menu Utama yang jalan saat login.
+      function _prefetchRequestBd_() {
+        if (currentRole !== 'ADMIN') return;
+        setTimeout(() => { try { loadJabodetabek(false); } catch (e) { /* abaikan */ } }, 3000);
+        setTimeout(() => { try { loadEvent(false); } catch (e) { /* abaikan */ } }, 9000);
       }
 
       /**
@@ -4175,6 +4186,7 @@
           if (badge) badge.textContent = _roleDisplayLabel_();
 
           applyRoleAccess();
+          _prefetchRequestBd_();
         }
       }
 
@@ -4512,8 +4524,8 @@
         'ListMachinePreparation': () => loadMachinePrepList(true),
         'MachinePreparation': () => loadTaskMachinePrepList(true),
         'StockOpname': () => loadStockOpnameSource(true),
-        'RequestBDJabodetabek': () => loadJabodetabek(true),
-        'RequestBDEvent': () => loadEvent(true),
+        'RequestBDJabodetabek': () => { if (Date.now() - (_jabodetabekLastFetch || 0) >= REQUEST_BD_AUTO_REFRESH_MS) loadJabodetabek(true); },
+        'RequestBDEvent': () => { if (Date.now() - (_eventLastFetch || 0) >= REQUEST_BD_AUTO_REFRESH_MS) loadEvent(true); },
         'RequestBDAdHoc': () => loadAdHoc(true),
         'MachineBooked': () => loadMachineBooked(true),
         'InputTask': () => loadPlanTaskDropdowns(true),
@@ -4673,9 +4685,32 @@
       }
 
       function saveDataCache(key, payload) {
+        const fullKey = DATA_CACHE_PREFIX + _dataCacheKey_(key);
+        let json;
+        try { json = JSON.stringify({ t: Date.now(), payload: payload }); } catch (e) { return; }
         try {
-          localStorage.setItem(DATA_CACHE_PREFIX + _dataCacheKey_(key), JSON.stringify({ t: Date.now(), payload: payload }));
-        } catch (e) { /* storage penuh/diblokir, abaikan — tidak fatal */ }
+          localStorage.setItem(fullKey, json);
+        } catch (e) {
+          // Kuota localStorage penuh (data Request BD per region + foto/dokumen bisa besar).
+          // Dulu gagal diam-diam -> cache tidak pernah tersimpan -> tiap login harus menunggu
+          // server dari nol. Sekarang: buang cache data lain yang paling lama, lalu coba lagi.
+          try {
+            const others = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              if (k && k.indexOf(DATA_CACHE_PREFIX) === 0 && k !== fullKey) {
+                let t = 0;
+                try { t = (JSON.parse(localStorage.getItem(k)) || {}).t || 0; } catch (e2) { /* rusak -> dianggap paling lama */ }
+                others.push({ k: k, t: t });
+              }
+            }
+            others.sort((a, b) => a.t - b.t);
+            for (let j = 0; j < others.length; j++) {
+              localStorage.removeItem(others[j].k);
+              try { localStorage.setItem(fullKey, json); return; } catch (e3) { /* lanjut buang berikutnya */ }
+            }
+          } catch (e4) { /* abaikan — tidak fatal */ }
+        }
       }
 
       function loadDataCache(key) {
@@ -6836,6 +6871,7 @@
         _jabodetabekHeaders = [];
         _jabodetabekLastFetch = null;
         _jabodetabekFetching = false;
+        _jabodetabekReqSeq++; // respons request lama (region sebelumnya) tidak boleh masuk
         _jabodetabekSelectedRows = new Map();
         _jabodetabekVisibleRowsByKey = {};
         _jabodetabekAddTaskMode = false;
@@ -6845,6 +6881,7 @@
         _eventHeaders = [];
         _eventLastFetch = null;
         _eventFetching = false;
+        _eventReqSeq++;
         _eventSelectedRows = new Map();
         _eventVisibleRowsByKey = {};
         _eventAddTaskMode = false;
@@ -7572,6 +7609,22 @@
       // filter) sebagai pembeda — tetap stabil lintas filter/pencarian karena
       // dataArray & urutannya tidak berubah saat filter diganti, hanya berubah
       // saat data di-reload (yang otomatis membersihkan seleksi juga).
+      // Peta row -> index untuk satu array data (dibangun sekali per array). Sebelumnya
+      // dataArray.indexOf(row) dipanggil untuk SETIAP baris saat render/seleksi = O(n^2);
+      // untuk region dengan ratusan-ribuan baris ini membuat tabel Add Task terasa macet.
+      const _rowIdxCache_ = new WeakMap();
+      function _rowIndexOf_(dataArray, row) {
+        let c = _rowIdxCache_.get(dataArray);
+        if (!c || c.len !== dataArray.length) {
+          const m = new Map();
+          for (let i = 0; i < dataArray.length; i++) { if (!m.has(dataArray[i])) m.set(dataArray[i], i); }
+          c = { len: dataArray.length, map: m };
+          _rowIdxCache_.set(dataArray, c);
+        }
+        const v = c.map.get(row);
+        return v === undefined ? -1 : v;
+      }
+
       function _requestBdRowKey(row, headers, dataArray) {
         const tsKey = _findHeaderKey(headers, 'TIMESTAMP');
         const locKey = _findHeaderKey(headers, 'LOCATION NAME');
@@ -7579,7 +7632,7 @@
         const addrKey = _findHeaderKey(headers, 'DELIVERY / PICK UP ADDRESS');
         const baseKey = [row[tsKey], row[locKey], row[apKey], row[addrKey]]
           .map(v => String(v ?? '').trim()).join('||');
-        const idx = dataArray ? dataArray.indexOf(row) : -1;
+        const idx = dataArray ? _rowIndexOf_(dataArray, row) : -1;
         // FIX: key ini disisipkan ke atribut onchange/onclick inline ('...key...').
         // Alamat/Location Name Event sering berisi baris baru (Enter), tanda kutip ganda,
         // atau backslash -> string JS inline putus (SyntaxError) sehingga checkbox tidak
@@ -7735,6 +7788,44 @@
         _addRowsToInputTask(newRows);
       }
 
+      // Ambil JSON dari GAS dengan retry untuk kegagalan SEMENTARA: respon bukan JSON
+      // (halaman error HTML Apps Script saat server sibuk/cold start), atau server
+      // menjawab {success:false, retryable:true}. Wrapper fetch global hanya me-retry
+      // jaringan putus & HTTP 5xx, jadi kasus "HTTP 200 tapi isinya error" selama ini
+      // lolos dan membuat user harus refresh manual berkali-kali.
+      async function _fetchJsonRetry_(url, retries, onRetry) {
+        let lastErr;
+        for (let n = 0; n <= retries; n++) {
+          try {
+            const res = await fetch(url);
+            const text = await res.text();
+            let json;
+            try { json = JSON.parse(text); }
+            catch (pe) { throw new Error('Respon server belum valid (server sedang sibuk/menyiapkan data)'); }
+            if (json && json.success === false && json.retryable && n < retries) {
+              throw new Error(json.message || 'Server sibuk');
+            }
+            return json;
+          } catch (err) {
+            lastErr = err;
+            if (n < retries) {
+              if (onRetry) { try { onRetry(n + 1, retries); } catch (e) { /* abaikan */ } }
+              await new Promise(r => setTimeout(r, 1500 * (n + 1)));
+            }
+          }
+        }
+        throw lastErr;
+      }
+
+      // Request BD (Recap BAU/Event): request yang menggantung lebih lama dari ini dianggap
+      // macet -> boleh diganti request baru (hasil request lama diabaikan lewat nomor urut).
+      const REQUEST_BD_FETCH_STALE_MS = 60000;
+      // Auto-refresh Request BD dipelankan: data besar + dipolling tiap 20 detik oleh banyak
+      // user = beban berat bagi GAS. Server sudah punya cache; polling cukup per 90 detik.
+      const REQUEST_BD_AUTO_REFRESH_MS = 90000;
+      let _jabodetabekReqSeq = 0;
+      let _jabodetabekFetchStartedAt = 0;
+
       async function loadJabodetabek(forceRefresh) {
         const statusEl = document.getElementById('jabodetabek-status');
 
@@ -7760,16 +7851,29 @@
           return;
         }
 
-        if (_jabodetabekFetching) return;
+        // Request sebelumnya masih jalan -> jangan kirim dobel; KECUALI sudah menggantung
+        // terlalu lama (macet) -> mulai request baru, yang lama diabaikan hasilnya.
+        if (_jabodetabekFetching && (Date.now() - _jabodetabekFetchStartedAt) < REQUEST_BD_FETCH_STALE_MS) return;
         if (_jabodetabekLoaded && !forceRefresh && _jabodetabekLastFetch && (Date.now() - _jabodetabekLastFetch) < REVALIDATE_THROTTLE_MS) return;
 
         _jabodetabekFetching = true;
+        _jabodetabekFetchStartedAt = Date.now();
+        const mySeq = ++_jabodetabekReqSeq;
         if (!_jabodetabekLoaded) statusEl.textContent = 'Memuat data...';
+        const slowTimer = setTimeout(() => {
+          if (mySeq === _jabodetabekReqSeq && _jabodetabekFetching && !_jabodetabekLoaded) {
+            statusEl.textContent = 'Server masih menyiapkan data region ' + (currentRegion || '') + ' (pemuatan pertama bisa lebih lama)...';
+          }
+        }, 8000);
         try {
           const regionAtRequest = currentRegion;
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getJabodetabek' +
-            (regionAtRequest ? '&region=' + encodeURIComponent(regionAtRequest) : ''));
-          const json = await res.json();
+          const json = await _fetchJsonRetry_(INVENTORY_JS_GAS_URL + '?action=getJabodetabek' +
+            (regionAtRequest ? '&region=' + encodeURIComponent(regionAtRequest) : ''), 2,
+            (n, max) => { if (!_jabodetabekLoaded) statusEl.textContent = 'Server sibuk, mencoba lagi (' + n + '/' + max + ')...'; });
+          // Abaikan hasil kalau sudah ada request yang lebih baru, atau region berubah
+          // (logout/login ulang) saat request berjalan. HARUS dicek SEBELUM state diisi —
+          // dulu dicek sesudahnya sehingga data region lama sempat menimpa state region baru.
+          if (mySeq !== _jabodetabekReqSeq || regionAtRequest !== currentRegion) return;
           if (!json.success) {
             _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
@@ -7783,16 +7887,17 @@
           _populateLocationFilterOptions('jabodetabek-filter-kota', _jabodetabekData, '__kota', 'Semua Kota');
           _populateLocationFilterOptions('jabodetabek-filter-actionplan', _jabodetabekData, '__actionplan', 'Semua Action Plan');
           _refreshKecamatanFilterOptions('jabodetabek', _jabodetabekData);
-          // Abaikan hasil kalau region berubah (logout/login ulang) saat request berjalan.
-          if (regionAtRequest !== currentRegion) return;
           saveDataCache(_recapBauCacheKey_(), { headers: _jabodetabekHeaders, data: _jabodetabekData });
           statusEl.textContent = _jabodetabekData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderJabodetabekTable();
           if (_jabodetabekLeaderboardVisible) _renderJabodetabekLeaderboardChart_();
         } catch (err) {
-          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
+          if (mySeq === _jabodetabekReqSeq) {
+            _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message + ' — klik Refresh untuk mencoba lagi.');
+          }
         } finally {
-          _jabodetabekFetching = false;
+          clearTimeout(slowTimer);
+          if (mySeq === _jabodetabekReqSeq) _jabodetabekFetching = false;
         }
       }
 
@@ -13391,11 +13496,42 @@
         setTimeout(() => URL.revokeObjectURL(url), 5000);
       }
 
+      // Membuat PDF 1 halaman dari hasil screenshot tabel Plan Task (canvas html2canvas).
+      // Ukuran halaman mengikuti ukuran tabel (bukan A4 tetap) supaya semua kolom tetap
+      // utuh & terbaca, tidak terpotong/terpecah antar-halaman. Canvas dirender dengan
+      // scale 2, jadi ukuran asli (px CSS) = ukuran canvas / 2; 1 px CSS = 25.4/96 mm.
+      // Gambar disisipkan sebagai JPEG kualitas tinggi supaya ukuran file PDF tetap kecil
+      // (mudah dikirim lewat WhatsApp).
+      function _buildPlanTaskPdfBlob(canvas, pic) {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          throw new Error('Library jsPDF belum termuat.');
+        }
+        const { jsPDF } = window.jspdf;
+        const pxToMm = 25.4 / 96;
+        let wMm = (canvas.width / 2) * pxToMm;
+        let hMm = (canvas.height / 2) * pxToMm;
+        // Batas aman ukuran halaman PDF (viewer umumnya maks ~5080 mm / 200 inci).
+        const MAX_MM = 5000;
+        const k = Math.min(1, MAX_MM / Math.max(wMm, hMm));
+        wMm *= k; hMm *= k;
+        const doc = new jsPDF({
+          orientation: wMm >= hMm ? 'landscape' : 'portrait',
+          unit: 'mm',
+          format: [wMm, hMm],
+          compress: true
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm, undefined, 'FAST');
+        try { doc.setProperties({ title: 'Plan Task — ' + pic }); } catch (e) { /* abaikan */ }
+        return doc.output('blob');
+      }
+
       // Share to WhatsApp Plan Task — disamakan dengan pola web dashboard NOD:
-      // screenshot area (html2canvas, timeout 20 detik) lalu navigator.share()
-      // dengan file gambar (timeout 10 detik); kalau gagal/tidak didukung,
-      // fallback unduh gambar otomatis + pesan "Bagikan Manual". Guard
-      // _isSharingPlanTask mencegah tombol terpanggil dobel selagi diproses.
+      // screenshot area (html2canvas, timeout 20 detik) -> dibungkus jadi file PDF
+      // (jsPDF, lihat _buildPlanTaskPdfBlob) lalu navigator.share() dengan file PDF
+      // (timeout 10 detik); kalau gagal/tidak didukung, fallback unduh PDF otomatis +
+      // pesan "Bagikan Manual". Guard _isSharingPlanTask mencegah tombol terpanggil
+      // dobel selagi diproses.
       let _isSharingPlanTask = false;
 
       async function sharePlanTaskToWhatsApp(pic, rows) {
@@ -13434,11 +13570,11 @@
             'html2canvas timeout'
           );
 
-          const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-          if (!blob) throw new Error('Gagal membuat gambar preview.');
+          const blob = _buildPlanTaskPdfBlob(canvas, pic);
+          if (!blob) throw new Error('Gagal membuat file PDF.');
 
-          const fileName = 'PlanTask_' + String(pic).replace(/[^a-z0-9]+/gi, '_') + '.png';
-          const file = new File([blob], fileName, { type: 'image/png' });
+          const fileName = 'PlanTask_' + String(pic).replace(/[^a-z0-9]+/gi, '_') + '.pdf';
+          const file = new File([blob], fileName, { type: 'application/pdf' });
           const captionText = _buildPlanTaskShareText(pic, rows);
 
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -13453,13 +13589,13 @@
                 // Dibatalkan user sendiri, bukan error — tidak perlu fallback.
               } else {
                 _downloadPlanTaskImage(blob, fileName);
-                showAppAlert('Share otomatis gagal/lambat merespon. Gambar sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
+                showAppAlert('Share otomatis gagal/lambat merespon. File PDF sudah diunduh — silakan bagikan manual ke WhatsApp.', 'warning');
               }
             }
           } else {
             // Desktop / browser tanpa dukungan Web Share API file — fallback unduh + Bagikan Manual.
             _downloadPlanTaskImage(blob, fileName);
-            showAppAlert('Gambar Plan Task sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan Bagikan Manual lewat WhatsApp.', 'success');
+            showAppAlert('File PDF Plan Task sudah diunduh. Perangkat/browser ini belum mendukung share langsung — silakan Bagikan Manual lewat WhatsApp.', 'success');
           }
         } catch (err) {
           showAppAlert('Gagal menyiapkan Plan Task untuk dibagikan: ' + err.message, 'error');
@@ -13606,6 +13742,9 @@
         loadEvent(false);
       }
 
+      let _eventReqSeq = 0;
+      let _eventFetchStartedAt = 0;
+
       async function loadEvent(forceRefresh) {
         const statusEl = document.getElementById('event-status');
 
@@ -13630,16 +13769,25 @@
           return;
         }
 
-        if (_eventFetching) return;
+        if (_eventFetching && (Date.now() - _eventFetchStartedAt) < REQUEST_BD_FETCH_STALE_MS) return;
         if (_eventLoaded && !forceRefresh && _eventLastFetch && (Date.now() - _eventLastFetch) < REVALIDATE_THROTTLE_MS) return;
 
         _eventFetching = true;
+        _eventFetchStartedAt = Date.now();
+        const mySeqEv = ++_eventReqSeq;
         if (!_eventLoaded) statusEl.textContent = 'Memuat data...';
+        const slowTimerEv = setTimeout(() => {
+          if (mySeqEv === _eventReqSeq && _eventFetching && !_eventLoaded) {
+            statusEl.textContent = 'Server masih menyiapkan data region ' + (currentRegion || '') + ' (pemuatan pertama bisa lebih lama)...';
+          }
+        }, 8000);
         try {
           const regionAtRequestEv = currentRegion;
-          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getEvent' +
-            (regionAtRequestEv ? '&region=' + encodeURIComponent(regionAtRequestEv) : ''));
-          const json = await res.json();
+          const json = await _fetchJsonRetry_(INVENTORY_JS_GAS_URL + '?action=getEvent' +
+            (regionAtRequestEv ? '&region=' + encodeURIComponent(regionAtRequestEv) : ''), 2,
+            (n, max) => { if (!_eventLoaded) statusEl.textContent = 'Server sibuk, mencoba lagi (' + n + '/' + max + ')...'; });
+          // Cek request usang / region berubah SEBELUM state diisi (lihat catatan di loadJabodetabek).
+          if (mySeqEv !== _eventReqSeq || regionAtRequestEv !== currentRegion) return;
           if (!json.success) {
             _setStatus(statusEl, 'error', (json.message || 'Gagal memuat data'));
             return;
@@ -13653,14 +13801,16 @@
           _populateLocationFilterOptions('event-filter-kota', _eventData, '__kota', 'Semua Kota');
           _populateLocationFilterOptions('event-filter-actionplan', _eventData, '__actionplan', 'Semua Action Plan');
           _refreshKecamatanFilterOptions('event', _eventData);
-          if (regionAtRequestEv !== currentRegion) return; // region berubah saat request berjalan
           saveDataCache(_eventCacheKey_(), { headers: _eventHeaders, data: _eventData });
           statusEl.textContent = _eventData.length + ' baris data — terakhir dimuat ' + new Date().toLocaleTimeString('id-ID');
           renderEventTable();
         } catch (err) {
-          _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message);
+          if (mySeqEv === _eventReqSeq) {
+            _setStatus(statusEl, 'error', 'Gagal terhubung ke server: ' + err.message + ' — klik Refresh untuk mencoba lagi.');
+          }
         } finally {
-          _eventFetching = false;
+          clearTimeout(slowTimerEv);
+          if (mySeqEv === _eventReqSeq) _eventFetching = false;
         }
       }
 
