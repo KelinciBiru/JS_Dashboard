@@ -8448,7 +8448,22 @@
       function _csvToVmSettingRows_(text) {
         const table = _parseCsvText_(text);
         if (table.length < 2) throw new Error('File CSV kosong atau hanya berisi header.');
-        const header = table[0].map(h => String(h).replace(/^\uFEFF/, '').trim().toLowerCase());
+        // Nama kolom dinormalisasi (huruf kecil, spasi/simbol -> "_") lalu dipetakan lewat alias,
+        // supaya format TCN ("Slot Combination Name;Product ID;Product Name;Price;Discounted Price")
+        // terbaca sama seperti format slotsetting_format.csv.
+        const VM_HEADER_ALIASES = {
+          'slot_combination_name': 'slot_setting_combination_name',
+          'slot_combination': 'slot_setting_combination_name',
+          'combination_name': 'slot_setting_combination_name',
+          'slot_name': 'slot_setting_combination_name',
+          'productid': 'product_id', 'sku_id': 'product_id',
+          'productname': 'product_name', 'sku_name': 'product_name',
+          'discount_price': 'discounted_price', 'discountedprice': 'discounted_price'
+        };
+        const header = table[0].map(h => {
+          const k = String(h).replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+          return VM_HEADER_ALIASES[k] || k;
+        });
         const idx = {};
         VMSETTING_CSV_COLUMNS.forEach(c => { idx[c] = header.indexOf(c); });
         if (idx['product_id'] === -1 || idx['product_name'] === -1) {
