@@ -12251,6 +12251,7 @@
         document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
         document.getElementById('dd-no-vmc').value = row['NO VMC JUMPSTART'] || '';
         ddRtdReset();
+        ddRtdLoad(); // mulai ambil daftar RTD region tiket SEKARANG (paralel dengan dropdown Machine Type)
         document.getElementById('dd-loc-id').value = '';
         document.getElementById('dd-remark').value = '';
         document.getElementById('dd-loading-date-actual').value = '';
@@ -12448,8 +12449,13 @@
       //  (GAS: getDispatchRtdOptions_), difilter sesuai MACHINE TYPE (sent from WH)
       //  yang sedang dipilih. Field tetap bisa diketik manual.
       // ------------------------------------------------------------------
-      let _ddRtd = { options: [], loading: false, error: '', seq: 0, region: '' };
-      const _ddRtdCache = {}; // 'ticket||machineType' -> { region, options }
+      // State: all = semua mesin RTD region tiket (SEMUA tipe, dari server), options = hasil filter
+      // MACHINE TYPE yang sedang dipilih. Server dipanggil SEKALI per popup (langsung saat popup dibuka,
+      // paralel dengan pemuatan dropdown Machine Type); mengganti Machine Type hanya memfilter di browser
+      // (instan, tanpa request). Cache browser per tiket 60 detik; server juga cache per region.
+      let _ddRtd = { all: [], options: [], loading: false, error: '', seq: 0, region: '', loaded: false };
+      const _ddRtdCache = {}; // ticket -> { t, region, all }
+      const DD_RTD_CLIENT_TTL_MS = 60000;
 
       function _ddRtdApplies_() {
         if (!_ddContext || _ddContext.isAdHoc) return false;
@@ -12457,9 +12463,16 @@
         return ap.indexOf('delivery') !== -1 || ap.indexOf('exchange') !== -1;
       }
 
+      // Aturan pencocokan SAMA dengan GAS (getDispatchRtdOptions_): persis, atau 4 karakter terakhir kode model.
+      function _ddNormType_(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+      function _ddLast4_(s) {
+        const c = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return c.length <= 4 ? c : c.slice(-4);
+      }
+
       function ddRtdReset() {
-        ++_ddRtd.seq;
-        _ddRtd = { options: [], loading: false, error: '', seq: _ddRtd.seq, region: '' };
+        const nextSeq = ++_ddRtd.seq;
+        _ddRtd = { all: [], options: [], loading: false, error: '', seq: nextSeq, region: '', loaded: false };
         ddRtdCloseList();
         const hint = document.getElementById('dd-no-vmc-hint');
         const caret = document.getElementById('dd-no-vmc-caret');
@@ -12479,68 +12492,68 @@
         hint.classList.toggle('hidden', !text);
       }
 
-      async function ddRefreshRtdOptions() {
+      // Ambil daftar RTD region tiket dari server (sekali per popup). Dipanggil saat popup dibuka.
+      async function ddRtdLoad() {
+        if (!_ddRtdApplies_()) return;
+        const ticket = String(_ddContext.ticket || '').trim();
+        const seq = _ddRtd.seq;
+        const c = _ddRtdCache[ticket];
+        if (c && (Date.now() - c.t) < DD_RTD_CLIENT_TTL_MS) {
+          _ddRtd.all = c.all; _ddRtd.region = c.region; _ddRtd.loaded = true; _ddRtd.loading = false;
+          ddRefreshRtdOptions();
+          return;
+        }
+        _ddRtd.loading = true;
+        ddRefreshRtdOptions();
+        try {
+          const url = INVENTORY_JS_GAS_URL + '?action=getDispatchRtdOptions' +
+            '&ticket=' + encodeURIComponent(ticket);   // tanpa machineType -> semua tipe, difilter di browser
+          const res = await fetch(url);
+          const json = await res.json();
+          if (seq !== _ddRtd.seq) return; // popup sudah ditutup / dibuka untuk task lain
+          if (!json.success) throw new Error(json.message || 'Gagal memuat daftar RTD');
+          _ddRtd.all = Array.isArray(json.options) ? json.options : [];
+          _ddRtd.region = json.region || '';
+          _ddRtd.loaded = true;
+          _ddRtd.loading = false;
+          _ddRtdCache[ticket] = { t: Date.now(), region: _ddRtd.region, all: _ddRtd.all };
+          if (typeof json.tookMs === 'number') console.log('[RTD] server ' + json.tookMs + ' ms, ' + _ddRtd.all.length + ' mesin (' + _ddRtd.region + ')');
+        } catch (err) {
+          if (seq !== _ddRtd.seq) return;
+          _ddRtd.loading = false;
+          _ddRtd.error = err.message || 'Gagal memuat';
+        }
+        ddRefreshRtdOptions();
+        const list = document.getElementById('dd-no-vmc-list');
+        if (list && !list.classList.contains('hidden')) ddRtdOpenList();
+      }
+
+      // Filter lokal sesuai MACHINE TYPE yang dipilih (instan) + update petunjuk. Dipanggil saat Machine Type berubah.
+      function ddRefreshRtdOptions() {
         const caret = document.getElementById('dd-no-vmc-caret');
         if (!_ddRtdApplies_()) { ddRtdReset(); return; }
-
         const machineType = (document.getElementById('dd-machine-type').value || '').trim();
-        const seq = ++_ddRtd.seq;
-        _ddRtd.options = [];
-        _ddRtd.error = '';
-        _ddRtd.region = '';
-
         if (!machineType) {
-          _ddRtd.loading = false;
+          _ddRtd.options = [];
           if (caret) caret.classList.add('hidden');
           _ddRtdSetHint_('Pilih MACHINE TYPE (sent from WH) untuk menampilkan daftar mesin RTD, atau ketik manual.');
           ddRtdCloseList();
           return;
         }
-
-        const ticket = String(_ddContext.ticket || '').trim();
-        const cacheKey = ticket + '||' + machineType;
         if (caret) caret.classList.remove('hidden');
-
-        if (_ddRtdCache[cacheKey]) {
-          _ddRtd.options = _ddRtdCache[cacheKey].options;
-          _ddRtd.region = _ddRtdCache[cacheKey].region;
-          _ddRtd.loading = false;
-          _ddRtdSetHint_(_ddRtdHintText_());
-          return;
-        }
-
-        _ddRtd.loading = true;
-        _ddRtdSetHint_('Memuat daftar mesin RTD...');
-        try {
-          const url = INVENTORY_JS_GAS_URL + '?action=getDispatchRtdOptions' +
-            '&ticket=' + encodeURIComponent(ticket) +
-            '&machineType=' + encodeURIComponent(machineType) +
-            '&_=' + Date.now();
-          const res = await fetch(url);
-          const json = await res.json();
-          if (seq !== _ddRtd.seq) return; // machine type berubah / popup ditutup
-          if (!json.success) throw new Error(json.message || 'Gagal memuat daftar RTD');
-          _ddRtd.options = Array.isArray(json.options) ? json.options : [];
-          _ddRtd.region = json.region || '';
-          _ddRtdCache[cacheKey] = { options: _ddRtd.options, region: _ddRtd.region };
-          _ddRtd.loading = false;
-          _ddRtdSetHint_(_ddRtdHintText_());
-        } catch (err) {
-          if (seq !== _ddRtd.seq) return;
-          _ddRtd.loading = false;
-          _ddRtd.error = err.message || 'Gagal memuat';
-          _ddRtdSetHint_('Gagal memuat daftar RTD (' + _ddRtd.error + '). Silakan ketik manual.');
-        }
-        const list = document.getElementById('dd-no-vmc-list');
-        if (list && !list.classList.contains('hidden')) ddRtdOpenList();
-      }
-
-      function _ddRtdHintText_() {
+        if (_ddRtd.loading) { _ddRtdSetHint_('Memuat daftar mesin RTD...'); return; }
+        if (_ddRtd.error) { _ddRtdSetHint_('Gagal memuat daftar RTD (' + _ddRtd.error + '). Silakan ketik manual.'); return; }
+        const wantedExact = _ddNormType_(machineType);
+        const wantedLast4 = _ddLast4_(machineType);
+        _ddRtd.options = _ddRtd.all.filter(o =>
+          _ddNormType_(o.machineType) === wantedExact || (wantedLast4 && _ddLast4_(o.machineType) === wantedLast4));
         const n = _ddRtd.options.length;
         const reg = _ddRtd.region ? ' (' + _ddRtd.region + ')' : '';
-        return n
+        _ddRtdSetHint_(n
           ? n + ' mesin RTD tersedia' + reg + ' — pilih dari daftar atau ketik manual.'
-          : 'Tidak ada mesin RTD untuk MACHINE TYPE ini' + reg + '. Silakan ketik manual.';
+          : 'Tidak ada mesin RTD untuk MACHINE TYPE ini' + reg + '. Silakan ketik manual.');
+        const list = document.getElementById('dd-no-vmc-list');
+        if (list && !list.classList.contains('hidden')) ddRtdOpenList();
       }
 
       function ddRtdOpenList() {
