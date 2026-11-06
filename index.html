@@ -2109,6 +2109,12 @@
           <h3 class="text-sm font-bold text-slate-800 mb-3">Konfirmasi Delivered</h3>
 
           <div class="flex flex-col gap-3 text-sm">
+            <!-- ASSETS sebelumnya (hanya ACTION PLAN Withdrawal / Relocation): data dari sheet "Task Team Dispatch" -->
+            <div id="dd-prev-assets-section" class="hidden border border-amber-200 bg-amber-50 rounded-md p-3">
+              <div class="text-xs font-bold text-slate-700 mb-1">Assets (data sebelumnya)</div>
+              <div id="dd-prev-assets-meta" class="text-[11px] text-slate-500 mb-2"></div>
+              <div id="dd-prev-assets-list" class="grid grid-cols-2 gap-2"></div>
+            </div>
             <div>
               <label class="block text-xs font-semibold text-slate-500 mb-1">Loading Plan Date</label>
               <input id="dd-loading-plan-date" type="text" readonly
@@ -2155,6 +2161,10 @@
             <div id="dd-checklist-foto-section" class="hidden">
               <label class="block text-xs font-semibold text-slate-700 mb-1">Checklist Foto</label>
               <div id="dd-checklist-foto-list" class="space-y-2 border border-slate-200 rounded-md p-3"></div>
+            </div>
+            <div id="dd-assets-section">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Assets</label>
+              <div id="dd-assets-list" class="space-y-2 border border-slate-200 rounded-md p-3"></div>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">Foto/Video Bukti Selesai</label>
@@ -12045,6 +12055,142 @@
         return result;
       }
 
+      // =============================================
+      // ASSETS (Nov 2026) — Card "Konfirmasi Delivered", di bawah "Checklist Foto".
+      // Tiap item dijawab "Ada" / "Tidak Ada"; "Ada" -> wajib lampirkan foto,
+      // "Tidak Ada" -> tanpa foto. `key` & urutan HARUS sama dengan
+      // DISPATCH_ASSET_KEYS di API_Inventory_URL.txt. Dicatat ke sheet
+      // "Task Team Dispatch" (Dashboard Dispatch V2). Untuk ACTION PLAN
+      // "Withdrawal"/"Relocation", data yang pernah diisi ditampilkan di bagian
+      // atas card (action GAS 'getDispatchAssetsHistory').
+      // =============================================
+      const DISPATCH_ASSET_ITEMS = [
+        { key: 'cableExtension', label: 'Cable Extension' },
+        { key: 'acrylicPromo', label: 'Acrilyc Promo' },
+        { key: 'router', label: 'Router' },
+        { key: 'tools', label: 'Tools (Mesin Unique)' }
+      ];
+      let _ddAssetPhotos = {}; // { key: { name, mimeType, base64 } }
+      let _ddPrevAssetsSeq = 0; // anti balapan kalau popup dibuka-tutup cepat
+
+      function _escAttr_(v) {
+        return String(v === null || v === undefined ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function renderDispatchAssetFields() {
+        const listEl = document.getElementById('dd-assets-list');
+        listEl.innerHTML = DISPATCH_ASSET_ITEMS.map(item =>
+          '<div class="flex items-center justify-between gap-2 text-xs">' +
+            '<span class="text-slate-700">' + item.label + '</span>' +
+            '<div class="flex items-center gap-2 shrink-0">' +
+              '<label class="flex items-center gap-1 cursor-pointer">' +
+                '<input type="radio" name="dd-as-' + item.key + '" value="Ada" onchange="handleDispatchAssetChoice(\'' + item.key + '\', this.value)"> Ada</label>' +
+              '<label class="flex items-center gap-1 cursor-pointer">' +
+                '<input type="radio" name="dd-as-' + item.key + '" value="Tidak Ada" onchange="handleDispatchAssetChoice(\'' + item.key + '\', this.value)"> Tidak Ada</label>' +
+              '<span id="dd-as-photo-btn-' + item.key + '" class="hidden">' + _dispatchAssetPhotoButtonHtml_(item.key) + '</span>' +
+            '</div>' +
+          '</div>'
+        ).join('');
+      }
+
+      function _dispatchAssetPhotoButtonHtml_(key) {
+        return '<label class="cursor-pointer px-1.5 py-1 rounded-md border border-slate-300 bg-white text-slate-500 inline-block" title="Lampirkan foto">' +
+          '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>' +
+          '<input type="file" accept="image/*" class="hidden" onchange="handleDispatchAssetFotoInput(\'' + key + '\', this)">' +
+        '</label>';
+      }
+
+      // Pilihan "Ada" memunculkan tombol foto; "Tidak Ada" menyembunyikannya
+      // dan membuang foto yang sempat dipilih (tidak perlu foto).
+      function handleDispatchAssetChoice(key, value) {
+        const btnWrap = document.getElementById('dd-as-photo-btn-' + key);
+        if (!btnWrap) return;
+        if (value === 'Ada') {
+          btnWrap.classList.remove('hidden');
+        } else {
+          btnWrap.classList.add('hidden');
+          delete _ddAssetPhotos[key];
+          btnWrap.innerHTML = _dispatchAssetPhotoButtonHtml_(key);
+        }
+      }
+
+      function handleDispatchAssetFotoInput(key, inputEl) {
+        const file = (inputEl.files || [])[0];
+        if (!file) return;
+        const btnWrap = document.getElementById('dd-as-photo-btn-' + key);
+        if (btnWrap) btnWrap.innerHTML = '<span class="text-slate-400">...</span>';
+        _compressDispatchPhoto_(file, 1600, 0.7).then(result => {
+          _ddAssetPhotos[key] = { name: file.name, mimeType: result.mimeType, base64: result.base64 };
+          if (btnWrap) btnWrap.innerHTML = '<span class="text-emerald-600" title="Foto sudah dilampirkan">' + svgIcon('success') + '</span>';
+        }).catch(err => {
+          if (btnWrap) btnWrap.innerHTML = _dispatchAssetPhotoButtonHtml_(key);
+          showAppAlert('Gagal memproses foto: ' + err.message, 'error');
+        });
+      }
+
+      // Kumpulkan jawaban Assets { key: 'Ada'|'Tidak Ada' }. Mengembalikan
+      // { error } kalau ada item belum dijawab atau "Ada" tanpa foto.
+      function _collectDispatchAssets_() {
+        const result = {};
+        for (const item of DISPATCH_ASSET_ITEMS) {
+          const checked = document.querySelector('input[name="dd-as-' + item.key + '"]:checked');
+          if (!checked) return { error: 'Assets "' + item.label + '" wajib dipilih (Ada / Tidak Ada) sebelum Simpan.' };
+          if (checked.value === 'Ada' && !_ddAssetPhotos[item.key]) {
+            return { error: 'Assets "' + item.label + '" = Ada, foto wajib dilampirkan sebelum Simpan.' };
+          }
+          result[item.key] = checked.value;
+        }
+        return { assets: result };
+      }
+
+      function _dispatchActionPlanShowsPrevAssets_(actionPlan) {
+        const a = String(actionPlan || '').trim().toLowerCase();
+        return a.indexOf('withdrawal') !== -1 || a.indexOf('relocation') !== -1;
+      }
+
+      // ACTION PLAN Withdrawal/Relocation: tampilkan Assets yang pernah diisi
+      // (label + Ada/Tidak Ada + gambar) di bagian atas card, dari sheet
+      // "Task Team Dispatch". Gagal/tidak ketemu tidak menghalangi Simpan.
+      async function _loadDispatchPrevAssets_(row) {
+        const sec = document.getElementById('dd-prev-assets-section');
+        const listEl = document.getElementById('dd-prev-assets-list');
+        const metaEl = document.getElementById('dd-prev-assets-meta');
+        sec.classList.remove('hidden');
+        listEl.innerHTML = '';
+        metaEl.textContent = 'Memuat data Assets sebelumnya...';
+        const seq = ++_ddPrevAssetsSeq;
+        try {
+          const url = INVENTORY_JS_GAS_URL + '?action=getDispatchAssetsHistory' +
+            '&location=' + encodeURIComponent(row['LOCATION NAME'] || '') +
+            '&noVmc=' + encodeURIComponent(row['NO VMC JUMPSTART'] || '');
+          const res = await fetch(url);
+          const json = await res.json();
+          if (seq !== _ddPrevAssetsSeq) return; // popup sudah ditutup/dibuka untuk task lain
+          if (!json.success || !json.found) {
+            metaEl.textContent = json.success ? 'Belum ada data Assets yang tercatat sebelumnya untuk lokasi/mesin ini.' : ('Gagal memuat Assets: ' + (json.message || ''));
+            return;
+          }
+          const src = json.source || {};
+          metaEl.textContent = (src.locationName || '-') + ' • ' + (src.actionPlan || '-') +
+            ' • ' + String(src.timestamp || '').slice(0, 10);
+          listEl.innerHTML = (json.assets || []).map(a => {
+            const isAda = String(a.status).toLowerCase() === 'ada';
+            const badgeClass = isAda ? 'bg-green-100 text-green-700' : (a.status ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400');
+            const photo = (isAda && a.photoUrl)
+              ? '<a href="' + _escAttr_(a.photoUrl) + '" target="_blank" rel="noopener" class="block rounded-md overflow-hidden border border-slate-200 hover:opacity-90">' +
+                  '<img src="' + _escAttr_(_driveThumbnailSrc_(a.photoUrl)) + '" loading="lazy" class="w-full h-24 object-cover" ' +
+                  'onerror="this.parentElement.outerHTML=\'<span class=&quot;text-[11px] text-blue-600&quot;>Buka foto</span>\'"></a>'
+              : '';
+            return '<div class="flex flex-col gap-1 bg-white border border-slate-200 rounded-md p-2">' +
+              '<span class="text-[11px] font-semibold text-slate-700 break-words">' + _escAttr_(a.label) + '</span>' +
+              '<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold self-start ' + badgeClass + '">' + _escAttr_(a.status || '-') + '</span>' +
+              photo + '</div>';
+          }).join('');
+        } catch (err) {
+          if (seq === _ddPrevAssetsSeq) metaEl.textContent = 'Gagal memuat Assets sebelumnya: ' + err.message;
+        }
+      }
+
       function openDispatchDeliveredModal(rowNumber, btnEl) {
         _setBtnLoading_(btnEl, 'Memuat...');
         const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
@@ -12062,6 +12208,14 @@
         _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '' };
         _ddPhotos = [];
         _ddChecklistFotoPhotos = {};
+        _ddAssetPhotos = {};
+        renderDispatchAssetFields();
+        ++_ddPrevAssetsSeq;
+        if (_dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
+          _loadDispatchPrevAssets_(row);
+        } else {
+          document.getElementById('dd-prev-assets-section').classList.add('hidden');
+        }
 
         document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
         document.getElementById('dd-no-vmc').value = row['NO VMC JUMPSTART'] || '';
@@ -12476,6 +12630,8 @@
         document.getElementById('dispatch-delivered-modal').classList.add('hidden');
         _ddContext = null;
         _ddPhotos = [];
+        _ddAssetPhotos = {};
+        ++_ddPrevAssetsSeq;
         _ddMachineExchangeLookup = null;
       }
 
@@ -12816,6 +12972,15 @@
           }
         }
 
+        // Assets (semua ACTION PLAN): tiap item wajib dipilih Ada/Tidak Ada;
+        // "Ada" wajib dilampiri foto, "Tidak Ada" tanpa foto.
+        const assetsCollected = _collectDispatchAssets_();
+        if (assetsCollected.error) {
+          _setStatus(statusEl, 'error', assetsCollected.error);
+          return;
+        }
+        const assetsAnswers = assetsCollected.assets;
+
         // Section "Machine Exchange (Sent To WH)" — VMC NO & FINAL STATUS
         // wajib diisi sebelum Simpan kalau section ini tampil (ACTION PLAN
         // "Machine Exchange"); ASSETS boleh kosong (opsional). Dikirim ke
@@ -12858,7 +13023,8 @@
           // fetch" di flow ini: (1) izin Google Drive script belum di-approve
           // ulang setelah fitur foto ditambahkan -> pesan jelas & solusinya,
           // vs (2) benar-benar putus koneksi saat itu -> retry seperti biasa.
-          if (_ddPhotos.length > 0 || checklistVisible) {
+          const assetPhotoKeys = DISPATCH_ASSET_ITEMS.filter(it => assetsAnswers[it.key] === 'Ada').map(it => it.key);
+          if (_ddPhotos.length > 0 || checklistVisible || assetPhotoKeys.length > 0) {
             statusEl.textContent = 'Memeriksa akses penyimpanan foto...';
             let driveCheck;
             try {
@@ -12920,6 +13086,28 @@
             }
           }
 
+          // Upload foto Assets (hanya item "Ada") -> { key: url }.
+          const assetUrls = {};
+          for (let i = 0; i < assetPhotoKeys.length; i++) {
+            const key = assetPhotoKeys[i];
+            const item = DISPATCH_ASSET_ITEMS.find(it => it.key === key);
+            statusEl.textContent = 'Mengunggah foto Assets ' + (i + 1) + ' dari ' + assetPhotoKeys.length + '...';
+            let uploadJson;
+            try {
+              uploadJson = await _postToGasWithRetry_(
+                'uploadDispatchPhoto',
+                { ticket: _ddContext.ticket, photo: _ddAssetPhotos[key] },
+                3
+              );
+            } catch (err) {
+              throw new Error('Gagal mengunggah foto Assets "' + item.label + '": koneksi terputus (Failed to fetch). Coba lagi.');
+            }
+            if (!uploadJson.success) {
+              throw new Error(uploadJson.message || ('Gagal mengunggah foto Assets "' + item.label + '"'));
+            }
+            assetUrls[key] = uploadJson.url;
+          }
+
           statusEl.textContent = 'Menyimpan data...';
           const payload = {
             rowNumber: _ddContext.rowNumber,
@@ -12950,6 +13138,10 @@
             // dicatat GAS ditandai labelnya ke kolom "Foto Bukti" (lihat
             // _recordTaskTeamDispatch_ di Code.gs).
             checklistFotoUrls: checklistFotoUrls,
+            // Assets { key: 'Ada'|'Tidak Ada' } + URL foto (hanya item "Ada"),
+            // dicatat GAS ke sheet "Task Team Dispatch" (lihat _recordTaskTeamDispatch_).
+            assets: assetsAnswers,
+            assetUrls: assetUrls,
             // Hanya terisi kalau ACTION PLAN "Machine Exchange" (lihat
             // _isDispatchActionPlanMachineExchange_); dicatat GAS sebagai
             // baris baru ke salah satu sheet Stock Opname, lihat
