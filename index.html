@@ -9140,8 +9140,12 @@
       // posisi kolom 'Status' (R) di sheet tidak bergeser dan data lama tidak rusak,
       // sama seperti pola 'PRODUCT TYPE' sebelumnya. Kolom sheet: ...S=PRODUCT TYPE,
       // T=Jam Berangkat, U=Jam Tiba, V=Jam Delivered, W=COMMENT.
+      // 'REGULER / EVENT' dan 'NEW VM POSITION AREA & LANTAI' dihitung di server dari
+      // nomor TICKET (Recap BAU = REGULER, kolom I; Event = EVENT, kolom H) — tidak ada
+      // kolomnya di sheet "Plan Task". Judul kolom tampil lewat _planTaskColLabel().
       const PLAN_TASK_DISPLAY_COLUMNS = [
-        'Plan Date', 'TICKET', 'NO VMC JUMPSTART', 'LOCATION NAME', 'ACTION PLAN',
+        'Plan Date', 'TICKET', 'REGULER / EVENT', 'NO VMC JUMPSTART', 'LOCATION NAME',
+        'NEW VM POSITION AREA & LANTAI', 'ACTION PLAN',
         'PROPOSED VM TYPE', 'VM TYPE ON SITE', 'MACHINE SET UP', 'PRICE SETTINGS',
         'SITE PIC', 'SITE PIC PHONE NO.', 'DELIVERY / PICK UP ADDRESS', 'REMARKS',
         'PRODUCT TYPE', 'Jam Berangkat', 'Jam Tiba', 'Jam Delivered', 'COMMENT'
@@ -9155,6 +9159,8 @@
       // supaya task yang disubmit dari DEVICE LAIN ikut tampil di sini, bukan
       // cuma task yang disubmit dari device ini sendiri (localStorage hanya
       // dipakai sebagai cache instan sebelum data terbaru dari server datang).
+      const PLAN_TASK_COLUMN_LABELS = { 'NEW VM POSITION AREA & LANTAI': 'NEW VM POSITION' };
+      function _planTaskColLabel(h) { return PLAN_TASK_COLUMN_LABELS[h] || h; }
       let _planTaskBatches = [];
       let _planTaskLoaded = false;
       let _planTaskFetching = false;
@@ -9306,7 +9312,7 @@
           '<col style="width:' + ACTION_COL_WIDTH_PX + 'px">';
         const thead = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
-          h + '</th>'
+          _planTaskColLabel(h) + '</th>'
         ).join('') +
           '<th class="px-2 py-3 text-center text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal align-bottom">Aksi</th>' +
         '</tr>';
@@ -13864,7 +13870,7 @@
 
         thead.innerHTML = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
-          h + '</th>'
+          _planTaskColLabel(h) + '</th>'
         ).join('') + '</tr>';
 
         tbody.innerHTML = rows.length
@@ -13932,7 +13938,7 @@
         table.style.cssText = 'border-collapse:collapse;font-size:11px;table-layout:fixed;';
         const thead = document.createElement('thead');
         thead.innerHTML = '<tr>' + PLAN_TASK_DISPLAY_COLUMNS.map(h =>
-          '<th style="background:#0b1f3a;color:#ffffff;padding:6px 8px;text-align:left;border:1px solid #cbd5e1;white-space:normal;word-wrap:break-word;max-width:160px;">' + h + '</th>'
+          '<th style="background:#0b1f3a;color:#ffffff;padding:6px 8px;text-align:left;border:1px solid #cbd5e1;white-space:normal;word-wrap:break-word;max-width:160px;">' + _planTaskColLabel(h) + '</th>'
         ).join('') + '</tr>';
         const tbody = document.createElement('tbody');
         tbody.innerHTML = rows.length
