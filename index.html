@@ -2148,7 +2148,7 @@
               <input id="dd-loading-date-actual" type="date"
                 class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
             </div>
-            <div>
+            <div id="dd-pic-wrap">
               <label class="block text-xs font-semibold text-slate-700 mb-1">PIC Dispatch</label>
               <select id="dd-pic-select" onchange="handleDispatchPicSelect(this)"
                 class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm mb-1">
@@ -2167,7 +2167,7 @@
               <div id="dd-assets-list" class="space-y-2 border border-slate-200 rounded-md p-3"></div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Foto/Video Bukti Selesai</label>
+              <label id="dd-photo-label" class="block text-xs font-semibold text-slate-700 mb-1">Foto/Video Bukti Selesai</label>
               <input id="dd-photo-input" type="file" accept="image/*,video/*" multiple
                 onchange="handleDispatchDeliveredPhotoInput(this)"
                 class="w-full text-xs text-slate-600 file:mr-2 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-amber-500 file:text-white file:text-xs file:font-semibold hover:file:bg-amber-600">
@@ -2932,17 +2932,26 @@
               </button>
             </div>
             <div class="flex items-center gap-2 justify-end">
-              <!-- Add Task Ad Hoc SEMENTARA NON-AKTIF (lihat ADHOC_ADD_TASK_ENABLED) -->
-              <button id="adhoc-addtask-btn" onclick="toggleAdHocAddTask()" disabled
-                title="Fitur Add Task untuk Ad Hoc belum diaktifkan"
-                class="px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed whitespace-nowrap">
+              <!-- Add Task Ad Hoc AKTIF (lihat ADHOC_ADD_TASK_ENABLED) — pola sama dengan Event -->
+              <button id="adhoc-addtask-btn" onclick="toggleAdHocAddTask()"
+                class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-amber-300 text-amber-600 hover:bg-amber-50 whitespace-nowrap">
                 + Add Task
+              </button>
+              <button id="adhoc-add-btn" onclick="confirmAdHocAddTask()"
+                class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-green-500 bg-green-500 text-white hover:bg-green-600 whitespace-nowrap">
+                Add (<span id="adhoc-selected-count">0</span>)
+              </button>
+              <button id="adhoc-cancel-btn" onclick="cancelAdHocAddTask()"
+                class="hidden btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-red-300 hover:text-red-600 whitespace-nowrap">
+                Batal
               </button>
             </div>
           </div>
         </div>
         <div id="adhoc-status-filter-wrap" class="flex flex-wrap items-center gap-2 mb-3"></div>
         <div id="adhoc-status" class="text-xs text-slate-400 mb-2"></div>
+        <!-- Daftar site yang sudah ter-checklist (mode "+ Add Task") — sama seperti Event. -->
+        <div id="adhoc-selected-list" class="hidden mb-3 p-3 rounded-xl border-2 border-amber-200 bg-amber-50/50"></div>
         <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
           <table id="adhoc-table" class="table-fixed text-xs sm:text-sm border-collapse">
             <colgroup id="adhoc-colgroup"></colgroup>
@@ -4615,6 +4624,7 @@
         if (_isAnyModalOpen_()) return true;
         if (typeof _jabodetabekAddTaskMode !== 'undefined' && _jabodetabekAddTaskMode) return true;
         if (typeof _eventAddTaskMode !== 'undefined' && _eventAddTaskMode) return true;
+        if (typeof _adhocAddTaskMode !== 'undefined' && _adhocAddTaskMode) return true;
         if (typeof _mprepAddTaskMode !== 'undefined' && _mprepAddTaskMode) return true;
         return false;
       }
@@ -12212,13 +12222,17 @@
         // sheet Inventory JS (Withdrawal -> EX. LOCATION/INBOUND DATE/FINAL STATUS
         // "Stock"; Machine Exchange/Relocation -> diabaikan sama sekali; selain itu
         // -> perilaku lama seperti sebelumnya). Lihat _saveDispatchDeliveredNow_ di Code.gs.
-        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '' };
+        // Task dari Request BD - Ad Hoc ditandai server (field 'REQUEST SOURCE' = 'AD HOC', lihat
+        // getPlanTaskActive_). Card Konfirmasi Delivered Ad Hoc HANYA menampilkan: Loading Plan Date,
+        // Loading Date (Actual = hari ini), Logistics Detail Remark, dan Foto Finish.
+        const ddIsAdHoc = String(row['REQUEST SOURCE'] || '').trim().toUpperCase() === 'AD HOC';
+        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '', isAdHoc: ddIsAdHoc };
         _ddPhotos = [];
         _ddChecklistFotoPhotos = {};
         _ddAssetPhotos = {};
         renderDispatchAssetFields();
         ++_ddPrevAssetsSeq;
-        if (_dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
+        if (!ddIsAdHoc && _dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
           _loadDispatchPrevAssets_(row);
         } else {
           document.getElementById('dd-prev-assets-section').classList.add('hidden');
@@ -12237,18 +12251,18 @@
         populateDispatchMachineTypeSelect(row['MACHINE TYPE (sent from WH)'] || '');
 
         // "Set VMSetting": tidak muncul untuk ACTION PLAN Withdrawal.
-        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', _isWithdrawalActionPlan_(row['ACTION PLAN']));
+        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', ddIsAdHoc || _isWithdrawalActionPlan_(row['ACTION PLAN']));
         document.getElementById('dd-vmsetting-state').textContent = '';
 
         // Checklist Foto untuk ACTION PLAN "Delivery Approval", "Machine
         // Exchange", dan "Relocation".
-        const showChecklistFoto = _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
+        const showChecklistFoto = !ddIsAdHoc && _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
         document.getElementById('dd-checklist-foto-section').classList.toggle('hidden', !showChecklistFoto);
         if (showChecklistFoto) renderDispatchChecklistFotoFields();
 
         // Section "Machine Exchange (Sent To WH)" hanya untuk ACTION PLAN
         // "Machine Exchange" — lihat _loadMachineExchangeSection_.
-        const showMachineExchange = _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
+        const showMachineExchange = !ddIsAdHoc && _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
         document.getElementById('dd-machine-exchange-section').classList.toggle('hidden', !showMachineExchange);
         // ACTION PLAN "Machine Exchange": label "MACHINE TYPE (sent from WH)"
         // (+ NO VMC JUMPSTART pasangannya, yaitu mesin yang DIKIRIM dari WH ke
@@ -12262,11 +12276,40 @@
         if (showMachineExchange) {
           _loadMachineExchangeSection_(row);
         }
+        _applyDispatchDeliveredAdHocLayout_(ddIsAdHoc);
 
         document.getElementById('dispatch-delivered-modal').classList.remove('hidden');
         // Tombol "Delivered" di card cuma membuka popup ini (bukan menyimpan
         // data), jadi spinner-nya dikembalikan lagi begitu popup tampil.
         _clearBtnLoading_(btnEl);
+      }
+
+      // Layout Card Konfirmasi Delivered untuk task AD HOC: field yang tidak dipakai Ad Hoc
+      // (LOC ID, NO VMC JUMPSTART, MACHINE TYPE, PIC Dispatch, Checklist Foto, Assets, VMSetting,
+      // Machine Exchange, Assets sebelumnya) disembunyikan; Loading Date (Actual) diisi tanggal hari
+      // berjalan (WIB) & dikunci; label foto menjadi "Foto Finish". Untuk task non-Ad Hoc semua
+      // dikembalikan seperti semula. Section yang ditoggle sendiri oleh openDispatchDeliveredModal
+      // (checklist/vmsetting/machine exchange/prev assets) tidak disentuh di sini kecuali Ad Hoc.
+      function _applyDispatchDeliveredAdHocLayout_(isAdHoc) {
+        ['dd-loc-id-wrap', 'dd-no-vmc-wrap', 'dd-machine-type-wrap', 'dd-pic-wrap', 'dd-assets-section'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.toggle('hidden', !!isAdHoc);
+        });
+        if (isAdHoc) {
+          ['dd-prev-assets-section', 'dd-checklist-foto-section', 'dd-vmsetting-section', 'dd-machine-exchange-section'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+          });
+        }
+        const actualEl = document.getElementById('dd-loading-date-actual');
+        if (actualEl) {
+          actualEl.disabled = !!isAdHoc;
+          actualEl.classList.toggle('bg-slate-50', !!isAdHoc);
+          actualEl.classList.toggle('text-slate-600', !!isAdHoc);
+          if (isAdHoc) actualEl.value = _todayDateStrWIB_();
+        }
+        const photoLabel = document.getElementById('dd-photo-label');
+        if (photoLabel) photoLabel.textContent = isAdHoc ? 'Foto Finish' : 'Foto/Video Bukti Selesai';
       }
 
       // Isi dropdown ASSETS & FINAL STATUS di section "Machine Exchange (Sent
@@ -12959,7 +13002,7 @@
         // kolom AB "LOC ID" sheet "Recap BAU" sesuai TICKET (lihat
         // _saveDispatchDeliveredNow_ di API_Inventory_URL.txt).
         const locIdVal = document.getElementById('dd-loc-id').value.trim();
-        if (!locIdVal) {
+        if (!_ddContext.isAdHoc && !locIdVal) { // Ad Hoc tidak memakai LOC ID
           _setStatus(statusEl, 'error', 'LOC ID wajib diisi sebelum Simpan.');
           document.getElementById('dd-loc-id').focus();
           return;
@@ -12981,7 +13024,7 @@
 
         // Assets (semua ACTION PLAN): tiap item wajib dipilih Ada/Tidak Ada;
         // "Ada" wajib dilampiri foto, "Tidak Ada" tanpa foto.
-        const assetsCollected = _collectDispatchAssets_();
+        const assetsCollected = _ddContext.isAdHoc ? { assets: {} } : _collectDispatchAssets_(); // Ad Hoc tidak memakai Assets
         if (assetsCollected.error) {
           _setStatus(statusEl, 'error', assetsCollected.error);
           return;
@@ -13120,12 +13163,13 @@
             rowNumber: _ddContext.rowNumber,
             ticket: _ddContext.ticket,
             loadingDatePlan: document.getElementById('dd-loading-plan-date').value,
-            locId: document.getElementById('dd-loc-id').value.trim(),
-            noVmcJumpstart: document.getElementById('dd-no-vmc').value,
-            machineType: document.getElementById('dd-machine-type').value,
+            isAdHoc: !!_ddContext.isAdHoc,
+            locId: _ddContext.isAdHoc ? '' : document.getElementById('dd-loc-id').value.trim(),
+            noVmcJumpstart: _ddContext.isAdHoc ? '' : document.getElementById('dd-no-vmc').value,
+            machineType: _ddContext.isAdHoc ? '' : document.getElementById('dd-machine-type').value,
             logisticsDetailRemark: document.getElementById('dd-remark').value,
             loadingDateActual: document.getElementById('dd-loading-date-actual').value,
-            picDispatch: document.getElementById('dd-pic-dispatch').value,
+            picDispatch: _ddContext.isAdHoc ? '' : document.getElementById('dd-pic-dispatch').value,
             // LOCATION NAME task ini (dari row Jabodetabek) — dikirim supaya GAS
             // bisa ikut update kolom G (LOCATION NAME / DESTINATION) di sheet
             // Stock Opname (Inventory JS) sesuai VMC NO, lihat
@@ -14335,9 +14379,9 @@
       // Sumber: sheet "Ad Hoc" (spreadsheet Logistic Request 2026) via GAS action
       // getAdHoc; baris LOGISTICS UPDATE (kolom R) = "Done" sudah disaring di server.
       // Filter (Landmark/Kota/Kecamatan/Action Plan + pencarian) & tampilan sama
-      // dengan Jabodetabek/Event. Fitur "+ Add Task" sementara NON-AKTIF.
+      // dengan Jabodetabek/Event. Fitur "+ Add Task" AKTIF (kirim baris terpilih ke Input Task).
       // =============================================
-      const ADHOC_ADD_TASK_ENABLED = false;
+      const ADHOC_ADD_TASK_ENABLED = true;
       let _adhocHeaders = [];
       let _adhocData = [];
       let _adhocLoaded = false;
@@ -14345,11 +14389,114 @@
       let _adhocFetching = false;
       let _adhocLastFetch = null;
 
+      let _adhocAddTaskMode = false;
+      // Seleksi disimpan sebagai Map key -> row (BUKAN indeks hasil filter) — pola sama dengan
+      // Event/Jabodetabek, supaya baris yang sudah dicentang tidak hilang saat filter berubah.
+      let _adhocSelectedRows = new Map();
+      let _adhocVisibleRowsByKey = {};
+
+      // Tombol "+ Add Task": tampilkan checkbox di tabel & ubah tombol jadi "Add" + "Batal"
       function toggleAdHocAddTask() {
         if (!ADHOC_ADD_TASK_ENABLED) {
           showAppAlert('Fitur Add Task untuk Ad Hoc belum diaktifkan.', 'warning');
           return;
         }
+        _adhocAddTaskMode = true;
+        _adhocSelectedRows.clear();
+        document.getElementById('adhoc-addtask-btn').classList.add('hidden');
+        document.getElementById('adhoc-add-btn').classList.remove('hidden');
+        document.getElementById('adhoc-cancel-btn').classList.remove('hidden');
+        renderAdHocTable();
+      }
+
+      // Tombol "Batal": kembali ke tampilan semula tanpa checkbox
+      function cancelAdHocAddTask() {
+        _adhocAddTaskMode = false;
+        _adhocSelectedRows.clear();
+        document.getElementById('adhoc-addtask-btn').classList.remove('hidden');
+        document.getElementById('adhoc-add-btn').classList.add('hidden');
+        document.getElementById('adhoc-cancel-btn').classList.add('hidden');
+        renderAdHocTable();
+      }
+
+      function handleAdHocRowCheck(checkbox, key, row) {
+        if (checkbox.checked) _adhocSelectedRows.set(key, row);
+        else _adhocSelectedRows.delete(key);
+        _renderAdHocSelectedList();
+      }
+
+      // "Pilih semua" hanya berlaku untuk baris yang sedang tampil — baris lain yang
+      // sudah dicentang di filter lain tetap tersimpan di _adhocSelectedRows.
+      function handleAdHocSelectAll(checkbox) {
+        document.querySelectorAll('.adhoc-row-checkbox').forEach(cb => {
+          cb.checked = checkbox.checked;
+          const key = cb.dataset.rowKey;
+          const row = _adhocVisibleRowsByKey[key];
+          if (!row) return;
+          if (checkbox.checked) _adhocSelectedRows.set(key, row);
+          else _adhocSelectedRows.delete(key);
+        });
+        _renderAdHocSelectedList();
+      }
+
+      // Panel "Site Terpilih" untuk Ad Hoc — sama pola dengan Jabodetabek
+      // (_renderJabodetabekSelectedList): daftar site yang sudah ter-checklist,
+      // bersumber dari _adhocSelectedRows sehingga tetap lengkap lintas filter.
+      function _renderAdHocSelectedList() {
+        const countEl = document.getElementById('adhoc-selected-count');
+        if (countEl) countEl.textContent = _adhocSelectedRows.size;
+
+        const wrap = document.getElementById('adhoc-selected-list');
+        if (!wrap) return;
+        if (!_adhocAddTaskMode || _adhocSelectedRows.size === 0) {
+          wrap.classList.add('hidden');
+          wrap.innerHTML = '';
+          return;
+        }
+        wrap.classList.remove('hidden');
+
+        const locKey = _findHeaderKey(_adhocHeaders, 'LOCATION NAME');
+        const chips = Array.from(_adhocSelectedRows.entries()).map(([key, row]) => {
+          const site = String(row[locKey] ?? '').trim() || '(Tanpa Nama Site)';
+          return '<span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium bg-white border border-amber-300 text-amber-800">' +
+            site.replace(/</g, '&lt;') +
+            '<button type="button" onclick="removeAdHocSelected(\'' + key.replace(/'/g, "\\'") + '\')" ' +
+            'class="w-4 h-4 flex items-center justify-center rounded-full text-amber-400 hover:bg-red-100 hover:text-red-600 leading-none" title="Hapus dari seleksi" aria-label="Hapus dari seleksi"><svg class="ic ic-xs" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg></button></span>';
+        }).join('');
+
+        wrap.innerHTML =
+          '<div class="flex items-center justify-between mb-2">' +
+            '<span class="text-xs font-bold text-amber-700 uppercase tracking-wide"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><path d="M9 13h6M9 17h6"></path></svg> Site Terpilih (' + _adhocSelectedRows.size + ')</span>' +
+            '<button type="button" onclick="clearAllAdHocSelected()" class="text-xs font-semibold text-slate-400 hover:text-red-500">Kosongkan Semua</button>' +
+          '</div>' +
+          '<div class="flex flex-wrap gap-1.5">' + chips + '</div>';
+      }
+
+      function removeAdHocSelected(key) {
+        _adhocSelectedRows.delete(key);
+        renderAdHocTable();
+      }
+
+      function clearAllAdHocSelected() {
+        _adhocSelectedRows.clear();
+        renderAdHocTable();
+      }
+
+      // Tombol "Add": proses baris yang dicentang, kirim ke Input Task (sama seperti
+      // Jabodetabek) — baris yang sudah ada di Input Task tidak ditimpa, baris baru
+      // ditambahkan setelahnya.
+      function confirmAdHocAddTask() {
+        if (_adhocSelectedRows.size === 0) {
+          showAppAlert('Pilih minimal satu baris data terlebih dahulu.', 'warning');
+          return;
+        }
+        // _adhocSelectedRows berisi row lengkap (Map key -> row), jadi baris yang
+        // dicentang di filter manapun ikut terambil, bukan cuma yang sedang tampil.
+        const newRows = Array.from(_adhocSelectedRows.values())
+          .map(row => _mapRowToInputTaskColumns(row, _adhocHeaders));
+
+        cancelAdHocAddTask();
+        _addRowsToInputTask(newRows);
       }
 
       // Kolom "LOGISTIC UPDATE" (dari kolom R sheet Ad Hoc): kosong = "Open", "Cancel", "Hold".
@@ -14482,32 +14629,50 @@
         const thead = document.getElementById('adhoc-thead');
         const tbody = document.getElementById('adhoc-tbody');
 
-        applyEqualColumns('adhoc-table', 'adhoc-colgroup', _adhocHeaders, false);
+        applyEqualColumns('adhoc-table', 'adhoc-colgroup', _adhocHeaders, _adhocAddTaskMode);
         _renderAdHocStatusFilterBadges_();
 
-        thead.innerHTML = '<tr>' + _adhocHeaders.map(h =>
+        const checkboxTh = _adhocAddTaskMode
+          ? '<th class="w-9 px-1 py-3 text-center border-b border-slate-700 align-middle">' +
+            '<input type="checkbox" class="w-4 h-4 align-middle accent-amber-500" onchange="handleAdHocSelectAll(this)"></th>'
+          : '';
+
+        thead.innerHTML = '<tr>' + checkboxTh + _adhocHeaders.map(h =>
           '<th class="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide border-b border-slate-700 whitespace-normal break-words align-bottom">' +
           (h || '') + '</th>'
         ).join('') + '</tr>';
 
         const filtered = _getFilteredAdHocData();
 
+        _adhocVisibleRowsByKey = {};
+        filtered.forEach(row => { _adhocVisibleRowsByKey[_requestBdRowKey(row, _adhocHeaders, _adhocData)] = row; });
+
+        _renderAdHocSelectedList();
+
         if (filtered.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="' + (_adhocHeaders.length || 1) +
+          tbody.innerHTML = '<tr><td colspan="' + (_adhocHeaders.length + (_adhocAddTaskMode ? 1 : 0) || 1) +
             '" class="px-3 py-8 text-center text-slate-400">Tidak ada data.</td></tr>';
           return;
         }
 
-        tbody.innerHTML = filtered.map((row, i) =>
-          '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
-          _adhocHeaders.map(h =>
-            '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
-            (h === ADHOC_STATUS_HEADER
-              ? _adhocStatusBadgeHtml_(row[h])
-              : String(row[h] ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')) + '</td>'
-          ).join('') +
-          '</tr>'
-        ).join('');
+        tbody.innerHTML = filtered.map((row, i) => {
+          const key = _requestBdRowKey(row, _adhocHeaders, _adhocData);
+          const checkboxTd = _adhocAddTaskMode
+            ? '<td class="w-9 px-1 py-2.5 text-center align-middle">' +
+              '<input type="checkbox" class="adhoc-row-checkbox w-4 h-4 align-middle accent-amber-500" data-row-key="' + key.replace(/"/g, '&quot;') + '" ' +
+              (_adhocSelectedRows.has(key) ? 'checked ' : '') +
+              'onchange="handleAdHocRowCheck(this, \'' + key.replace(/'/g, "\\'") + '\', _adhocVisibleRowsByKey[\'' + key.replace(/'/g, "\\'") + '\'])"></td>'
+            : '';
+          return '<tr class="border-b border-slate-100 ' + (i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60') + ' hover:bg-amber-50 transition-colors">' +
+            checkboxTd +
+            _adhocHeaders.map(h =>
+              '<td class="px-4 py-2.5 align-top text-slate-700 whitespace-normal break-words leading-snug">' +
+              (h === ADHOC_STATUS_HEADER
+                ? _adhocStatusBadgeHtml_(row[h])
+                : String(row[h] ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')) + '</td>'
+            ).join('') +
+            '</tr>';
+        }).join('');
       }
 
       // =============================================
