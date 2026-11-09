@@ -12218,6 +12218,22 @@
         }
       }
 
+      // Task "Event" dengan ACTION PLAN Delivery / Withdrawal dan PRODUCT TYPE tertentu memakai card
+      // Konfirmasi Delivered versi RINGKAS (semua Region): LOC ID, NO VMC JUMPSTART, MACHINE TYPE (sent from WH),
+      // Checklist Foto, dan Assets TIDAK tampil. Yang dicatat hanya Loading Plan Date, Logistics Detail Remark,
+      // Loading Date (Actual), PIC Dispatch, dan Foto/Video Bukti Selesai. Server (getPlanTaskActive_) ikut
+      // mengirim flag 'EVENT SIMPLE DELIVERED'; pengecekan PRODUCT TYPE di sini jadi cadangan.
+      const DD_EVENT_SIMPLE_PRODUCT_TYPES = ['NOD MAXIMO', 'NOD IZZIO', 'NOD CAPSULE BOX', 'NOD EQUIPMENTS', 'NOD EQUIPMENT'];
+      function _ddIsEventSimple_(row) {
+        if (!row) return false;
+        if (String(row['REQUEST SOURCE'] || '').trim().toUpperCase() === 'AD HOC') return false;
+        const ap = String(row['ACTION PLAN'] || '').trim().toLowerCase();
+        if (ap.indexOf('delivery') === -1 && ap.indexOf('withdrawal') === -1) return false;
+        if (String(row['EVENT SIMPLE DELIVERED'] || '') === '1') return true;
+        const pt = String(row['PRODUCT TYPE'] || '').replace(/\s+/g, ' ').trim().toUpperCase();
+        return DD_EVENT_SIMPLE_PRODUCT_TYPES.indexOf(pt) !== -1;
+      }
+
       function openDispatchDeliveredModal(rowNumber, btnEl) {
         _setBtnLoading_(btnEl, 'Memuat...');
         const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
@@ -12236,13 +12252,14 @@
         // getPlanTaskActive_). Card Konfirmasi Delivered Ad Hoc HANYA menampilkan: Loading Plan Date,
         // Loading Date (Actual = hari ini), Logistics Detail Remark, dan Foto Finish.
         const ddIsAdHoc = String(row['REQUEST SOURCE'] || '').trim().toUpperCase() === 'AD HOC';
-        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '', isAdHoc: ddIsAdHoc };
+        const ddIsEventSimple = !ddIsAdHoc && _ddIsEventSimple_(row);
+        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '', isAdHoc: ddIsAdHoc, isEventSimple: ddIsEventSimple, productType: row['PRODUCT TYPE'] || '' };
         _ddPhotos = [];
         _ddChecklistFotoPhotos = {};
         _ddAssetPhotos = {};
         renderDispatchAssetFields();
         ++_ddPrevAssetsSeq;
-        if (!ddIsAdHoc && _dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
+        if (!ddIsAdHoc && !ddIsEventSimple && _dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
           _loadDispatchPrevAssets_(row);
         } else {
           document.getElementById('dd-prev-assets-section').classList.add('hidden');
@@ -12263,18 +12280,18 @@
         populateDispatchMachineTypeSelect(row['MACHINE TYPE (sent from WH)'] || '');
 
         // "Set VMSetting": tidak muncul untuk ACTION PLAN Withdrawal.
-        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', ddIsAdHoc || _isWithdrawalActionPlan_(row['ACTION PLAN']));
+        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', ddIsAdHoc || ddIsEventSimple || _isWithdrawalActionPlan_(row['ACTION PLAN']));
         document.getElementById('dd-vmsetting-state').textContent = '';
 
         // Checklist Foto untuk ACTION PLAN "Delivery Approval", "Machine
         // Exchange", dan "Relocation".
-        const showChecklistFoto = !ddIsAdHoc && _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
+        const showChecklistFoto = !ddIsAdHoc && !ddIsEventSimple && _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
         document.getElementById('dd-checklist-foto-section').classList.toggle('hidden', !showChecklistFoto);
         if (showChecklistFoto) renderDispatchChecklistFotoFields();
 
         // Section "Machine Exchange (Sent To WH)" hanya untuk ACTION PLAN
         // "Machine Exchange" — lihat _loadMachineExchangeSection_.
-        const showMachineExchange = !ddIsAdHoc && _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
+        const showMachineExchange = !ddIsAdHoc && !ddIsEventSimple && _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
         document.getElementById('dd-machine-exchange-section').classList.toggle('hidden', !showMachineExchange);
         // ACTION PLAN "Machine Exchange": label "MACHINE TYPE (sent from WH)"
         // (+ NO VMC JUMPSTART pasangannya, yaitu mesin yang DIKIRIM dari WH ke
@@ -12289,6 +12306,7 @@
           _loadMachineExchangeSection_(row);
         }
         _applyDispatchDeliveredAdHocLayout_(ddIsAdHoc);
+        _applyDispatchDeliveredEventSimpleLayout_(ddIsEventSimple);
 
         document.getElementById('dispatch-delivered-modal').classList.remove('hidden');
         // Tombol "Delivered" di card cuma membuka popup ini (bukan menyimpan
@@ -12322,6 +12340,21 @@
         }
         const photoLabel = document.getElementById('dd-photo-label');
         if (photoLabel) photoLabel.textContent = isAdHoc ? 'Foto Finish' : 'Foto/Video Bukti Selesai';
+      }
+
+      // Layout RINGKAS Card Konfirmasi Delivered untuk task Event (PRODUCT TYPE NOD MAXIMO / NOD IZZIO /
+      // NOD CAPSULE BOX / NOD EQUIPMENTS, ACTION PLAN Delivery / Withdrawal, semua Region): sembunyikan
+      // LOC ID, NO VMC JUMPSTART, MACHINE TYPE (sent from WH), Checklist Foto, Assets (+ VMSetting,
+      // Machine Exchange, Assets sebelumnya). Loading Plan Date, Logistics Detail Remark, Loading Date (Actual,
+      // tetap bisa diisi), PIC Dispatch, dan Foto/Video Bukti Selesai tetap tampil. Dipanggil SETELAH
+      // _applyDispatchDeliveredAdHocLayout_ (yang sudah mengembalikan wrap umum untuk task non-Ad Hoc).
+      function _applyDispatchDeliveredEventSimpleLayout_(isSimple) {
+        if (!isSimple) return;
+        ['dd-loc-id-wrap', 'dd-no-vmc-wrap', 'dd-machine-type-wrap', 'dd-assets-section',
+         'dd-prev-assets-section', 'dd-checklist-foto-section', 'dd-vmsetting-section', 'dd-machine-exchange-section'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        });
       }
 
       // Isi dropdown ASSETS & FINAL STATUS di section "Machine Exchange (Sent
@@ -12458,7 +12491,7 @@
       const DD_RTD_CLIENT_TTL_MS = 60000;
 
       function _ddRtdApplies_() {
-        if (!_ddContext || _ddContext.isAdHoc) return false;
+        if (!_ddContext || _ddContext.isAdHoc || _ddContext.isEventSimple) return false;
         const ap = String(_ddContext.actionPlan || '').trim().toLowerCase();
         return ap.indexOf('delivery') !== -1 || ap.indexOf('exchange') !== -1;
       }
@@ -13175,7 +13208,7 @@
         // kolom AB "LOC ID" sheet "Recap BAU" sesuai TICKET (lihat
         // _saveDispatchDeliveredNow_ di API_Inventory_URL.txt).
         const locIdVal = document.getElementById('dd-loc-id').value.trim();
-        if (!_ddContext.isAdHoc && !locIdVal) { // Ad Hoc tidak memakai LOC ID
+        if (!_ddContext.isAdHoc && !_ddContext.isEventSimple && !locIdVal) { // Ad Hoc & Event ringkas tidak memakai LOC ID
           _setStatus(statusEl, 'error', 'LOC ID wajib diisi sebelum Simpan.');
           document.getElementById('dd-loc-id').focus();
           return;
@@ -13197,7 +13230,7 @@
 
         // Assets (semua ACTION PLAN): tiap item wajib dipilih Ada/Tidak Ada;
         // "Ada" wajib dilampiri foto, "Tidak Ada" tanpa foto.
-        const assetsCollected = _ddContext.isAdHoc ? { assets: {} } : _collectDispatchAssets_(); // Ad Hoc tidak memakai Assets
+        const assetsCollected = (_ddContext.isAdHoc || _ddContext.isEventSimple) ? { assets: {} } : _collectDispatchAssets_(); // Ad Hoc & Event ringkas tidak memakai Assets
         if (assetsCollected.error) {
           _setStatus(statusEl, 'error', assetsCollected.error);
           return;
@@ -13337,9 +13370,11 @@
             ticket: _ddContext.ticket,
             loadingDatePlan: document.getElementById('dd-loading-plan-date').value,
             isAdHoc: !!_ddContext.isAdHoc,
-            locId: _ddContext.isAdHoc ? '' : document.getElementById('dd-loc-id').value.trim(),
-            noVmcJumpstart: _ddContext.isAdHoc ? '' : document.getElementById('dd-no-vmc').value,
-            machineType: _ddContext.isAdHoc ? '' : document.getElementById('dd-machine-type').value,
+            isEventSimple: !!_ddContext.isEventSimple,
+            productType: _ddContext.productType || '',
+            locId: (_ddContext.isAdHoc || _ddContext.isEventSimple) ? '' : document.getElementById('dd-loc-id').value.trim(),
+            noVmcJumpstart: (_ddContext.isAdHoc || _ddContext.isEventSimple) ? '' : document.getElementById('dd-no-vmc').value,
+            machineType: (_ddContext.isAdHoc || _ddContext.isEventSimple) ? '' : document.getElementById('dd-machine-type').value,
             logisticsDetailRemark: document.getElementById('dd-remark').value,
             loadingDateActual: document.getElementById('dd-loading-date-actual').value,
             picDispatch: _ddContext.isAdHoc ? '' : document.getElementById('dd-pic-dispatch').value,
