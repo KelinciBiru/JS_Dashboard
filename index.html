@@ -2116,8 +2116,8 @@
               <div id="dd-prev-assets-list" class="grid grid-cols-2 gap-2"></div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-500 mb-1">Loading Plan Date <span class="font-normal text-slate-400">(MM/DD/YYYY)</span></label>
-              <input id="dd-loading-plan-date" type="text" readonly placeholder="MM/DD/YYYY"
+              <label class="block text-xs font-semibold text-slate-500 mb-1">Loading Plan Date</label>
+              <input id="dd-loading-plan-date" type="text" readonly
                 class="w-full border border-slate-200 bg-slate-50 rounded-md px-3 py-2 text-sm text-slate-600">
             </div>
             <div id="dd-loc-id-wrap">
@@ -2154,19 +2154,9 @@
                 placeholder="Catatan detail logistik..."></textarea>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">Loading Date (Actual) <span class="font-normal text-slate-400">(MM/DD/YYYY)</span></label>
-              <!-- Format tanggal DIKUNCI MM/DD/YYYY (sama dengan format sel di Google Sheet), tidak
-                   bergantung locale HP/browser. Ketik angka saja (slash otomatis) atau klik ikon kalender. -->
-              <div class="relative">
-                <input id="dd-loading-date-actual" type="text" inputmode="numeric" maxlength="10"
-                  placeholder="MM/DD/YYYY" autocomplete="off" oninput="ddFormatDateMask(this)"
-                  class="w-full border border-slate-300 rounded-md px-3 py-2 pr-10 text-sm">
-                <button type="button" id="dd-loading-date-actual-btn" onclick="ddOpenActualDatePicker()" title="Pilih tanggal"
-                  class="absolute right-1 top-1/2 -translate-y-1/2 px-2 py-1 text-base leading-none text-slate-500 hover:text-slate-800">&#128197;</button>
-                <input id="dd-loading-date-actual-picker" type="date" tabindex="-1" aria-hidden="true"
-                  onchange="ddActualPickerChanged(this)"
-                  style="position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;">
-              </div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Loading Date (Actual)</label>
+              <input id="dd-loading-date-actual" type="date"
+                class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
             </div>
             <div id="dd-pic-wrap">
               <label class="block text-xs font-semibold text-slate-700 mb-1">PIC Dispatch</label>
@@ -9904,99 +9894,6 @@
         return get('year') + '-' + get('month') + '-' + get('day');
       }
 
-      // ===== FORMAT TANGGAL CARD "KONFIRMASI DELIVERED": SELALU MM/DD/YYYY =====
-      // Sheet (Recap BAU / Event / Ad Hoc) memakai kolom tanggal berformat mm/dd/yyyy dengan validasi
-      // "harus tanggal". Nilai Loading Date (Plan/Actual) yang dikirim dalam format lain (mis. DD/MM/YYYY
-      // dari locale HP, atau teks bebas dari sel Plan Task) ditolak sheet -> "Error server: Input tanggal
-      // yang valid dengan format MM/DD/YY". Karena itu SEMUA tanggal di card ini ditampilkan & dikirim
-      // sebagai MM/DD/YYYY. Aturan baca sama dengan server (_parseDateParts_ di Code.gs).
-      const _DD_MONTHS_ = { jan:1, januari:1, january:1, feb:2, februari:2, february:2, pebruari:2, mar:3, maret:3, march:3,
-        apr:4, april:4, mei:5, may:5, jun:6, juni:6, june:6, jul:7, juli:7, july:7, agu:8, agt:8, agus:8, agustus:8, aug:8, august:8,
-        sep:9, sept:9, september:9, okt:10, oct:10, oktober:10, october:10, nov:11, nop:11, nopember:11, november:11,
-        des:12, dec:12, desember:12, december:12 };
-
-      function _ddValidParts_(y, m, d) {
-        if (!isFinite(y) || !isFinite(m) || !isFinite(d)) return null;
-        if (y < 2000 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null;
-        const dt = new Date(Date.UTC(y, m - 1, d));
-        if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null; // 31 Nov / 30 Feb ditolak
-        return { y: y, m: m, d: d };
-      }
-
-      // Baca tanggal dari berbagai bentuk -> {y,m,d} atau null.
-      function _ddParseDateParts_(v) {
-        if (v === null || v === undefined || v === '') return null;
-        if (Object.prototype.toString.call(v) === '[object Date]') {
-          return isNaN(v.getTime()) ? null : _ddValidParts_(v.getFullYear(), v.getMonth() + 1, v.getDate());
-        }
-        if (typeof v === 'number') {
-          if (v < 20000 || v > 80000) return null; // serial Google Sheets
-          const dtS = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000);
-          return _ddValidParts_(dtS.getUTCFullYear(), dtS.getUTCMonth() + 1, dtS.getUTCDate());
-        }
-        const str = String(v).trim();
-        if (!str) return null;
-        let mt;
-        // yyyy-mm-dd | yyyy/mm/dd | yyyy.mm.dd (+ buntut jam/ISO, tanpa konversi timezone)
-        mt = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:$|[T\s,])/);
-        if (mt) return _ddValidParts_(+mt[1], +mt[2], +mt[3]);
-        // mm/dd/yyyy (STANDAR; bila angka pertama > 12 dibaca dd/mm) | dd-mm-yyyy | dd.mm.yyyy
-        mt = str.match(/^(\d{1,2})([-\/.])(\d{1,2})\2(\d{2}|\d{4})(?:$|[T\s,])/);
-        if (mt) {
-          const a = +mt[1], b = +mt[3];
-          let yy = +mt[4], mo, d;
-          if (mt[4].length === 2) yy += 2000;
-          if (mt[2] === '/') { if (a > 12 && b <= 12) { d = a; mo = b; } else { mo = a; d = b; } }
-          else { if (b > 12 && a <= 12) { mo = a; d = b; } else { d = a; mo = b; } }
-          return _ddValidParts_(yy, mo, d);
-        }
-        // "5 Nov 2026" / "5 Nopember 2026"
-        mt = str.match(/^(\d{1,2})[\s\-.]+([A-Za-z]+)[\s\-.,]+(\d{4})/);
-        if (mt && _DD_MONTHS_[mt[2].toLowerCase()]) return _ddValidParts_(+mt[3], _DD_MONTHS_[mt[2].toLowerCase()], +mt[1]);
-        // "Nov 5, 2026"
-        mt = str.match(/^([A-Za-z]+)[\s\-.]+(\d{1,2})[\s,\-.]+(\d{4})/);
-        if (mt && _DD_MONTHS_[mt[1].toLowerCase()]) return _ddValidParts_(+mt[3], _DD_MONTHS_[mt[1].toLowerCase()], +mt[2]);
-        // Teks angka serial ("46331")
-        if (/^\d{5}(\.\d+)?$/.test(str)) return _ddParseDateParts_(parseFloat(str));
-        return null;
-      }
-
-      // -> "MM/DD/YYYY" ('' kalau kosong / tidak terbaca)
-      function _ddToMDY_(v) {
-        const p = _ddParseDateParts_(v);
-        if (!p) return '';
-        return String(p.m).padStart(2, '0') + '/' + String(p.d).padStart(2, '0') + '/' + p.y;
-      }
-
-      // -> "yyyy-mm-dd" (untuk <input type="date"> kalender) ('' kalau tidak terbaca)
-      function _ddToISO_(v) {
-        const p = _ddParseDateParts_(v);
-        if (!p) return '';
-        return p.y + '-' + String(p.m).padStart(2, '0') + '-' + String(p.d).padStart(2, '0');
-      }
-
-      // Masker ketikan: hanya angka, slash otomatis -> MM/DD/YYYY
-      function ddFormatDateMask(el) {
-        const digits = String(el.value || '').replace(/\D/g, '').slice(0, 8);
-        let out = digits;
-        if (digits.length > 4) out = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
-        else if (digits.length > 2) out = digits.slice(0, 2) + '/' + digits.slice(2);
-        el.value = out;
-      }
-
-      function ddOpenActualDatePicker() {
-        const txt = document.getElementById('dd-loading-date-actual');
-        const pick = document.getElementById('dd-loading-date-actual-picker');
-        if (!txt || !pick || txt.disabled) return;
-        pick.value = _ddToISO_(txt.value) || '';
-        try { pick.showPicker(); } catch (e) { try { pick.focus(); pick.click(); } catch (e2) { /* browser tanpa picker: ketik manual */ } }
-      }
-
-      function ddActualPickerChanged(pick) {
-        const txt = document.getElementById('dd-loading-date-actual');
-        if (txt && pick && pick.value) txt.value = _ddToMDY_(pick.value);
-      }
-
       function _parseGeolocationString_(raw) {
         const s = String(raw || '').trim();
         if (!s) return null;
@@ -12321,22 +12218,6 @@
         }
       }
 
-      // Task "Event" dengan ACTION PLAN Delivery / Withdrawal dan PRODUCT TYPE tertentu memakai card
-      // Konfirmasi Delivered versi RINGKAS (semua Region): LOC ID, NO VMC JUMPSTART, MACHINE TYPE (sent from WH),
-      // Checklist Foto, dan Assets TIDAK tampil. Yang dicatat hanya Loading Plan Date, Logistics Detail Remark,
-      // Loading Date (Actual), PIC Dispatch, dan Foto/Video Bukti Selesai. Server (getPlanTaskActive_) ikut
-      // mengirim flag 'EVENT SIMPLE DELIVERED'; pengecekan PRODUCT TYPE di sini jadi cadangan.
-      const DD_EVENT_SIMPLE_PRODUCT_TYPES = ['NOD MAXIMO', 'NOD IZZIO', 'NOD CAPSULE BOX', 'NOD EQUIPMENTS', 'NOD EQUIPMENT'];
-      function _ddIsEventSimple_(row) {
-        if (!row) return false;
-        if (String(row['REQUEST SOURCE'] || '').trim().toUpperCase() === 'AD HOC') return false;
-        const ap = String(row['ACTION PLAN'] || '').trim().toLowerCase();
-        if (ap.indexOf('delivery') === -1 && ap.indexOf('withdrawal') === -1) return false;
-        if (String(row['EVENT SIMPLE DELIVERED'] || '') === '1') return true;
-        const pt = String(row['PRODUCT TYPE'] || '').replace(/\s+/g, ' ').trim().toUpperCase();
-        return DD_EVENT_SIMPLE_PRODUCT_TYPES.indexOf(pt) !== -1;
-      }
-
       function openDispatchDeliveredModal(rowNumber, btnEl) {
         _setBtnLoading_(btnEl, 'Memuat...');
         const row = _teamDispatchRows.find(r => r.rowNumber === rowNumber);
@@ -12355,20 +12236,19 @@
         // getPlanTaskActive_). Card Konfirmasi Delivered Ad Hoc HANYA menampilkan: Loading Plan Date,
         // Loading Date (Actual = hari ini), Logistics Detail Remark, dan Foto Finish.
         const ddIsAdHoc = String(row['REQUEST SOURCE'] || '').trim().toUpperCase() === 'AD HOC';
-        const ddIsEventSimple = !ddIsAdHoc && _ddIsEventSimple_(row);
-        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '', isAdHoc: ddIsAdHoc, isEventSimple: ddIsEventSimple, productType: row['PRODUCT TYPE'] || '' };
+        _ddContext = { rowNumber: rowNumber, ticket: row['TICKET'] || '', locationName: row['LOCATION NAME'] || '', actionPlan: row['ACTION PLAN'] || '', isAdHoc: ddIsAdHoc };
         _ddPhotos = [];
         _ddChecklistFotoPhotos = {};
         _ddAssetPhotos = {};
         renderDispatchAssetFields();
         ++_ddPrevAssetsSeq;
-        if (!ddIsAdHoc && !ddIsEventSimple && _dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
+        if (!ddIsAdHoc && _dispatchActionPlanShowsPrevAssets_(row['ACTION PLAN'])) {
           _loadDispatchPrevAssets_(row);
         } else {
           document.getElementById('dd-prev-assets-section').classList.add('hidden');
         }
 
-        document.getElementById('dd-loading-plan-date').value = _ddToMDY_(row['Plan Date']) || String(row['Plan Date'] || '');
+        document.getElementById('dd-loading-plan-date').value = row['Plan Date'] || '';
         document.getElementById('dd-no-vmc').value = row['NO VMC JUMPSTART'] || '';
         ddRtdReset();
         ddRtdLoad(); // mulai ambil daftar RTD region tiket SEKARANG (paralel dengan dropdown Machine Type)
@@ -12383,18 +12263,18 @@
         populateDispatchMachineTypeSelect(row['MACHINE TYPE (sent from WH)'] || '');
 
         // "Set VMSetting": tidak muncul untuk ACTION PLAN Withdrawal.
-        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', ddIsAdHoc || ddIsEventSimple || _isWithdrawalActionPlan_(row['ACTION PLAN']));
+        document.getElementById('dd-vmsetting-section').classList.toggle('hidden', ddIsAdHoc || _isWithdrawalActionPlan_(row['ACTION PLAN']));
         document.getElementById('dd-vmsetting-state').textContent = '';
 
         // Checklist Foto untuk ACTION PLAN "Delivery Approval", "Machine
         // Exchange", dan "Relocation".
-        const showChecklistFoto = !ddIsAdHoc && !ddIsEventSimple && _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
+        const showChecklistFoto = !ddIsAdHoc && _dispatchActionPlanNeedsChecklistFoto_(row['ACTION PLAN']);
         document.getElementById('dd-checklist-foto-section').classList.toggle('hidden', !showChecklistFoto);
         if (showChecklistFoto) renderDispatchChecklistFotoFields();
 
         // Section "Machine Exchange (Sent To WH)" hanya untuk ACTION PLAN
         // "Machine Exchange" — lihat _loadMachineExchangeSection_.
-        const showMachineExchange = !ddIsAdHoc && !ddIsEventSimple && _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
+        const showMachineExchange = !ddIsAdHoc && _isDispatchActionPlanMachineExchange_(row['ACTION PLAN']);
         document.getElementById('dd-machine-exchange-section').classList.toggle('hidden', !showMachineExchange);
         // ACTION PLAN "Machine Exchange": label "MACHINE TYPE (sent from WH)"
         // (+ NO VMC JUMPSTART pasangannya, yaitu mesin yang DIKIRIM dari WH ke
@@ -12409,7 +12289,6 @@
           _loadMachineExchangeSection_(row);
         }
         _applyDispatchDeliveredAdHocLayout_(ddIsAdHoc);
-        _applyDispatchDeliveredEventSimpleLayout_(ddIsEventSimple);
 
         document.getElementById('dispatch-delivered-modal').classList.remove('hidden');
         // Tombol "Delivered" di card cuma membuka popup ini (bukan menyimpan
@@ -12439,27 +12318,10 @@
           actualEl.disabled = !!isAdHoc;
           actualEl.classList.toggle('bg-slate-50', !!isAdHoc);
           actualEl.classList.toggle('text-slate-600', !!isAdHoc);
-          if (isAdHoc) actualEl.value = _ddToMDY_(_todayDateStrWIB_());
-          const actualBtn = document.getElementById('dd-loading-date-actual-btn');
-          if (actualBtn) actualBtn.classList.toggle('hidden', !!isAdHoc);
+          if (isAdHoc) actualEl.value = _todayDateStrWIB_();
         }
         const photoLabel = document.getElementById('dd-photo-label');
         if (photoLabel) photoLabel.textContent = isAdHoc ? 'Foto Finish' : 'Foto/Video Bukti Selesai';
-      }
-
-      // Layout RINGKAS Card Konfirmasi Delivered untuk task Event (PRODUCT TYPE NOD MAXIMO / NOD IZZIO /
-      // NOD CAPSULE BOX / NOD EQUIPMENTS, ACTION PLAN Delivery / Withdrawal, semua Region): sembunyikan
-      // LOC ID, NO VMC JUMPSTART, MACHINE TYPE (sent from WH), Checklist Foto, Assets (+ VMSetting,
-      // Machine Exchange, Assets sebelumnya). Loading Plan Date, Logistics Detail Remark, Loading Date (Actual,
-      // tetap bisa diisi), PIC Dispatch, dan Foto/Video Bukti Selesai tetap tampil. Dipanggil SETELAH
-      // _applyDispatchDeliveredAdHocLayout_ (yang sudah mengembalikan wrap umum untuk task non-Ad Hoc).
-      function _applyDispatchDeliveredEventSimpleLayout_(isSimple) {
-        if (!isSimple) return;
-        ['dd-loc-id-wrap', 'dd-no-vmc-wrap', 'dd-machine-type-wrap', 'dd-assets-section',
-         'dd-prev-assets-section', 'dd-checklist-foto-section', 'dd-vmsetting-section', 'dd-machine-exchange-section'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.classList.add('hidden');
-        });
       }
 
       // Isi dropdown ASSETS & FINAL STATUS di section "Machine Exchange (Sent
@@ -12596,7 +12458,7 @@
       const DD_RTD_CLIENT_TTL_MS = 60000;
 
       function _ddRtdApplies_() {
-        if (!_ddContext || _ddContext.isAdHoc || _ddContext.isEventSimple) return false;
+        if (!_ddContext || _ddContext.isAdHoc) return false;
         const ap = String(_ddContext.actionPlan || '').trim().toLowerCase();
         return ap.indexOf('delivery') !== -1 || ap.indexOf('exchange') !== -1;
       }
@@ -13303,16 +13165,9 @@
         // browser/HP dan tidak lolos kalau field readonly Loading Plan Date
         // kebetulan kosong (mis. task lama yang belum punya Plan Date).
         const loadingPlanDateVal = document.getElementById('dd-loading-plan-date').value.trim();
-        const loadingDateActualVal = document.getElementById('dd-loading-date-actual').value.trim();
+        const loadingDateActualVal = document.getElementById('dd-loading-date-actual').value;
         if (!loadingPlanDateVal || !loadingDateActualVal) {
           _setStatus(statusEl, 'error', 'Loading Plan Date dan Loading Date (Actual) wajib terisi sebelum Simpan.');
-          return;
-        }
-        // Format tanggal HARUS MM/DD/YYYY (sama dengan sheet). Kalau tidak valid, hentikan di sini
-        // supaya tidak sampai ke server & memunculkan "Error server: Input tanggal yang valid...".
-        if (!_ddToMDY_(loadingDateActualVal) || !/^\d{2}\/\d{2}\/\d{4}$/.test(loadingDateActualVal)) {
-          _setStatus(statusEl, 'error', 'Format Loading Date (Actual) harus MM/DD/YYYY dan berupa tanggal yang valid (contoh: 11/09/2026).');
-          document.getElementById('dd-loading-date-actual').focus();
           return;
         }
 
@@ -13320,7 +13175,7 @@
         // kolom AB "LOC ID" sheet "Recap BAU" sesuai TICKET (lihat
         // _saveDispatchDeliveredNow_ di API_Inventory_URL.txt).
         const locIdVal = document.getElementById('dd-loc-id').value.trim();
-        if (!_ddContext.isAdHoc && !_ddContext.isEventSimple && !locIdVal) { // Ad Hoc & Event ringkas tidak memakai LOC ID
+        if (!_ddContext.isAdHoc && !locIdVal) { // Ad Hoc tidak memakai LOC ID
           _setStatus(statusEl, 'error', 'LOC ID wajib diisi sebelum Simpan.');
           document.getElementById('dd-loc-id').focus();
           return;
@@ -13342,7 +13197,7 @@
 
         // Assets (semua ACTION PLAN): tiap item wajib dipilih Ada/Tidak Ada;
         // "Ada" wajib dilampiri foto, "Tidak Ada" tanpa foto.
-        const assetsCollected = (_ddContext.isAdHoc || _ddContext.isEventSimple) ? { assets: {} } : _collectDispatchAssets_(); // Ad Hoc & Event ringkas tidak memakai Assets
+        const assetsCollected = _ddContext.isAdHoc ? { assets: {} } : _collectDispatchAssets_(); // Ad Hoc tidak memakai Assets
         if (assetsCollected.error) {
           _setStatus(statusEl, 'error', assetsCollected.error);
           return;
@@ -13480,15 +13335,13 @@
           const payload = {
             rowNumber: _ddContext.rowNumber,
             ticket: _ddContext.ticket,
-            loadingDatePlan: _ddToMDY_(document.getElementById('dd-loading-plan-date').value) || document.getElementById('dd-loading-plan-date').value, // MM/DD/YYYY
+            loadingDatePlan: document.getElementById('dd-loading-plan-date').value,
             isAdHoc: !!_ddContext.isAdHoc,
-            isEventSimple: !!_ddContext.isEventSimple,
-            productType: _ddContext.productType || '',
-            locId: (_ddContext.isAdHoc || _ddContext.isEventSimple) ? '' : document.getElementById('dd-loc-id').value.trim(),
-            noVmcJumpstart: (_ddContext.isAdHoc || _ddContext.isEventSimple) ? '' : document.getElementById('dd-no-vmc').value,
-            machineType: (_ddContext.isAdHoc || _ddContext.isEventSimple) ? '' : document.getElementById('dd-machine-type').value,
+            locId: _ddContext.isAdHoc ? '' : document.getElementById('dd-loc-id').value.trim(),
+            noVmcJumpstart: _ddContext.isAdHoc ? '' : document.getElementById('dd-no-vmc').value,
+            machineType: _ddContext.isAdHoc ? '' : document.getElementById('dd-machine-type').value,
             logisticsDetailRemark: document.getElementById('dd-remark').value,
-            loadingDateActual: _ddToMDY_(document.getElementById('dd-loading-date-actual').value), // MM/DD/YYYY
+            loadingDateActual: document.getElementById('dd-loading-date-actual').value,
             picDispatch: _ddContext.isAdHoc ? '' : document.getElementById('dd-pic-dispatch').value,
             // LOCATION NAME task ini (dari row Jabodetabek) — dikirim supaya GAS
             // bisa ikut update kolom G (LOCATION NAME / DESTINATION) di sheet
