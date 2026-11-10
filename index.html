@@ -337,6 +337,8 @@
     /* Input LOC ID (Recap BAU): hanya tampil untuk ADMIN (body.role-admin di-set di applyRoleAccess) */
     .recap-locid-btn { display: none; }
     body.role-admin .recap-locid-btn { display: inline-block; }
+    .logstat-btn { display: none; }
+    body.role-admin .logstat-btn { display: inline-block; }
 
     /* Role BD: sembunyikan bagian Menu Utama selain jumlah RTD */
     body.role-bd .admin-only {
@@ -2789,6 +2791,10 @@
                 class="recap-locid-btn btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50 whitespace-nowrap">
                 Input LOC ID
               </button>
+              <button id="jabodetabek-logstat-btn" onclick="openLogisticsStatusModal('recap')"
+                class="logstat-btn btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-sky-300 text-sky-600 hover:bg-sky-50 whitespace-nowrap">
+                Ubah Status
+              </button>
               <button id="jabodetabek-addtask-btn" onclick="toggleJabodetabekAddTask()"
                 class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-amber-300 text-amber-600 hover:bg-amber-50 whitespace-nowrap">
                 + Add Task
@@ -2881,6 +2887,10 @@
               </button>
             </div>
             <div class="flex items-center gap-2 justify-end">
+              <button id="event-logstat-btn" onclick="openLogisticsStatusModal('event')"
+                class="logstat-btn btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-sky-300 text-sky-600 hover:bg-sky-50 whitespace-nowrap">
+                Ubah Status
+              </button>
               <button id="event-addtask-btn" onclick="toggleEventAddTask()"
                 class="btn-press px-3 py-2 text-sm font-semibold rounded-lg border-2 border-amber-300 text-amber-600 hover:bg-amber-50 whitespace-nowrap">
                 + Add Task
@@ -3095,6 +3105,60 @@
               <button onclick="closeRecapLocIdModal()"
                 class="px-3 py-2 text-xs font-semibold rounded-md border-2 border-slate-200 text-slate-600 hover:border-slate-300">Tutup</button>
               <button id="locid-save-btn" onclick="saveRecapLocId()" disabled
+                class="btn-press px-4 py-2 text-xs font-semibold rounded-md bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Simpan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: Ubah Status LOGISTICS UPDATE (Request BD - Recap BAU / Event, khusus ADMIN Region) -->
+      <div id="logstat-modal" class="hidden fixed inset-0 z-[20000] flex items-center justify-center bg-black/40 p-2 sm:p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[92vh] flex flex-col">
+          <div class="p-4 border-b border-slate-200">
+            <div class="flex items-start justify-between gap-2 flex-wrap">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">Ubah Status LOGISTICS UPDATE — <span id="logstat-source-label"></span> <span id="logstat-region-label" class="text-sky-600"></span></h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">Hanya TICKET Region ini yang statusnya bukan "Done" dan bukan "Cancel". Centang TICKET, pilih status, lalu Simpan.</p>
+              </div>
+              <button onclick="closeLogisticsStatusModal()" class="px-2 py-1 text-slate-400 hover:text-slate-700 text-lg leading-none" aria-label="Tutup">&times;</button>
+            </div>
+            <div class="flex items-center gap-2 mt-3 flex-wrap">
+              <input id="logstat-search" type="text" placeholder="Cari TICKET / lokasi / action plan..." oninput="renderLogisticsStatusTable()"
+                class="w-full sm:w-64 px-3 py-1.5 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400">
+              <button id="logstat-refresh-btn" onclick="loadLogisticsStatusCandidates(true)"
+                class="btn-press px-3 py-1.5 text-xs font-semibold rounded-lg border-2 border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600 whitespace-nowrap">⟳ Refresh</button>
+              <label for="logstat-select" class="text-xs font-semibold text-slate-600 ml-auto">Status LOGISTICS UPDATE</label>
+              <select id="logstat-select" onchange="_updateLogStatCount_()"
+                class="px-3 py-1.5 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-amber-400 bg-white">
+                <option value="">-- Pilih status --</option>
+                <option value="Open">Open</option>
+                <option value="Cancel">Cancel</option>
+              </select>
+            </div>
+            <div id="logstat-status" class="text-xs text-slate-500 mt-2"></div>
+          </div>
+          <div id="logstat-empty" class="hidden placeholder-box m-4">Tidak ada TICKET yang bisa diubah.</div>
+          <div id="logstat-table-wrap" class="overflow-auto flex-1 hidden">
+            <table class="min-w-full text-xs border-collapse">
+              <thead style="background-color:#0b1f3a;color:#ffffff;position:sticky;top:0;z-index:1;">
+                <tr>
+                  <th class="px-2 py-2 text-left w-8"><input id="logstat-all" type="checkbox" class="w-4 h-4 align-middle accent-amber-500" onchange="toggleLogisticsStatusAll(this)"></th>
+                  <th class="px-2 py-2 text-left whitespace-nowrap">TICKET</th>
+                  <th class="px-2 py-2 text-left whitespace-nowrap">REGION</th>
+                  <th class="px-2 py-2 text-left">LOCATION NAME</th>
+                  <th class="px-2 py-2 text-left whitespace-nowrap">ACTION PLAN</th>
+                  <th class="px-2 py-2 text-left whitespace-nowrap">LOGISTICS UPDATE</th>
+                </tr>
+              </thead>
+              <tbody id="logstat-tbody"></tbody>
+            </table>
+          </div>
+          <div class="p-3 border-t border-slate-200 flex items-center justify-between gap-2 flex-wrap">
+            <span id="logstat-count" class="text-xs text-slate-500">0 TICKET dipilih</span>
+            <div class="flex items-center gap-2">
+              <button onclick="closeLogisticsStatusModal()"
+                class="px-3 py-2 text-xs font-semibold rounded-md border-2 border-slate-200 text-slate-600 hover:border-slate-300">Tutup</button>
+              <button id="logstat-save-btn" onclick="saveLogisticsStatus()" disabled
                 class="btn-press px-4 py-2 text-xs font-semibold rounded-md bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50 disabled:cursor-not-allowed">Simpan</button>
             </div>
           </div>
@@ -5062,6 +5126,206 @@
         renderRecapLocIdTable();
         // Sinkronkan dengan sheet (mis. ada user lain yang mengisi bersamaan).
         loadRecapLocIdPending(true);
+      }
+
+      // =============================================
+      // REQUEST BD — RECAP BAU & EVENT > UBAH STATUS LOGISTICS UPDATE (khusus ADMIN Region)
+      // Daftar = TICKET Region login yang LOGISTICS UPDATE-nya bukan "Done"/"Cancel"
+      // (GAS: getLogisticsStatusCandidates). Status baru "Open" / "Cancel" ditulis ke kolom AF
+      // sheet "Recap BAU" sesuai TICKET (GAS: saveLogisticsStatus). Anti-double: requestId
+      // sekali-pakai per chunk (_getFromGasWithRetry_) + lock di server.
+      // =============================================
+      const _logStat = { source: 'recap', rows: [], selected: Object.create(null), errors: Object.create(null), saving: false, seq: 0, regionShown: '' };
+      const LOGSTAT_SAVE_CHUNK = 25;
+      function _lsEl(id) { return document.getElementById(id); }
+      function _logStatKey_(r) { return r.ticket + '|' + (r.actionPlan || ''); }
+
+      function openLogisticsStatusModal(source) {
+        if (currentRole !== 'ADMIN') { showToast('Fitur Ubah Status hanya untuk ADMIN.', 'warning'); return; }
+        if (!currentRegion) { showToast('Region login belum dipilih. Logout lalu login ulang dengan memilih Region.', 'warning'); return; }
+        if (_logStat.source !== source || _logStat.regionShown !== currentRegion) {
+          _logStat.rows = []; _logStat.selected = Object.create(null); _logStat.errors = Object.create(null);
+        }
+        _logStat.source = source;
+        _logStat.regionShown = currentRegion;
+        _lsEl('logstat-source-label').textContent = source === 'event' ? 'Event' : 'Recap BAU';
+        _lsEl('logstat-region-label').textContent = '— Region ' + currentRegion;
+        _lsEl('logstat-search').value = '';
+        _lsEl('logstat-select').value = '';
+        renderLogisticsStatusTable();
+        _lsEl('logstat-modal').classList.remove('hidden');
+        loadLogisticsStatusCandidates(true);
+      }
+
+      function closeLogisticsStatusModal() {
+        if (_logStat.saving) return;
+        _lsEl('logstat-modal').classList.add('hidden');
+      }
+
+      async function loadLogisticsStatusCandidates() {
+        if (currentRole !== 'ADMIN' || !currentRegion || _logStat.saving) return;
+        const statusEl = _lsEl('logstat-status');
+        const mySeq = ++_logStat.seq;
+        const regionAtRequest = currentRegion;
+        const sourceAtRequest = _logStat.source;
+        _setStatus(statusEl, 'info', 'Memuat daftar TICKET...');
+        try {
+          const res = await fetch(INVENTORY_JS_GAS_URL + '?action=getLogisticsStatusCandidates&source=' + encodeURIComponent(sourceAtRequest) +
+            '&region=' + encodeURIComponent(regionAtRequest) + '&_=' + Date.now());
+          const json = await res.json();
+          if (mySeq !== _logStat.seq || regionAtRequest !== currentRegion || sourceAtRequest !== _logStat.source) return;
+          if (!json || json.success === false) {
+            _setStatus(statusEl, 'error', (json && json.message) || 'Gagal memuat daftar TICKET.');
+            return;
+          }
+          _logStat.rows = json.data || [];
+          const alive = Object.create(null);
+          _logStat.rows.forEach(r => { alive[_logStatKey_(r)] = true; });
+          Object.keys(_logStat.selected).forEach(k => { if (!alive[k]) delete _logStat.selected[k]; });
+          Object.keys(_logStat.errors).forEach(k => { if (!alive[k]) delete _logStat.errors[k]; });
+          _setStatus(statusEl, 'success', _logStat.rows.length + ' TICKET bisa diubah');
+          renderLogisticsStatusTable();
+        } catch (err) {
+          if (mySeq !== _logStat.seq) return;
+          _setStatus(statusEl, 'error', 'Gagal memuat data: ' + err.message);
+        }
+      }
+
+      function _logStatVisibleRows_() {
+        const q = (_lsEl('logstat-search').value || '').trim().toLowerCase();
+        return _logStat.rows.filter(r => !q || [r.ticket, r.region, r.locationName, r.actionPlan, r.status].join(' ').toLowerCase().indexOf(q) !== -1);
+      }
+
+      function renderLogisticsStatusTable() {
+        const tbody = _lsEl('logstat-tbody');
+        const wrap = _lsEl('logstat-table-wrap');
+        const empty = _lsEl('logstat-empty');
+        const rows = _logStatVisibleRows_();
+        if (!rows.length) {
+          wrap.classList.add('hidden');
+          empty.classList.remove('hidden');
+          empty.textContent = _logStat.rows.length ? 'Tidak ada TICKET yang cocok dengan pencarian.' : 'Tidak ada TICKET yang bisa diubah.';
+          _updateLogStatCount_();
+          return;
+        }
+        empty.classList.add('hidden');
+        wrap.classList.remove('hidden');
+        const esc = _escapeHtmlAttr_;
+        tbody.innerHTML = rows.map((r, i) => {
+          const key = _logStatKey_(r);
+          const k = String(r.status || '').toLowerCase();
+          const cls = k === 'open' ? 'bg-sky-100 text-sky-700' : k === 'hold' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600';
+          const err = _logStat.errors[key];
+          return '<tr class="' + (i % 2 ? 'bg-slate-50' : 'bg-white') + ' border-b border-slate-100 align-top">' +
+            '<td class="px-2 py-1.5"><input type="checkbox" class="logstat-row-cb w-4 h-4 align-middle accent-amber-500" data-key="' + esc(key) + '" ' +
+              (_logStat.selected[key] ? 'checked ' : '') + 'onchange="onLogisticsStatusRowToggle(this)"></td>' +
+            '<td class="px-2 py-1.5 whitespace-nowrap font-semibold text-slate-700">' + esc(r.ticket) + '</td>' +
+            '<td class="px-2 py-1.5 whitespace-nowrap">' + esc(r.region) + '</td>' +
+            '<td class="px-2 py-1.5 min-w-[180px]">' + esc(r.locationName) +
+              (err ? '<div class="text-[10px] text-red-600 mt-0.5">' + esc(err) + '</div>' : '') + '</td>' +
+            '<td class="px-2 py-1.5 whitespace-nowrap">' + esc(r.actionPlan) + '</td>' +
+            '<td class="px-2 py-1.5 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ' + cls + '">' + esc(r.status || 'Open') + '</span></td>' +
+          '</tr>';
+        }).join('');
+        const allCb = _lsEl('logstat-all');
+        if (allCb) allCb.checked = rows.length > 0 && rows.every(r => _logStat.selected[_logStatKey_(r)]);
+        _updateLogStatCount_();
+      }
+
+      function onLogisticsStatusRowToggle(cb) {
+        const key = cb.getAttribute('data-key');
+        if (cb.checked) _logStat.selected[key] = true; else delete _logStat.selected[key];
+        if (_logStat.errors[key]) { delete _logStat.errors[key]; }
+        const rows = _logStatVisibleRows_();
+        const allCb = _lsEl('logstat-all');
+        if (allCb) allCb.checked = rows.length > 0 && rows.every(r => _logStat.selected[_logStatKey_(r)]);
+        _updateLogStatCount_();
+      }
+
+      function toggleLogisticsStatusAll(cb) {
+        _logStatVisibleRows_().forEach(r => {
+          const key = _logStatKey_(r);
+          if (cb.checked) _logStat.selected[key] = true; else delete _logStat.selected[key];
+        });
+        renderLogisticsStatusTable();
+      }
+
+      function _logStatSelectedItems_() {
+        return _logStat.rows.filter(r => _logStat.selected[_logStatKey_(r)]).map(r => ({ ticket: r.ticket, actionPlan: r.actionPlan || '' }));
+      }
+
+      function _updateLogStatCount_() {
+        const n = _logStatSelectedItems_().length;
+        const cnt = _lsEl('logstat-count');
+        if (cnt) cnt.textContent = n + ' TICKET dipilih';
+        const btn = _lsEl('logstat-save-btn');
+        if (btn && !_logStat.saving) btn.disabled = !(n > 0 && _lsEl('logstat-select').value);
+      }
+
+      async function saveLogisticsStatus() {
+        if (_logStat.saving) return;
+        if (currentRole !== 'ADMIN') { showToast('Fitur Ubah Status hanya untuk ADMIN.', 'warning'); return; }
+        if (!currentRegion) { showToast('Region login belum dipilih.', 'warning'); return; }
+        const newStatus = _lsEl('logstat-select').value;
+        const items = _logStatSelectedItems_();
+        if (!newStatus) { showToast('Pilih Status LOGISTICS UPDATE dulu.', 'warning'); return; }
+        if (!items.length) { showToast('Belum ada TICKET yang dipilih.', 'warning'); return; }
+        if (newStatus === 'Cancel' && !confirm('Ubah ' + items.length + ' TICKET menjadi "Cancel"?\nTICKET yang sudah Cancel tidak muncul lagi di daftar ini.')) return;
+
+        _logStat.saving = true;
+        const sourceNow = _logStat.source;
+        const btn = _lsEl('logstat-save-btn');
+        const statusEl = _lsEl('logstat-status');
+        _setBtnLoading_(btn, 'Menyimpan...');
+        _lsEl('logstat-refresh-btn').disabled = true;
+        let savedCount = 0, failedCount = 0, networkError = '';
+        try {
+          for (let i = 0; i < items.length; i += LOGSTAT_SAVE_CHUNK) {
+            const chunk = items.slice(i, i + LOGSTAT_SAVE_CHUNK);
+            _setStatus(statusEl, 'info', 'Menyimpan ' + Math.min(i + chunk.length, items.length) + ' / ' + items.length + '...');
+            let json;
+            try {
+              json = await _getFromGasWithRetry_('saveLogisticsStatus', { source: sourceNow, status: newStatus, items: chunk, region: currentRegion }, 2);
+            } catch (err) { networkError = err.message; break; }
+            if (!json) { networkError = 'Balasan server kosong.'; break; }
+            const okTickets = Object.create(null);
+            (json.saved || []).concat(json.alreadySaved || []).forEach(t => { okTickets[t] = true; });
+            savedCount += (json.saved || []).length + (json.alreadySaved || []).length;
+            const failedByTicket = Object.create(null);
+            (json.failed || []).forEach(f => { failedByTicket[f.ticket] = f.message; failedCount++; });
+            if (json.success === false && !(json.failed || []).length) {
+              chunk.forEach(it => { failedByTicket[it.ticket] = json.message || 'Gagal menyimpan.'; failedCount++; });
+            }
+            chunk.forEach(it => {
+              const key = it.ticket + '|' + (it.actionPlan || '');
+              if (okTickets[it.ticket]) { delete _logStat.selected[key]; delete _logStat.errors[key]; }
+              else if (failedByTicket[it.ticket]) { _logStat.errors[key] = failedByTicket[it.ticket]; }
+            });
+            // Yang sudah tercatat: "Cancel" -> hilang dari daftar; "Open" -> tetap, labelnya jadi Open.
+            _logStat.rows = _logStat.rows.map(r => (okTickets[r.ticket] && chunk.some(it => it.ticket === r.ticket && (it.actionPlan || '') === (r.actionPlan || '')))
+              ? Object.assign({}, r, { status: newStatus }) : r)
+              .filter(r => !(newStatus === 'Cancel' && /^cancel/i.test(r.status)));
+          }
+        } finally {
+          _logStat.saving = false;
+          _clearBtnLoading_(btn);
+          _lsEl('logstat-refresh-btn').disabled = false;
+        }
+
+        if (networkError) {
+          _setStatus(statusEl, 'error', 'Koneksi terputus: ' + networkError + ' Klik Refresh untuk cek mana yang sudah tersimpan sebelum mengulang.');
+          showToast('Koneksi terputus saat menyimpan. Klik Refresh untuk cek.', 'error');
+        } else if (failedCount) {
+          _setStatus(statusEl, 'warning', savedCount + ' tersimpan, ' + failedCount + ' gagal (lihat pesan merah di baris terkait).');
+          showToast(savedCount + ' TICKET tersimpan, ' + failedCount + ' gagal.', 'warning');
+        } else {
+          _setStatus(statusEl, 'success', savedCount + ' TICKET berhasil diubah jadi "' + newStatus + '".');
+          showToast(savedCount + ' TICKET berhasil diubah jadi "' + newStatus + '".', 'success');
+        }
+        renderLogisticsStatusTable();
+        // Segarkan tabel menu (Recap BAU / Event) di belakang modal + sinkron daftar modal.
+        try { if (sourceNow === 'event') loadEvent(true); else loadJabodetabek(true); } catch (e) { /* tidak fatal */ }
+        loadLogisticsStatusCandidates(true);
       }
 
       function showJabodetabek() {
@@ -8227,7 +8491,7 @@
         const counts = {};
         _jabodetabekData.forEach(row => {
           const statusVal = statusKey ? String(row[statusKey] ?? '').trim() : '';
-          if (statusVal !== '') return; // hanya kolom AB kosong ("Open")
+          if (statusVal !== '' && statusVal.toLowerCase() !== 'open') return; // kolom AB kosong / "Open"
           const kota = (row.__kota || '').trim() || 'Tidak Diketahui';
           counts[kota] = (counts[kota] || 0) + 1;
         });
