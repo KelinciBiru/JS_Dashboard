@@ -11492,15 +11492,41 @@
       // spasi-strip-tanda kurung) menjadi link chat WhatsApp (wa.me/62xxx).
       // Return null kalau nomor kosong/tidak valid supaya tombol WA bisa
       // disembunyikan.
+      function _normalizeWaPhone_(phoneRaw) {
+        // Satu sel bisa berisi beberapa nomor ("0812-xxx / 0813-xxx", "0812..., 0813...",
+        // "0812.. atau 0813.."). Dulu semua digit digabung jadi satu nomor ngawur -> WA
+        // menolak nomor & template tidak pernah terisi. Sekarang ambil nomor VALID pertama.
+        const parts = String(phoneRaw || '').split(/[\/,;|\n\r]+|\s+(?:atau|dan|or)\s+/i);
+        for (let i = 0; i < parts.length; i++) {
+          let d = parts[i].replace(/\D/g, '');
+          if (!d) continue;
+          if (d.indexOf('00') === 0) d = d.slice(2);            // 0062812...
+          if (d.indexOf('620') === 0) d = '62' + d.slice(3);    // +62 (0)812...
+          if (d.indexOf('62') !== 0) {
+            if (d.indexOf('0') === 0) d = '62' + d.slice(1);    // 0812...
+            else d = '62' + d;                                  // 812...
+          }
+          if (d.length >= 10 && d.length <= 15) return d;       // panjang wajar nomor WA
+        }
+        return null;
+      }
+
       function _buildWhatsAppLink_(phoneRaw, prefilledText) {
-        const digits = String(phoneRaw || '').replace(/\D/g, '');
-        if (!digits) return null;
-        let normalized = digits;
-        if (normalized.indexOf('0') === 0) normalized = '62' + normalized.slice(1);
-        else if (normalized.indexOf('62') !== 0) normalized = '62' + normalized;
+        const normalized = _normalizeWaPhone_(phoneRaw);
+        if (!normalized) return null;
         let link = 'https://wa.me/' + normalized;
         if (prefilledText) link += '?text=' + encodeURIComponent(prefilledText);
         return link;
+      }
+
+      // Sapaan "Bapak/Ibu <nama>" — kalau SITE PIC kosong/"-" jangan tampil "Bapak/Ibu -".
+      function _waGreetName_(sitePicRaw, prefix) {
+        const n = String(sitePicRaw || '').trim();
+        return prefix + ((n && n !== '-') ? ' ' + n : '');
+      }
+      function _waLocationName_(locRaw) {
+        const l = String(locRaw || '').trim();
+        return (l && l !== '-') ? l : 'lokasi yang telah dijadwalkan';
       }
 
       // Ikon WhatsApp inline (sama seperti ICON_WHATSAPP di card Task Team
@@ -11514,13 +11540,13 @@
       // (kolom Aksi), memakai SITE PIC/ACTION PLAN/LOCATION NAME dari row +
       // tanggal H+1 dari hari berjalan (format tanggal panjang, id-ID).
       function _buildPlanTaskChatWaText_(row) {
-        const sitePic = String(row['SITE PIC'] || '-').trim();
-        const actionPlan = String(row['ACTION PLAN'] || '-').trim();
-        const locationName = String(row['LOCATION NAME'] || '-').trim();
+        const sitePic = _waGreetName_(row['SITE PIC'], 'Bpk/Ibu');
+        const actionPlan = String(row['ACTION PLAN'] || '').trim() || 'pekerjaan';
+        const locationName = _waLocationName_(row['LOCATION NAME']);
         const hPlus1 = new Date();
         hPlus1.setDate(hPlus1.getDate() + 1);
         const hPlus1Str = hPlus1.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-        return 'Hallo Bpk/Ibu ' + sitePic + '. kami dari Team Jumpstart ingin konfirmasi perihal ' +
+        return 'Hallo ' + sitePic + '. kami dari Team Jumpstart ingin konfirmasi perihal ' +
           actionPlan + ' vending machine yang berlokasi di ' + locationName +
           '. Apakah dapat kami kerjakan di tanggal ' + hPlus1Str + ' ?\nmohon konfirmasi nya kembali, Terima Kasih.';
       }
@@ -11546,24 +11572,28 @@
       // berdasarkan ACTION PLAN (Delivery Approval / Withdrawal / Machine
       // Exchange / Relocation), memakai SITE PIC & LOCATION NAME dari row.
       function _buildTeamDispatchWaText_(row) {
-        const sitePic = String(row['SITE PIC'] || '-').trim();
-        const locationName = String(row['LOCATION NAME'] || '-').trim();
-        const actionPlanLower = String(row['ACTION PLAN'] || '').toLowerCase();
+        const sitePic = _waGreetName_(row['SITE PIC'], 'Bapak/Ibu');
+        const locationName = _waLocationName_(row['LOCATION NAME']);
+        // Normalisasi: huruf kecil, buang tanda baca/angka/spasi ganda, jadi
+        // "Delivery", "DELIVERY  Approval", "Delivery-Approval", "Withdrawl" tetap terbaca.
+        const ap = String(row['ACTION PLAN'] || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim();
 
+        // Urutan penting: cek yang paling spesifik dulu, "deliver" paling akhir.
         let action;
-        if (actionPlanLower.indexOf('delivery approval') !== -1) {
-          action = 'mohon izin untuk kirim mesin ke';
-        } else if (actionPlanLower.indexOf('withdrawal') !== -1) {
+        if (/withdraw|penarikan|tarik/.test(ap)) {
           action = 'mohon izin untuk melakukan penarikan mesin yang berlokasi di';
-        } else if (actionPlanLower.indexOf('exchange') !== -1) {
+        } else if (/exchange|tukar|swap/.test(ap)) {
           action = 'mohon izin untuk melakukan penukaran mesin yang berlokasi di';
-        } else if (actionPlanLower.indexOf('relocation') !== -1) {
+        } else if (/relocat|relokasi|pindah/.test(ap)) {
           action = 'mohon izin untuk melakukan relokasi mesin yang berlokasi di';
+        } else if (/deliver|kirim/.test(ap)) {
+          action = 'mohon izin untuk kirim mesin ke';
         } else {
-          return null;
+          // Fallback: JANGAN return null (itu yang bikin link WA terbuka tanpa teks).
+          action = 'mohon izin untuk melakukan pekerjaan mesin yang berlokasi di';
         }
 
-        return 'Hallo Bapak/Ibu ' + sitePic + ', kami dari Team Dispatch Jumpstart ' + action + ' ' + locationName + '.';
+        return 'Hallo ' + sitePic + ', kami dari Team Dispatch Jumpstart ' + action + ' ' + locationName + '.';
       }
 
       // Link Google Maps (pencarian) berdasarkan teks alamat.
